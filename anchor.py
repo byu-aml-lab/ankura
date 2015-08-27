@@ -53,7 +53,7 @@ def random_projection(A, k, rng=numpy.random):
 
 
 def identify_candidates(M, doc_threshold):
-    """Return list of potential anchor words from a docwords matrix
+    """Return list of potential anchor words from a sparse docwords matrix
 
     Candiate anchor words are words which appear in a significant number of
     documents. These are not rarewords persey (or else they would probably be
@@ -65,3 +65,53 @@ def identify_candidates(M, doc_threshold):
         if M[i, :].nnz > doc_threshold:
             candidate_anchors.append(i)
     return candidate_anchors
+
+
+def gram_schmidt(Q, k, candidates=None):
+    """Uses stabalized Gram-Schmidt decomposition to find k anchors"""
+    # don't modify original Q
+    Q = Q.copy()
+
+    # ensure we have candidate anchors
+    if candidates is None:
+        candidates = range(Q.shape[0])
+
+    # setup book keeping
+    anchors = numpy.zeros(k, dtype=numpy.int)
+    basis = numpy.zeros((k-1, Q.shape[1]))
+
+    # find the farthest point p1 from the origin
+    max_dist = 0
+    for i in candidates:
+        dist = numpy.dot(Q[i], Q[i])
+        if dist > max_dist:
+            max_dist = dist
+            anchors[0] = i
+
+    # let p1 be the origin of our coordinate system
+    for i in candidates:
+        Q[i] = Q[i] - anchors[0]
+
+    # find the farthest point from p1
+    max_dist = 0
+    for i in candidates:
+        dist = numpy.dot(Q[i], Q[i])
+        if dist > max_dist:
+            max_dist = dist
+            anchors[1] = i
+            basis[0] = Q[i]/numpy.sqrt(numpy.dot(Q[i], Q[i]))
+
+    # stabilized gram-schmidt to finds new anchor words to expand our subspace
+    for j in range(1, k - 1):
+        # project all the points onto our basis and find the farthest point
+        max_dist = 0
+        for i in candidates:
+            Q[i] = Q[i] - numpy.dot(Q[i], basis[j-1]) * basis[j - 1]
+            dist = numpy.dot(Q[i], Q[i])
+            if dist > max_dist:
+                max_dist = dist
+                anchors[j + 1] = i
+                basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
+
+    # return anchors as list
+    return anchors.tolist()
