@@ -33,3 +33,20 @@ def construct_Q(M):
     # construct and return normalized Q
     Q = tilde_H * tilde_H.transpose() - numpy.diag(hat_H)
     return numpy.array(Q / num_docs)
+
+
+def random_projection(A, k, rng=numpy.random):
+    """Randomly reduces the dimensionality of a n x d matrix A to k x d
+
+    We follow the method given by Achlioptas 2001 which yields a projection
+    which does well at preserving pairwise distances within some small factor.
+    We do this by multiplying A with R, a n x k matrix with each element
+    R_{i,j} distributed as:
+        sqrt(3)  with probability 1/6
+        0        with probability 2/3
+        -sqrt(3) with probability 1/ 6
+    The resulting matrix therefore has the dimensions k x d so each of the d
+    examples in A is reduced from n dimensions to k dimensions.
+    """
+    R = rng.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k)) * numpy.sqrt(3)
+    return numpy.dot(A, R)
