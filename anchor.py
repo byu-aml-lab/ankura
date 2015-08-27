@@ -50,3 +50,18 @@ def random_projection(A, k, rng=numpy.random):
     """
     R = rng.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k)) * numpy.sqrt(3)
     return numpy.dot(A, R)
+
+
+def identify_candidates(M, doc_threshold):
+    """Return list of potential anchor words from a docwords matrix
+
+    Candiate anchor words are words which appear in a significant number of
+    documents. These are not rarewords persey (or else they would probably be
+    filtered during pre-processing), but do not appear in enough documents to
+    be useful as an anchor word.
+    """
+    candidate_anchors = []
+    for i in range(M.shape[0]):
+        if M[i, :].nnz > doc_threshold:
+            candidate_anchors.append(i)
+    return candidate_anchors
