@@ -67,16 +67,18 @@ def identify_candidates(M, doc_threshold):
     return candidate_anchors
 
 
-def gram_schmidt(Q, k, candidates=None):
+def find_anchors(Q, k, project_dim, candidates):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors"""
-    # don't modify original Q
+    # don't modify the original Q
     Q = Q.copy()
 
-    # ensure we have candidate anchors
-    if candidates is None:
-        candidates = range(Q.shape[0])
+    # normalized rows of Q and perform dimensionality reduction
+    row_sums = Q.sum(1)
+    for i in range(len(Q[:, 0])):
+        Q[i, :] = Q[i, :] / float(row_sums[i])
+    Q = random_projection(Q, project_dim)
 
-    # setup book keeping
+    # setup book keeping for gram-schmidt
     anchors = numpy.zeros(k, dtype=numpy.int)
     basis = numpy.zeros((k-1, Q.shape[1]))
 
@@ -90,7 +92,7 @@ def gram_schmidt(Q, k, candidates=None):
 
     # let p1 be the origin of our coordinate system
     for i in candidates:
-        Q[i] = Q[i] - anchors[0]
+        Q[i] = Q[i] - Q[anchors[0]]
 
     # find the farthest point from p1
     max_dist = 0
@@ -99,7 +101,7 @@ def gram_schmidt(Q, k, candidates=None):
         if dist > max_dist:
             max_dist = dist
             anchors[1] = i
-            basis[0] = Q[i]/numpy.sqrt(numpy.dot(Q[i], Q[i]))
+            basis[0] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
     # stabilized gram-schmidt to finds new anchor words to expand our subspace
     for j in range(1, k - 1):
