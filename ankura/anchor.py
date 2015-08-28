@@ -68,7 +68,11 @@ def identify_candidates(M, doc_threshold):
 
 
 def find_anchors(Q, k, project_dim, candidates):
-    """Uses stabalized Gram-Schmidt decomposition to find k anchors"""
+    """Uses stabalized Gram-Schmidt decomposition to find k anchors
+
+    The original Q will not be modified. The anchors are returned in the form
+    of a list of k indicies into the original Q.
+    """
     # don't modify the original Q
     Q = Q.copy()
 
