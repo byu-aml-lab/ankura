@@ -17,14 +17,10 @@ def demo():
     print 'Q sum is', Q.sum()
 
     anchors = anchor.find_anchors(Q, 20, 1000, candidates)
-    print anchors
-    for ank in anchors:
-        print ank, vocab[ank]
+    topics = recover.recover_topics(Q, anchors)
 
-    A, _ = recover.nonNegativeRecover(Q, anchors, 'out', 'L2', 1)
-
-    for k in xrange(20):
-        topwords = numpy.argsort(A[:, k])[-10:][::-1]
+    for k in xrange(len(anchors)):
+        topwords = numpy.argsort(topics[:, k])[-10:][::-1]
         print vocab[anchors[k]], ':',
         for word in topwords:
             print vocab[word],
