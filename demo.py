@@ -1,6 +1,8 @@
 """Runs a demo of the anchor words algorithm"""
 
-from ankura import pipeline, anchor
+import numpy
+
+from ankura import pipeline, anchor, recover
 
 def demo():
     """Runs a demo of the anchors words algorithm"""
@@ -18,6 +20,15 @@ def demo():
     print anchors
     for ank in anchors:
         print ank, vocab[ank]
+
+    A, _ = recover.nonNegativeRecover(Q, anchors, 'out', 'L2', 1)
+
+    for k in xrange(20):
+        topwords = numpy.argsort(A[:, k])[-10:][::-1]
+        print vocab[anchors[k]], ':',
+        for word in topwords:
+            print vocab[word],
+        print
 
 
 if __name__ == '__main__':
