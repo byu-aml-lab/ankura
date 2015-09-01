@@ -120,7 +120,7 @@ def read_glob(glob_pattern, tokenizer=tokenize_simple):
 
     # convert vocab from a token to index map into a list of tokens
     vocab = {index: token for token, index in vocab.items()}
-    vocab = [vocab[index] for index in range(vocab)]
+    vocab = [vocab[index] for index in xrange(len(vocab))]
 
     # docwords matrix and vocab list
     return docwords, vocab
@@ -161,7 +161,7 @@ def filter_rarewords(docwords, vocab, doc_threshold):
     # track which vocab indices are rare and which are not
     rare_index = []
     keep_index = []
-    for i in range(len(vocab)):
+    for i in xrange(len(vocab)):
         if docwords[i, :].nnz < doc_threshold:
             rare_index.append(i)
         else:

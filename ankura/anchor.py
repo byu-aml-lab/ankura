@@ -15,7 +15,7 @@ def construct_Q(M):
     hat_H = numpy.zeros(vocab_size)
 
     # Construct tilde_H and hat_H
-    for j in range(tilde_H.indptr.size - 1):
+    for j in xrange(tilde_H.indptr.size - 1):
         # get indices of column j
         col_start = tilde_H.indptr[j]
         col_end = tilde_H.indptr[j + 1]
@@ -61,7 +61,7 @@ def identify_candidates(M, doc_threshold):
     be useful as an anchor word.
     """
     candidate_anchors = []
-    for i in range(M.shape[0]):
+    for i in xrange(M.shape[0]):
         if M[i, :].nnz > doc_threshold:
             candidate_anchors.append(i)
     return candidate_anchors
@@ -78,7 +78,7 @@ def find_anchors(Q, k, project_dim, candidates):
 
     # normalized rows of Q and perform dimensionality reduction
     row_sums = Q.sum(1)
-    for i in range(len(Q[:, 0])):
+    for i in xrange(len(Q[:, 0])):
         Q[i, :] = Q[i, :] / float(row_sums[i])
     Q = random_projection(Q, project_dim)
 
@@ -108,7 +108,7 @@ def find_anchors(Q, k, project_dim, candidates):
             basis[0] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
     # stabilized gram-schmidt to finds new anchor words to expand our subspace
-    for j in range(1, k - 1):
+    for j in xrange(1, k - 1):
         # project all the points onto our basis and find the farthest point
         max_dist = 0
         for i in candidates:
