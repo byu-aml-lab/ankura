@@ -6,12 +6,17 @@ from ankura import pipeline, anchor, recover
 
 def demo():
     """Runs a demo of the anchors words algorithm"""
-    docwords, vocab = pipeline.read_uci('docwords.txt', 'vocab.txt')
-    docwords, vocab = pipeline.filter_stopwords(docwords, vocab, 'stop.txt')
-    docwords, vocab = pipeline.filter_rarewords(docwords, vocab, 50)
 
-    candidates = anchor.identify_candidates(docwords, 100)
-    print len(candidates), 'candidates'
+    data_glob = '/aml/home/jlund3/scratch/data/newsgroups/*/*'
+    eng_stop = '/aml/home/jlund3/scratch/data/stopwords/english.txt'
+    news_stop = '/aml/home/jlund3/scratch/data/stopwords/newsgroups.txt'
+
+    docwords, vocab = pipeline.read_glob(data_glob, pipeline.tokenize_news)
+    docwords, vocab = pipeline.filter_stopwords(docwords, vocab, eng_stop)
+    docwords, vocab = pipeline.filter_stopwords(docwords, vocab, news_stop)
+    docwords, vocab = pipeline.filter_rarewords(docwords, vocab, 25)
+
+    candidates = anchor.identify_candidates(docwords, 50)
 
     Q = anchor.construct_Q(docwords)
     print 'Q sum is', Q.sum()

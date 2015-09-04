@@ -3,22 +3,18 @@ import numpy
 
 def logsum_exp(y):
     """Computes the sum of y in log space"""
-    m = y.max()
-    return m + numpy.log((numpy.exp(y - m)).sum())
+    ymax = y.max()
+    return ymax + numpy.log((numpy.exp(y - ymax)).sum())
 
+_C1 = 1e-4
+_C2 = .75
 
-def exponentiated_gradient(Y, X, epsilon):
+def exponentiated_gradient(Y, X, XX, epsilon):
     """Solves an exponentied gradient problem with L2 divergence"""
-    c1 = 10**(-4)
-    c2 = 0.75
-
-    XX = XX = numpy.dot(X, X.transpose())
     XY = numpy.dot(X, Y)
     YY = float(numpy.dot(Y, Y))
 
-    K = X.shape[0]
-    alpha = numpy.ones(K) / K
-
+    alpha = numpy.ones(X.shape[0]) / X.shape[0]
     old_alpha = numpy.copy(alpha)
     log_alpha = numpy.log(alpha)
     old_log_alpha = numpy.copy(log_alpha)
@@ -28,15 +24,15 @@ def exponentiated_gradient(Y, X, epsilon):
     AXXA = float(numpy.dot(AXX, alpha.transpose()))
 
     grad = 2 * (AXX - XY)
-    new_obj = AXXA - 2 * AXY + YY
-
     old_grad = numpy.copy(grad)
+
+    new_obj = AXXA - 2 * AXY + YY
 
     stepsize = 1
     decreased = False
     gap = float('inf')
+
     while gap >= epsilon:
-        eta = stepsize
         old_obj = new_obj
         old_alpha = numpy.copy(alpha)
         old_log_alpha = numpy.copy(log_alpha)
@@ -45,20 +41,17 @@ def exponentiated_gradient(Y, X, epsilon):
         if stepsize == 0:
             break
 
-        #update
-        log_alpha -= eta*grad
-        #normalize
+        # Add the gradient and renormalize in logspace, then exponentiate
+        log_alpha -= stepsize * grad
         log_alpha -= logsum_exp(log_alpha)
-        #compute new objective
         alpha = numpy.exp(log_alpha)
 
         AXX = numpy.dot(alpha, XX)
         AXY = float(numpy.dot(alpha, XY))
         AXXA = float(numpy.dot(AXX, alpha.transpose()))
 
-        old_obj = new_obj
-        new_obj = AXXA - 2 * AXY + YY
-        if not new_obj <= old_obj + c1 * stepsize * numpy.dot(grad, alpha - old_alpha): #sufficient decrease
+        old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
+        if not new_obj <= old_obj + _C1 * stepsize * numpy.dot(grad, alpha - old_alpha):
             stepsize /= 2.0
             alpha = old_alpha
             log_alpha = old_log_alpha
@@ -67,11 +60,10 @@ def exponentiated_gradient(Y, X, epsilon):
             continue
 
         #compute the new gradient
-        old_grad = numpy.copy(grad)
-        grad = 2*(AXX-XY)
+        old_grad, grad = grad, 2 * (AXX - XY)
 
-        if (not numpy.dot(grad, alpha - old_alpha) >= c2 * numpy.dot(old_grad, alpha-old_alpha)) and (not decreased): #curvature
-            stepsize *= 2.0 #increase stepsize
+        if numpy.dot(grad, alpha - old_alpha) < _C2 * numpy.dot(old_grad, alpha-old_alpha) and not decreased:
+            stepsize *= 2.0
             alpha = old_alpha
             log_alpha = old_log_alpha
             grad = old_grad
@@ -79,11 +71,7 @@ def exponentiated_gradient(Y, X, epsilon):
             continue
 
         decreased = False
-
-        lam = numpy.copy(grad)
-        lam -= lam.min()
-
-        gap = numpy.dot(alpha, lam)
+        gap = numpy.dot(alpha, grad - grad.min())
 
     return alpha
 
@@ -104,13 +92,14 @@ def recover_topics(Q, anchors, epsilon=1e-7):
         Q[word, :] = Q[word, :] / Q[word, :].sum()
 
     X = Q[anchors, :]
+    XX = numpy.dot(X, X.transpose())
 
     for word in xrange(V):
         if word in anchors:
             alpha = numpy.zeros(K)
             alpha[anchors.index(word)] = 1
         else:
-            alpha = exponentiated_gradient(Q[word, :], X, epsilon)
+            alpha = exponentiated_gradient(Q[word, :], X, XX, epsilon)
             if numpy.isnan(alpha).any():
                 alpha = numpy.ones(K) / K
         A[word, :] = alpha
