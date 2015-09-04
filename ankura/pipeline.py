@@ -63,7 +63,7 @@ def tokenize_simple(doc_file):
     """A basic tokenizer which splits and filters text without preprocessing"""
     tokens = doc_file.read().split()
     tokens = [re.sub(r'[^a-zA-Z]', '', token) for token in tokens]
-    tokens = [token for token in tokens if 2 < len(tokens) < 10]
+    tokens = [token for token in tokens if 2 < len(token) < 10]
     return tokens
 
 
@@ -109,13 +109,14 @@ def read_glob(glob_pattern, tokenizer=tokenize_simple):
             for token in tokens:
                 if token not in vocab:
                     vocab[token] = len(vocab)
-                doc[token] = doc.get(token, 0) + 1
+                token_id = vocab[token]
+                doc[token_id] = doc.get(token_id, 0) + 1
             docs.append(doc)
 
     # construct the docword matrix using the vocab map
     docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)))
     for doc, counts in enumerate(docs):
-        for word, count in counts:
+        for word, count in counts.iteritems():
             docwords[word, doc] = count
 
     # convert vocab from a token to index map into a list of tokens
