@@ -1,4 +1,4 @@
-"""asdf"""
+"""Ankura provides the ability to experiment with anchor-based topic modeling"""
 
 from .pipeline import (read_uci, read_glob, filter_stopwords, filter_rarewords,
                        run_pipeline)
