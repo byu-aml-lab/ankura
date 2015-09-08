@@ -2,7 +2,8 @@
 
 import numpy
 
-from ankura import pipeline, anchor, recover
+import ankura
+from ankura import tokenize
 
 def demo():
     """Runs a demo of the anchors words algorithm"""
@@ -11,18 +12,18 @@ def demo():
     eng_stop = '/aml/home/jlund3/scratch/data/stopwords/english.txt'
     news_stop = '/aml/home/jlund3/scratch/data/stopwords/newsgroups.txt'
 
-    docwords, vocab = pipeline.read_glob(data_glob, pipeline.tokenize_news)
-    docwords, vocab = pipeline.filter_stopwords(docwords, vocab, eng_stop)
-    docwords, vocab = pipeline.filter_stopwords(docwords, vocab, news_stop)
-    docwords, vocab = pipeline.filter_rarewords(docwords, vocab, 25)
+    docwords, vocab = ankura.read_glob(data_glob, tokenize.news)
+    docwords, vocab = ankura.filter_stopwords(docwords, vocab, eng_stop)
+    docwords, vocab = ankura.filter_stopwords(docwords, vocab, news_stop)
+    docwords, vocab = ankura.filter_rarewords(docwords, vocab, 25)
 
-    candidates = anchor.identify_candidates(docwords, 50)
+    candidates = ankura.identify_candidates(docwords, 50)
 
-    Q = anchor.construct_Q(docwords)
+    Q = ankura.construct_Q(docwords)
     print 'Q sum is', Q.sum()
 
-    anchors = anchor.find_anchors(Q, 20, 1000, candidates)
-    topics = recover.recover_topics(Q, anchors)
+    anchors = ankura.find_anchors(Q, 20, 1000, candidates)
+    topics = ankura.recover_topics(Q, anchors)
 
     for k in xrange(len(anchors)):
         topwords = numpy.argsort(topics[:, k])[-10:][::-1]

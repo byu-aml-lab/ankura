@@ -2,14 +2,21 @@
 
 An import usually consists of a read followed by a chain of transformations.
 For example, a typically import could look like:
-    corpus, vocab = read_glob('newsgroups/*/*', tokenizer=tokenize_news)
-    corpus, vocab = filter_stopwords(docwords, vocab, stopwords/english.txt')
+    corpus, vocab = read_glob('newsgroups/*/*', tokenizer=tokenize.news)
+    corpus, vocab = filter_stopwords(docwords, vocab, 'stopwords/english.txt')
     corpus, vocab = filter_rarewords(docwords, vocab, 20)
+
+Alternatively, a pipeline can be created programatically and then run in the
+following way:
+    pipeline = [(read_glob, 'newsgroups/*/*', tokenize.news),
+                (filter_stopwords, 'stopwords/english.txt'),
+                (filter_rarewords, 20)]
+    docwords, vocab = run_pipeline(pipeline)
 """
 import glob
-import io
-import re
 import scipy.sparse
+
+from ankura import tokenize
 
 
 def read_uci(docwords_filename, vocab_filename):
@@ -59,45 +66,7 @@ def read_uci(docwords_filename, vocab_filename):
     return docwords, vocab
 
 
-def tokenize_simple(doc_file):
-    """A basic tokenizer which splits and filters text without preprocessing"""
-    tokens = doc_file.read().split()
-    tokens = [re.sub(r'[^a-zA-Z]', '', token) for token in tokens]
-    tokens = [token for token in tokens if 2 < len(token) < 10]
-    return tokens
-
-
-def tokenize_news(doc_file, tokenizer=tokenize_simple):
-    """Tokenizes after skipping a file header
-
-    Using the format from the well-known 20 newsgroups dataset, we consider the
-    header to be everything before the first empty line in the file. The
-    remaining contents of the file are then tokenized.
-    """
-    # skip header by finding first empty line
-    line = doc_file.readline()
-    while line.strip():
-        line = doc_file.readline()
-    # use tokenizer on what remains in file
-    return tokenizer(doc_file)
-
-
-def tokenize_html(doc_file, tokenizer=tokenize_simple):
-    """Tokenizes by extracting text from an HTML file"""
-    # parse the text in the html
-    text = doc_file.read().strip()
-    text = re.sub(r'(?is)<(script|style).*?>.*?(</\1>)', '', text)
-    text = re.sub(r'(?s)<!--(.*?)-->[\n]?', '', text)
-    text = re.sub(r'(?s)<.*?>', ' ', text)
-    text = re.sub(r'&nbsp;', ' ', text)
-    text = re.sub(r'  ', ' ', text)
-    text = re.sub(r'  ', ' ', text)
-    text = text.strip()
-    # tokenize the parsed text
-    return tokenizer(io.StringIO(text))
-
-
-def read_glob(glob_pattern, tokenizer=tokenize_simple):
+def read_glob(glob_pattern, tokenizer=tokenize.simple):
     """Read each file from a glob as a document"""
     # read each file, tracking vocab and word counts
     vocab = {}
@@ -173,4 +142,25 @@ def filter_rarewords(docwords, vocab, doc_threshold):
     vocab = scipy.delete(vocab, rare_index)
 
     # docwords matrix and vocab list
+    return docwords, vocab
+
+def run_pipeline(pipeline):
+    """Runs an import pipeline consisting of a sequence of instructions
+
+    Each instruction in the sequence should consist of another sequence giving
+    a callable along with any applicable arguments. Each instruction should
+    return a tuple giving the docwords matrix and the vocab. Each instruction
+    after the first takes the docwords matrix and vocab as the first two
+    arguments by default.
+
+    For example, one could construct an import pipeline in the following way:
+    pipeline = [(read_glob, 'newsgroups/*/*', tokenize.news),
+                (filter_stopwords, 'stopwords/english.txt'),
+                (filter_rarewords, 20)]
+    docwords, vocab = run_pipeline(pipeline)
+    """
+    read, updates = pipeline[0], pipeline[1:]
+    docwords, vocab = read[0](*read[1:])
+    for update in updates:
+        docwords, vocab = update[0](docwords, vocab, *update[1:])
     return docwords, vocab

@@ -1,4 +1,4 @@
-"""Runs anchor words and stuff"""
+"""Functions for finding anchor words from a docwords matrix"""
 
 import numpy
 
@@ -8,6 +8,7 @@ def construct_Q(M):
     The docword matrix M is expected to be a sparse scipy matrix which can be
     converted to csc form. The output matrix will be a 2d numpy array.
     """
+    # TODO fix divide by zero errors
     vocab_size, num_docs = M.shape
 
     # See supplementary 4.1 of Aurora et. al. 2012 for information on these

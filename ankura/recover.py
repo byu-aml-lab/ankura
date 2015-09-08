@@ -1,4 +1,4 @@
-"""perform recover"""
+"""Functions for recovering anchor based topics from a coocurrence matrix"""
 import numpy
 
 def logsum_exp(y):
