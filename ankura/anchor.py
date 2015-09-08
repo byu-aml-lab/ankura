@@ -2,6 +2,7 @@
 
 import numpy
 
+
 def construct_Q(M):
     """Constructs a cooccurrence matrix Q from a sparse docword matrix M
 
@@ -27,8 +28,9 @@ def construct_Q(M):
         norm = count * (count - 1)
 
         # update H_hat and H_tilde (see supplementary)
-        H_hat[row_indices] = H_tilde.data[col_start: col_end] / norm
-        H_tilde.data[col_start: col_end] /= numpy.sqrt(norm)
+        if norm != 0:
+            H_hat[row_indices] = H_tilde.data[col_start: col_end] / norm
+            H_tilde.data[col_start: col_end] /= numpy.sqrt(norm)
 
 
     # construct and return normalized Q

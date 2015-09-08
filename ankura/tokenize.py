@@ -3,10 +3,24 @@
 import re
 import io
 
-def simple(doc_file):
-    """A basic tokenizer which splits and filters text without preprocessing"""
-    tokens = doc_file.read().split()
-    tokens = [re.sub(r'[^a-zA-Z]', '', token) for token in tokens]
+
+def split(doc_file):
+    """A tokenizer which does nothing but splitting"""
+    return doc_file.read().split()
+
+
+def simple(doc_file, splitter=split):
+    """A basic tokenizer which splits and does basic filtering.
+
+    The included filters and transofmrations include:
+    * lower case each token
+    * filter out non-alphabetic characters
+    * filter out words with fewer than 3 characters
+    * filter out words with more than 10 characters
+    """
+    tokens = splitter(doc_file)
+    tokens = [token.lower() for token in tokens]
+    tokens = [re.sub(r'[^a-z]', '', token) for token in tokens]
     tokens = [token for token in tokens if 2 < len(token) < 10]
     return tokens
 
@@ -39,5 +53,3 @@ def html(doc_file, tokenizer=simple):
     text = text.strip()
     # tokenize the parsed text
     return tokenizer(io.StringIO(text))
-
-

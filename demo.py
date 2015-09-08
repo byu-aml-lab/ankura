@@ -1,36 +1,38 @@
 """Runs a demo of the anchor words algorithm"""
 
-import numpy
+import time
+import datetime
 
 import ankura
-from ankura import tokenize
 
 def demo():
     """Runs a demo of the anchors words algorithm"""
+    start = time.time()
+    pipeline = [(ankura.read_uci, 'docwords.txt', 'vocab.txt'),
+                (ankura.filter_stopwords, 'stop.txt'),
+                (ankura.filter_rarewords, 25)]
+    docwords, vocab = ankura.run_pipeline(pipeline)
+    end = time.time()
+    print 'Import took:', datetime.timedelta(seconds=end-start)
+    print 'Docwords shape:', docwords.shape
+    print
 
-    data_glob = '/aml/home/jlund3/scratch/data/newsgroups/*/*'
-    eng_stop = '/aml/home/jlund3/scratch/data/stopwords/english.txt'
-    news_stop = '/aml/home/jlund3/scratch/data/stopwords/newsgroups.txt'
-
-    docwords, vocab = ankura.read_glob(data_glob, tokenize.news)
-    docwords, vocab = ankura.filter_stopwords(docwords, vocab, eng_stop)
-    docwords, vocab = ankura.filter_stopwords(docwords, vocab, news_stop)
-    docwords, vocab = ankura.filter_rarewords(docwords, vocab, 25)
-
+    start = time.time()
     candidates = ankura.identify_candidates(docwords, 50)
-
     Q = ankura.construct_Q(docwords)
+    end = time.time()
+    print 'Constructing Q took:', datetime.timedelta(seconds=end-start)
     print 'Q sum is', Q.sum()
+    print
 
+    start = time.time()
     anchors = ankura.find_anchors(Q, 20, 1000, candidates)
     topics = ankura.recover_topics(Q, anchors)
+    end = time.time()
+    print 'Topic recovery took:', datetime.timedelta(seconds=end-start)
+    print 'Topics:'
+    ankura.print_summary(topics, vocab)
 
-    for k in xrange(len(anchors)):
-        topwords = numpy.argsort(topics[:, k])[-10:][::-1]
-        print vocab[anchors[k]], ':',
-        for word in topwords:
-            print vocab[word],
-        print
 
 if __name__ == '__main__':
     demo()

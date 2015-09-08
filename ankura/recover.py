@@ -1,10 +1,13 @@
 """Functions for recovering anchor based topics from a coocurrence matrix"""
+
 import numpy
+
 
 def logsum_exp(y):
     """Computes the sum of y in log space"""
     ymax = y.max()
     return ymax + numpy.log((numpy.exp(y - ymax)).sum())
+
 
 _C1 = 1e-4
 _C2 = .75
@@ -109,3 +112,12 @@ def recover_topics(Q, anchors, epsilon=1e-7):
         A[:, k] = A[:, k]/A[:, k].sum()
 
     return numpy.array(A)
+
+
+def print_summary(A, vocab, num_words=10):
+    """Prints a summary of topics"""
+    for k in xrange(A.shape[1]):
+        topwords = numpy.argsort(A[:, k])[-num_words:][::-1]
+        for word in topwords:
+            print vocab[word],
+        print
