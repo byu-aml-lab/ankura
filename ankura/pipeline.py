@@ -96,7 +96,6 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
     return docwords, vocab
 
 
-
 def filter_stopwords(docwords, vocab, stopword_filename):
     """Filters out a set of stopwords from a dataset
 
@@ -143,6 +142,7 @@ def filter_rarewords(docwords, vocab, doc_threshold):
 
     # docwords matrix and vocab list
     return docwords, vocab
+
 
 def run_pipeline(pipeline):
     """Runs an import pipeline consisting of a sequence of instructions

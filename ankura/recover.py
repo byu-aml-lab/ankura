@@ -80,7 +80,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
 
 
 def recover_topics(Q, anchors, epsilon=1e-7):
-    """recover"""
+    """Recovers topics given a cooccurence matrix and a set of anchor vectors"""
     V = Q.shape[0]
     K = len(anchors)
     A = numpy.zeros((V, K))
@@ -114,10 +114,12 @@ def recover_topics(Q, anchors, epsilon=1e-7):
     return numpy.array(A)
 
 
-def print_summary(A, vocab, num_words=10):
+def print_summary(A, vocab, num_words=10, prefix=None):
     """Prints a summary of topics"""
     for k in xrange(A.shape[1]):
         topwords = numpy.argsort(A[:, k])[-num_words:][::-1]
+        if prefix:
+            print prefix(k) + ':',
         for word in topwords:
             print vocab[word],
         print
