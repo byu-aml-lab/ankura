@@ -88,9 +88,9 @@ def recover_topics(Q, anchors, epsilon=1e-7):
     P_w = numpy.diag(numpy.dot(Q, numpy.ones(V)))
     for word in xrange(V):
         if numpy.isnan(P_w[word, word]):
-            P_w[word, word] = 10**(-16)
+            P_w[word, word] = 1e-16
 
-    #normalize the rows of Q_prime
+    # normalize the rows of Q to get Q_prime
     for word in xrange(V):
         Q[word, :] = Q[word, :] / Q[word, :].sum()
 
@@ -98,18 +98,14 @@ def recover_topics(Q, anchors, epsilon=1e-7):
     XX = numpy.dot(X, X.transpose())
 
     for word in xrange(V):
-        if word in anchors:
-            alpha = numpy.zeros(K)
-            alpha[anchors.index(word)] = 1
-        else:
-            alpha = exponentiated_gradient(Q[word, :], X, XX, epsilon)
-            if numpy.isnan(alpha).any():
-                alpha = numpy.ones(K) / K
+        alpha = exponentiated_gradient(Q[word, :], X, XX, epsilon)
+        if numpy.isnan(alpha).any():
+            alpha = numpy.ones(K) / K
         A[word, :] = alpha
 
-    A = numpy.matrix(P_w) * numpy.matrix(A)
+    A = numpy.matrix(P_w) * numpy.matrix(A) # TODO do I need to use matrix?
     for k in xrange(K):
-        A[:, k] = A[:, k]/A[:, k].sum()
+        A[:, k] = A[:, k] / A[:, k].sum()
 
     return numpy.array(A)
 
