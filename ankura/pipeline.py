@@ -96,6 +96,21 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
     return docwords, vocab
 
 
+def _filter_vocab(docwords, vocab, filter_func):
+    """Filters out a set of stopwords based on a filter function"""
+    # track which vocab indices should be discarded and which should be kept
+    stop_index = []
+    keep_index = []
+    for i, word in enumerate(vocab):
+        if filter_func(i, word):
+            keep_index.append(i)
+        else:
+            stop_index.append(i)
+
+    # return filtered docwords and vocab
+    return docwords[keep_index, :], scipy.delete(vocab, stop_index)
+
+
 def filter_stopwords(docwords, vocab, stopword_filename):
     """Filters out a set of stopwords from a dataset
 
@@ -108,40 +123,21 @@ def filter_stopwords(docwords, vocab, stopword_filename):
         for line in stopword_file:
             stopwords.add(line.strip())
 
-    # track which vocab indices should be discarded and which should be kept
-    stop_index = []
-    keep_index = []
-    for i, word in enumerate(vocab):
-        if word in stopwords:
-            stop_index.append(i)
-        else:
-            keep_index.append(i)
-
-    # remove stopwords from docwords and vocab
-    docwords = docwords[keep_index, :]
-    vocab = scipy.delete(vocab, stop_index)
-
-    # docwords matrix and vocab list
-    return docwords, vocab
+    # filter stopwords from data
+    keep = lambda i, v: v not in stopwords
+    return _filter_vocab(docwords, vocab, keep)
 
 
 def filter_rarewords(docwords, vocab, doc_threshold):
     """Filters rare words which do not appear in enough documents"""
-    # track which vocab indices are rare and which are not
-    rare_index = []
-    keep_index = []
-    for i in xrange(len(vocab)):
-        if docwords[i, :].nnz < doc_threshold:
-            rare_index.append(i)
-        else:
-            keep_index.append(i)
+    keep = lambda i, v: docwords[i, :].nnz >= doc_threshold
+    return _filter_vocab(docwords, vocab, keep)
 
-    # remove rare words from docwords and vocab
-    docwords = docwords[keep_index, :]
-    vocab = scipy.delete(vocab, rare_index)
 
-    # docwords matrix and vocab list
-    return docwords, vocab
+def filter_commonwords(docwords, vocab, doc_threshold):
+    """Filters rare words which appear in too many documents"""
+    keep = lambda i, v: docwords[i, :].nnz <= doc_threshold
+    return _filter_vocab(docwords, vocab, keep)
 
 
 def run_pipeline(pipeline):
