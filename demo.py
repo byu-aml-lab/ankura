@@ -4,28 +4,28 @@ import time
 import datetime
 
 import ankura
-from ankura import tokenize
+# from ankura import tokenize
 
-
-RARE_THRESH = 25
-CAND_THRESH = 50
-NUM_TOPICS = 20
-PROJ_DIMS = 1000
-NEWS_GLOB = '/aml/scratch/jlund3/data/newsgroups/*/*'
-ENGL_STOP = '/aml/scratch/jlund3/data/stopwords/english.txt'
-NEWS_STOP = '/aml/scratch/jlund3/data/stopwords/newsgroups.txt'
-PIPELINE = [(ankura.read_glob, NEWS_GLOB, tokenize.news),
-            (ankura.filter_stopwords, ENGL_STOP),
-            (ankura.filter_stopwords, NEWS_STOP),
-            (ankura.filter_rarewords, RARE_THRESH)]
 
 # RARE_THRESH = 25
 # CAND_THRESH = 50
 # NUM_TOPICS = 20
 # PROJ_DIMS = 1000
-# PIPELINE = [(ankura.read_uci, 'docwords.txt', 'vocab.txt'),
-            # (ankura.filter_stopwords, 'stop.txt'),
+# NEWS_GLOB = '/aml/scratch/jlund3/data/newsgroups/*/*'
+# ENGL_STOP = '/aml/scratch/jlund3/data/stopwords/english.txt'
+# NEWS_STOP = '/aml/scratch/jlund3/data/stopwords/newsgroups.txt'
+# PIPELINE = [(ankura.read_glob, NEWS_GLOB, tokenize.news),
+            # (ankura.filter_stopwords, ENGL_STOP),
+            # (ankura.filter_stopwords, NEWS_STOP),
             # (ankura.filter_rarewords, RARE_THRESH)]
+
+RARE_THRESH = 25
+CAND_THRESH = 50
+NUM_TOPICS = 20
+PROJ_DIMS = 1000
+PIPELINE = [(ankura.read_uci, 'docwords.txt', 'vocab.txt'),
+            (ankura.filter_stopwords, 'stop.txt'),
+            (ankura.filter_rarewords, RARE_THRESH)]
 
 
 def demo():
@@ -36,7 +36,6 @@ def demo():
     print 'Import took:', datetime.timedelta(seconds=end-start)
     print 'Docwords shape:', docwords.shape
     print
-    exit()
 
     start = time.time()
     candidates = ankura.identify_candidates(docwords, CAND_THRESH)
