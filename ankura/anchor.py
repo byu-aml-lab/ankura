@@ -28,7 +28,6 @@ def identify_candidates(M, doc_threshold):
     filtered during pre-processing), but do not appear in enough documents to
     be useful as an anchor word.
     """
-    # TODO find a way to wrap this up inside find_anchors
     candidate_anchors = []
     for i in xrange(M.shape[0]):
         if M[i, :].nnz > doc_threshold:
@@ -36,12 +35,15 @@ def identify_candidates(M, doc_threshold):
     return candidate_anchors
 
 
-def find_anchors(Q, k, project_dim, candidates):
+def gramschmidt_anchors(Q, M, k, candidate_threshold, project_dim=1000):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors
 
     The original Q will not be modified. The anchors are returned in the form
     of a list of k indicies into the original Q.
     """
+    # Find candidate words which appear in enough documents to be anchor words
+    candidates = identify_candidates(M, candidate_threshold)
+
     # don't modify the original Q
     Q_orig, Q = Q, Q.copy()
 
@@ -111,4 +113,3 @@ def constraint_anchors(Q, vocab, constraints):
         anchors[i] = Q[constraint, :].sum(axis=0) / len(constraint)
 
     return anchors
-
