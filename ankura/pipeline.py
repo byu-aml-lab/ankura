@@ -96,6 +96,9 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
     return docwords, vocab
 
 
+# TODO add ability to read in document label data
+
+
 def _filter_vocab(docwords, vocab, filter_func):
     """Filters out a set of stopwords based on a filter function"""
     # track which vocab indices should be discarded and which should be kept
@@ -117,13 +120,7 @@ def filter_stopwords(docwords, vocab, stopword_filename):
     The stopwords file is expected to contain a single stopword token per line.
     The original data is unchanged.
     """
-    # read in the stopwords file into a set of stopwords
-    stopwords = set()
-    with open(stopword_filename) as stopword_file:
-        for line in stopword_file:
-            stopwords.add(line.strip())
-
-    # filter stopwords from data
+    stopwords = {word.strip() for word in open(stopword_filename)}
     keep = lambda i, v: v not in stopwords
     return _filter_vocab(docwords, vocab, keep)
 
@@ -155,8 +152,8 @@ def run_pipeline(pipeline):
                 (filter_rarewords, 20)]
     docwords, vocab = run_pipeline(pipeline)
     """
-    read, updates = pipeline[0], pipeline[1:]
+    read, transformations = pipeline[0], pipeline[1:]
     docwords, vocab = read[0](*read[1:])
-    for update in updates:
-        docwords, vocab = update[0](docwords, vocab, *update[1:])
+    for transform in transformations:
+        docwords, vocab = transform[0](docwords, vocab, *transform[1:])
     return docwords, vocab

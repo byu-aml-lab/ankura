@@ -4,28 +4,32 @@ import time
 import datetime
 
 import ankura
-# from ankura import tokenize
+from ankura import tokenize
 
+RARE_THRESH = 100
+COMMON_THRESH = 1500
+CAND_THRESH = 500
+NUM_TOPICS = 50
+PROJ_DIMS = 1000
+NEWS_GLOB = '/local/jlund3/data/newsgroups/*/*'
+ENGL_STOP = '/local/jlund3/data/stopwords/english.txt'
+NEWS_STOP = '/local/jlund3/data/stopwords/newsgroups.txt'
+PIPELINE = [(ankura.read_glob, NEWS_GLOB, tokenize.news),
+            (ankura.filter_stopwords, ENGL_STOP),
+            (ankura.filter_stopwords, NEWS_STOP),
+            (ankura.filter_rarewords, RARE_THRESH),
+            (ankura.filter_commonwords, COMMON_THRESH)]
 
 # RARE_THRESH = 25
 # CAND_THRESH = 50
 # NUM_TOPICS = 20
 # PROJ_DIMS = 1000
-# NEWS_GLOB = '/aml/scratch/jlund3/data/newsgroups/*/*'
-# ENGL_STOP = '/aml/scratch/jlund3/data/stopwords/english.txt'
-# NEWS_STOP = '/aml/scratch/jlund3/data/stopwords/newsgroups.txt'
-# PIPELINE = [(ankura.read_glob, NEWS_GLOB, tokenize.news),
-            # (ankura.filter_stopwords, ENGL_STOP),
-            # (ankura.filter_stopwords, NEWS_STOP),
+# NIPS_DOCWORDS = 'data/nips.docwords.txt'
+# NIPS_VOCAB = 'data/nips.vocab.txt'
+# NIPS_STOP = 'data/nips.stop.txt'
+# PIPELINE = [(ankura.read_uci, NIPS_DOCWORDS, NIPS_VOCAB),
+            # (ankura.filter_stopwords, NIPS_STOP),
             # (ankura.filter_rarewords, RARE_THRESH)]
-
-RARE_THRESH = 25
-CAND_THRESH = 50
-NUM_TOPICS = 20
-PROJ_DIMS = 1000
-PIPELINE = [(ankura.read_uci, 'docwords.txt', 'vocab.txt'),
-            (ankura.filter_stopwords, 'stop.txt'),
-            (ankura.filter_rarewords, RARE_THRESH)]
 
 
 def demo():
@@ -45,13 +49,16 @@ def demo():
     print 'Q sum is', Q.sum()
     print
 
+    constraints = [line.split() for line in open('/local/jlund3/data/constraints/newsgroups.txt')]
+
     start = time.time()
-    anchors = ankura.find_anchors(Q, NUM_TOPICS, PROJ_DIMS, candidates)
+    # anchors = ankura.find_anchors(Q, NUM_TOPICS, PROJ_DIMS, candidates)
+    anchors = ankura.anchor.constraint_anchors(Q, vocab, constraints)
     topics = ankura.recover_topics(Q, anchors)
     end = time.time()
     print 'Topic recovery took:', datetime.timedelta(seconds=end-start)
     print 'Topics:'
-    ankura.print_summary(topics, vocab, prefix=lambda k: vocab[anchors[k]])
+    ankura.print_summary(topics, vocab, num_words=30, prefix=str)
 
 
 if __name__ == '__main__':
