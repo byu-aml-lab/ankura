@@ -15,17 +15,22 @@ following way:
 """
 import glob
 import numpy
+import random
 import scipy.sparse
 
 from ankura import tokenize
 
 
 class Dataset(object):
-    """Stores a bag-of-words dataset"""
+    """Stores a bag-of-words dataset
 
-    def __init__(self, docwords, vocab):
+    The dataset should be considered immutable. Consequently, dataset
+    attributes are accessible only through properties which have no setters.
+    """
+    def __init__(self, docwords, vocab, titles):
         self._docwords = docwords
         self._vocab = vocab
+        self._titles = titles
         self._cooccurrences = None
 
     @property
@@ -42,6 +47,11 @@ class Dataset(object):
     def vocab(self):
         """Gets the list of vocabulary items"""
         return self._vocab
+
+    @property
+    def titles(self):
+        """Gets the titles of each document"""
+        return self._titles
 
     @property
     def Q(self):
@@ -109,6 +119,9 @@ def read_uci(docwords_filename, vocab_filename):
     The vocab file is expected to have the actual tokens of the vocabulary.
     There is one token per line, with the line numbers corresponding to the
     word ids in the docwords file.
+
+    Since the uci format does not give any additional information about
+    documents, we make the titles simply the string version of the docId's.
     """
     # read in the vocab file
     vocab = []
@@ -128,24 +141,31 @@ def read_uci(docwords_filename, vocab_filename):
             docwords[word - 1, doc - 1] = count
 
     # construct and return the Dataset
-    return Dataset(docwords, vocab)
+    titles = [str(i) for i in xrange(num_docs)]
+    return Dataset(docwords, vocab, titles)
 
 
 def read_glob(glob_pattern, tokenizer=tokenize.simple):
-    """Read a Dataset from a set of files found by a glob pattern"""
+    """Read a Dataset from a set of files found by a glob pattern
+
+    Each file found by the glob pattern corresponds to a single document in the
+    dataset. Each file object is then tokenized by the provided tokenizer
+    function. The document tiles are given by the corresponding filenames.
+    """
     # read each file, tracking vocab and word counts
-    vocab = {}
     docs = []
+    vocab = {}
+    titles = []
     for filename in glob.glob(glob_pattern):
         with open(filename) as doc_file:
-            tokens = tokenizer(doc_file)
             doc = {}
-            for token in tokens:
+            for token in tokenizer(doc_file):
                 if token not in vocab:
                     vocab[token] = len(vocab)
                 token_id = vocab[token]
                 doc[token_id] = doc.get(token_id, 0) + 1
             docs.append(doc)
+            titles.append(filename)
 
     # construct the docword matrix using the vocab map
     docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)))
@@ -158,8 +178,7 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
     vocab = [vocab[index] for index in xrange(len(vocab))]
 
     # construct and return the Dataset
-    return Dataset(docwords, vocab)
-
+    return Dataset(docwords, vocab, titles)
 
 
 def _filter_vocab(dataset, filter_func):
@@ -176,7 +195,7 @@ def _filter_vocab(dataset, filter_func):
     # construct dataset with filtered docwords and vocab
     docwords = dataset.docwords[keep_index, :]
     vocab = scipy.delete(dataset.vocab, stop_index)
-    return Dataset(docwords, vocab)
+    return Dataset(docwords, vocab, dataset.titles)
 
 
 def filter_stopwords(dataset, stopword_filename):
