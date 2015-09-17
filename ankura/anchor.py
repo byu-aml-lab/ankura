@@ -35,17 +35,17 @@ def identify_candidates(M, doc_threshold):
     return candidate_anchors
 
 
-def gramschmidt_anchors(Q, M, k, candidate_threshold, project_dim=1000):
+def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors
 
     The original Q will not be modified. The anchors are returned in the form
     of a list of k indicies into the original Q.
     """
     # Find candidate words which appear in enough documents to be anchor words
-    candidates = identify_candidates(M, candidate_threshold)
+    candidates = identify_candidates(dataset.M, candidate_threshold)
 
     # don't modify the original Q
-    Q_orig, Q = Q, Q.copy()
+    Q = dataset.Q.copy()
 
     # normalized rows of Q and perform dimensionality reduction
     row_sums = Q.sum(1)
@@ -92,12 +92,12 @@ def gramschmidt_anchors(Q, M, k, candidate_threshold, project_dim=1000):
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
     # return anchor vectors from the original Q
-    return Q_orig[anchors, :]
+    return dataset.Q[anchors, :]
 
 
-def constraint_anchors(Q, vocab, constraints):
+def constraint_anchors(dataset, constraints):
     """Constructs anchors based on a set of user constraints"""
-    vocab = vocab.tolist()
+    vocab = dataset.vocab.tolist()
     constraint_indicies = []
     for constraint in constraints:
         indicies = []
@@ -108,8 +108,8 @@ def constraint_anchors(Q, vocab, constraints):
                 pass
         constraint_indicies.append(indicies)
 
-    anchors = numpy.zeros((len(constraints), Q.shape[0]))
+    anchors = numpy.zeros((len(constraints), dataset.Q.shape[0]))
     for i, constraint in enumerate(constraint_indicies):
-        anchors[i] = Q[constraint, :].sum(axis=0) / len(constraint)
+        anchors[i] = dataset.Q[constraint, :].sum(axis=0) / len(constraint)
 
     return anchors

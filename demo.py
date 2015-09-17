@@ -2,6 +2,7 @@
 
 import time
 import datetime
+import numpy
 
 import ankura
 from ankura import tokenize
@@ -19,32 +20,27 @@ PIPELINE = [(ankura.read_glob, NEWS_GLOB, tokenize.news),
 NUM_TOPICS = 20
 CAND_THRESH = 500
 
-
 def demo():
     """Runs a demo of the anchors words algorithm"""
     start = time.time()
-    docwords, vocab = ankura.run_pipeline(PIPELINE)
+    dataset = ankura.run_pipeline(PIPELINE)
     constraints = [line.split() for line in open(NEWS_CONSTRAINS)]
     end = time.time()
     print 'Import took:', datetime.timedelta(seconds=end-start)
-    print 'Docwords shape:', docwords.shape
+    print 'Docwords shape:', dataset.docwords.shape
     print
 
     start = time.time()
-    Q = ankura.construct_Q(docwords)
-    end = time.time()
-    print 'Constructing Q took:', datetime.timedelta(seconds=end-start)
-    print 'Q sum is', Q.sum()
-    print
-
-    start = time.time()
-    anchors = ankura.anchor.constraint_anchors(Q, vocab, constraints)
-    topics = ankura.recover_topics(Q, anchors)
+    anchors = ankura.constraint_anchors(dataset, constraints)
+    topics = ankura.recover_topics(dataset, anchors)
     end = time.time()
     print 'Topic recovery took:', datetime.timedelta(seconds=end-start)
     print 'Topics:'
-    ankura.print_summary(topics, vocab, num_words=30, prefix=str)
-
+    for k in xrange(topics.shape[1]):
+        topwords = numpy.argsort(topics[:, k])[-20:][::-1]
+        for word in topwords:
+            print dataset.vocab[word],
+        print
 
 if __name__ == '__main__':
     demo()

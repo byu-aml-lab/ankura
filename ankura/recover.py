@@ -82,8 +82,11 @@ def exponentiated_gradient(Y, X, XX, epsilon):
     return alpha
 
 
-def recover_topics(Q, anchors, epsilon=1e-7):
+def recover_topics(dataset, anchors, epsilon=1e-7):
     """Recovers topics given a cooccurence matrix and a set of anchor vectors"""
+    # dont modify original Q
+    Q = dataset.Q.copy()
+
     V = Q.shape[0]
     K = len(anchors)
     A = numpy.zeros((V, K))
@@ -108,19 +111,8 @@ def recover_topics(Q, anchors, epsilon=1e-7):
         A[word, :] = alpha
 
     # Use Bayes rule to compute topic matrix
-    A = numpy.matrix(P_w) * numpy.matrix(A) # TODO do I need to use matrix?
+    A = numpy.matrix(P_w) * numpy.matrix(A) # TODO is matrix conversion needed?
     for k in xrange(K):
         A[:, k] = A[:, k] / A[:, k].sum()
 
     return numpy.array(A)
-
-
-def print_summary(A, vocab, num_words=10, prefix=None):
-    """Prints a summary of topics"""
-    for k in xrange(A.shape[1]):
-        topwords = numpy.argsort(A[:, k])[-num_words:][::-1]
-        if prefix:
-            print prefix(k) + ':',
-        for word in topwords:
-            print vocab[word],
-        print
