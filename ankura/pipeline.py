@@ -92,6 +92,10 @@ class Dataset(object):
         Q = H_tilde * H_tilde.transpose() - numpy.diag(H_hat)
         self._cooccurrences = numpy.array(Q / num_docs)
 
+    @property
+    def num_docs(self):
+        return self._docwords.shape[1]
+
 
 def read_uci(docwords_filename, vocab_filename):
     """Reads a Dataset from disk in UCI bag-of-words format
@@ -219,6 +223,35 @@ def filter_commonwords(dataset, doc_threshold):
     """Filters rare words which appear in too many documents"""
     keep = lambda i, v: dataset.docwords[i, :].nnz <= doc_threshold
     return _filter_vocab(dataset, keep)
+
+
+def _prepare_split(dataset, indices):
+    split_docwords = dataset.docwords[:, indices]
+    split_titles = [dataset.titles[i] for i in indices]
+    return Dataset(split_docwords, dataset.vocab, split_titles)
+
+
+def train_test_split(dataset, train_percent=.75, rng=random):
+    """Splits a dataset into training and test sets
+
+    The train_percent gives the percent of the documents which should be used
+    for training. The remaining are placed in test. Both sets will share the
+    same vocab after the split, but the vocabulary is pruned so that words
+    which only appear in test are discarded.
+    """
+    # find the indicies of the docs for both train and test
+    shuffled_docs = range(dataset.num_docs)
+    rng.shuffle(shuffled_docs)
+    split = int(len(shuffled_docs) * train_percent)
+    train_docs, test_docs = shuffled_docs[:split], shuffled_docs[split:]
+
+    # split the datasets into train and test
+    train_data = _prepare_split(dataset, train_docs)
+    test_data = _prepare_split(dataset, test_docs)
+
+    # filter out words which only appear in test
+    keep = lambda i, v: train_data.docwords[i, :].nnz > 0
+    return _filter_vocab(train_data, keep), _filter_vocab(test_data, keep)
 
 
 def run_pipeline(pipeline):
