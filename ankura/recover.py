@@ -1,6 +1,7 @@
 """Functions for recovering anchor based topics from a coocurrence matrix"""
 
 import numpy
+import random
 
 
 def logsum_exp(y):
@@ -55,7 +56,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
 
         # See if stepsize should decrease
         old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
-        if not new_obj <= old_obj + _C1 * stepsize * numpy.dot(grad, alpha - old_alpha):
+        if new_obj > old_obj + _C1 * stepsize * numpy.dot(grad, alpha - old_alpha):
             stepsize /= 2.0
             alpha = old_alpha
             log_alpha = old_log_alpha
@@ -116,3 +117,37 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
         A[:, k] = A[:, k] / A[:, k].sum()
 
     return numpy.array(A)
+
+
+def predict_topics(topics, tokens, alpha=.01, rng=random):
+    """Produces topic assignments for a sequence tokens given a set of topics
+
+    Inference is performed using iterated conditional modes. A uniform
+    Dirichlet prior over the document topic distribution is used in the
+    computation.
+    """
+    T = topics.shape[1]
+    z = numpy.zeros(len(tokens))
+    counts = numpy.zeros(T)
+
+    # init topics and topic counts
+    for n in xrange(len(tokens)):
+        z_n = rng.randrange(T)
+        z[n] = z_n
+        counts[z_n] += 1
+
+    def _prob(w_n, t):
+        return (alpha * counts[t]) * topics[w_n, t]
+
+    converged = False
+    while not converged:
+        converged = True
+        for n, w_n in enumerate(tokens):
+            counts[z[n]] -= 1
+            z_n = max(xrange(T), key=lambda t: _prob(w_n, t)) # pylint:disable=cell-var-from-loop
+            if z_n != z[n]:
+                z[n] = z_n
+                converged = False
+            counts[z_n] += 1
+
+    return z
