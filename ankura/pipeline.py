@@ -94,6 +94,7 @@ class Dataset(object):
 
     @property
     def num_docs(self):
+        """Gets the number of documents in the dataset"""
         return self._docwords.shape[1]
 
 
