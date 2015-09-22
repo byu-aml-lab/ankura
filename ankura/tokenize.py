@@ -16,12 +16,12 @@ def simple(doc_file, splitter=split):
     * lower case each token
     * filter out non-alphabetic characters
     * filter out words with fewer than 3 characters
-    * filter out words with more than 10 characters
+    * filter out words with more than 20 characters
     """
     tokens = splitter(doc_file)
     tokens = [token.lower() for token in tokens]
     tokens = [re.sub(r'[^a-z]', '', token) for token in tokens]
-    tokens = [token for token in tokens if 2 < len(token) < 10]
+    tokens = [token for token in tokens if 2 < len(token) < 20]
     return tokens
 
 
