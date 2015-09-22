@@ -203,13 +203,16 @@ def _filter_vocab(dataset, filter_func):
     return Dataset(docwords, vocab, dataset.titles)
 
 
-def filter_stopwords(dataset, stopword_filename):
+def filter_stopwords(dataset, stopword_filename, tokenizer=None):
     """Filters out a set of stopwords from a dataset
 
     The stopwords file is expected to contain a single stopword token per line.
     The original data is unchanged.
     """
-    stopwords = {word.strip() for word in open(stopword_filename)}
+    if tokenizer:
+        stopwords = set(tokenizer(open(stopword_filename)))
+    else:
+        stopwords = {word.strip() for word in open(stopword_filename)}
     keep = lambda i, v: v not in stopwords
     return _filter_vocab(dataset, keep)
 

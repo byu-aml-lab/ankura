@@ -21,7 +21,7 @@ def simple(doc_file, splitter=split):
     tokens = splitter(doc_file)
     tokens = [token.lower() for token in tokens]
     tokens = [re.sub(r'[^a-z]', '', token) for token in tokens]
-    tokens = [token for token in tokens if 2 < len(token) < 20]
+    tokens = [token for token in tokens if 3 < len(token) < 20]
     return tokens
 
 
