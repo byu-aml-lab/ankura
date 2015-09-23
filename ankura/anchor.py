@@ -97,13 +97,12 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
 
 def constraint_anchors(dataset, constraints):
     """Constructs anchors based on a set of user constraints"""
-    vocab = dataset.vocab.tolist()
     constraint_indicies = []
     for constraint in constraints:
         indicies = []
         for word in constraint:
             try:
-                indicies.append(vocab.index(word))
+                indicies.append(dataset.vocab.index(word))
             except ValueError:
                 pass
         constraint_indicies.append(indicies)

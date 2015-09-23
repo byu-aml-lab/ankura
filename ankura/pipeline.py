@@ -26,6 +26,9 @@ class Dataset(object):
 
     The dataset should be considered immutable. Consequently, dataset
     attributes are accessible only through properties which have no setters.
+    The docwords matrix will be a sparse scipy matrix of uint. The vocab and
+    titles will both be lists of str. The cooccurrences matrix will be a numpy
+    array of float.
     """
     def __init__(self, docwords, vocab, titles):
         self._docwords = docwords
@@ -160,7 +163,7 @@ def read_uci(docwords_filename, vocab_filename):
         num_words = int(docwords_file.readline())
         docwords_file.readline() # ignore nnz
 
-        docwords = scipy.sparse.lil_matrix((num_words, num_docs))
+        docwords = scipy.sparse.lil_matrix((num_words, num_docs), dtype='uint')
         for line in docwords_file:
             doc, word, count = (int(x) for x in line.split())
             docwords[word - 1, doc - 1] = count
@@ -193,7 +196,7 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
             titles.append(filename)
 
     # construct the docword matrix using the vocab map
-    docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)))
+    docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)), dtype='uint')
     for doc, counts in enumerate(docs):
         for word, count in counts.iteritems():
             docwords[word, doc] = count
@@ -220,7 +223,7 @@ def _filter_vocab(dataset, filter_func):
     # construct dataset with filtered docwords and vocab
     docwords = dataset.docwords[keep_index, :]
     vocab = scipy.delete(dataset.vocab, stop_index)
-    return Dataset(docwords, vocab, dataset.titles)
+    return Dataset(docwords, vocab.tolist(), dataset.titles)
 
 
 def filter_stopwords(dataset, stopword_filename, tokenizer=None):
