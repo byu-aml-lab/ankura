@@ -73,7 +73,7 @@ class Dataset(object):
     def _compute_cooccurrences(self):
         # See supplementary 4.1 of Aurora et. al. 2012 for information on these
         vocab_size, num_docs = self.M.shape
-        H_tilde = self.M.tocsc() # csc conversion so we can use indptr
+        H_tilde = scipy.sparse.csc_matrix(self.M, dtype=float)
         H_hat = numpy.zeros(vocab_size)
 
         # Construct H_tilde and H_hat
