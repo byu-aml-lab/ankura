@@ -32,6 +32,7 @@ class Dataset(object):
         self._vocab = vocab
         self._titles = titles
         self._cooccurrences = None
+        self._tokens = {}
 
     @property
     def M(self):
@@ -96,6 +97,25 @@ class Dataset(object):
     def num_docs(self):
         """Gets the number of documents in the dataset"""
         return self._docwords.shape[1]
+
+    def doc_tokens(self, doc_id, rng=random):
+        """Converts a document from counts to a sequence of token ids
+
+        The conversion for any one document is only computed once, and the
+        resultant tokens are shuffled. However, the computations are performed
+        lazily.
+        """
+        if doc_id in self._tokens:
+            return self._tokens[doc_id]
+
+        tokens = []
+        for token_id, count in enumerate(self._docwords[:, doc_id]):
+            if count:
+                tokens.extend([token_id] * count)
+        rng.shuffle(tokens)
+
+        self._tokens[doc_id] = tokens
+        return tokens
 
 
 def read_uci(docwords_filename, vocab_filename):
