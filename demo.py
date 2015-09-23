@@ -42,7 +42,7 @@ def demo():
             print dataset.vocab[word],
         print
 
-    return topics
+    return dataset, topics
 
 if __name__ == '__main__':
     demo()
