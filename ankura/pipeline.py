@@ -1,7 +1,7 @@
 """Functions for creating data import pipelines
 
 An import usually consists of a read followed by a chain of transformations.
-For example, a typically import could look like:
+For example, a typical import could look like:
     dataset = read_glob('newsgroups/*/*', tokenizer=tokenize.news)
     dataset = filter_stopwords(dataset, 'stopwords/english.txt')
     dataset = filter_rarewords(dataset, 20)
@@ -178,7 +178,7 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
 
     Each file found by the glob pattern corresponds to a single document in the
     dataset. Each file object is then tokenized by the provided tokenizer
-    function. The document tiles are given by the corresponding filenames.
+    function. The document titles are given by the corresponding filenames.
     """
     # read each file, tracking vocab and word counts
     docs = []
@@ -252,6 +252,26 @@ def filter_commonwords(dataset, doc_threshold):
     return _filter_vocab(dataset, keep)
 
 
+def filter_smalldocs(dataset, threshold):
+    """Filters documents whose size is less than the threshold"""
+    docsizes = [0] * len(dataset.titles)
+    (rows, cols, vals) = scipy.sparse.find(dataset.M)
+    for (i, row) in enumerate(rows):
+        docsizes[cols[i]] += row
+    keep = [True if i >= threshold else False for i in docsizes]
+    newtitles = []
+    for (i, t) in enumerate(dataset.titles):
+        if keep[i]:
+            newtitles.append(t)
+    densedocwords = dataset.M.todense()
+    keepcols = []
+    for (i, t) in enumerate(keep):
+        if t:
+            keepcols.append(i)
+    # this code keeps the previous vocab
+    return Dataset(scipy.sparse.lil_matrix(densedocwords[:, keepcols]), dataset.vocab, newtitles)
+
+
 def _prepare_split(dataset, indices):
     split_docwords = dataset.docwords[:, indices]
     split_titles = [dataset.titles[i] for i in indices]
@@ -266,7 +286,7 @@ def train_test_split(dataset, train_percent=.75, rng=random):
     same vocab after the split, but the vocabulary is pruned so that words
     which only appear in test are discarded.
     """
-    # find the indicies of the docs for both train and test
+    # find the indices of the docs for both train and test
     shuffled_docs = range(dataset.num_docs)
     rng.shuffle(shuffled_docs)
     split = int(len(shuffled_docs) * train_percent)
