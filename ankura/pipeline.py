@@ -267,11 +267,12 @@ def filter_commonwords(dataset, doc_threshold):
     return _filter_vocab(dataset, keep)
 
 
-def filter_smalldocs(dataset, token_threshold):
+def filter_smalldocs(dataset, token_threshold, prune_vocab=True):
     """Filters documents whose token count is less than the threshold
 
-    This function only removes short documents, and will not prune the
-    vocabulary, even if all documents containing a particular token are removed.
+    After removing all short documents, the vocabulary can optionally be pruned
+    so that if all documents containing a particular token, that token will
+    also be removed from the vocabulary. By default, prune_vocab is True.
     """
     token_counts = dataset.docwords.sum(axis=0)
     keep_index = []
@@ -284,7 +285,12 @@ def filter_smalldocs(dataset, token_threshold):
 
     docwords = dataset.docwords[:, keep_index]
     titles = scipy.delete(dataset.titles, stop_index)
-    return Dataset(docwords, dataset.vocab, titles)
+    dataset = Dataset(docwords, dataset.vocab, titles)
+
+    if prune_vocab:
+        return filter_rarewords(dataset, 1)
+    else:
+        return dataset
 
 
 def _prepare_split(dataset, indices):
