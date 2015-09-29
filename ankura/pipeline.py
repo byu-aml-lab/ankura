@@ -120,6 +120,21 @@ class Dataset(object):
         self._tokens[doc_id] = tokens
         return tokens
 
+    def _pregenerate_doc_tokens(self, rng=random):
+        """Generates the token ids of all documents in the dataset
+
+        This function was necessary since the current implementation of the
+        cooccurrence matrix is extremely slow at slicing by columns
+        """
+        for doc_id in range(self.num_docs):
+            self._tokens[doc_id] = []
+        (rows, cols, vals) = scipy.sparse.find(self.M)
+        for (i, col) in enumerate(cols):
+            for _ in range(int(vals[i])):
+                self._tokens[col].append(int(rows[i]))
+        for doc_id in range(self.num_docs):
+            rng.shuffle(self._tokens[doc_id])
+
 
 def read_uci(docwords_filename, vocab_filename):
     """Reads a Dataset from disk in UCI bag-of-words format
