@@ -267,24 +267,20 @@ def filter_commonwords(dataset, doc_threshold):
     return _filter_vocab(dataset, keep)
 
 
-def filter_smalldocs(dataset, threshold):
-    """Filters documents whose size is less than the threshold"""
-    docsizes = [0] * len(dataset.titles)
-    (rows, cols, vals) = scipy.sparse.find(dataset.M)
-    for (i, row) in enumerate(rows):
-        docsizes[cols[i]] += row
-    keep = [True if i >= threshold else False for i in docsizes]
-    newtitles = []
-    for (i, t) in enumerate(dataset.titles):
-        if keep[i]:
-            newtitles.append(t)
-    densedocwords = dataset.M.todense()
-    keepcols = []
-    for (i, t) in enumerate(keep):
-        if t:
-            keepcols.append(i)
-    # this code keeps the previous vocab
-    return Dataset(scipy.sparse.lil_matrix(densedocwords[:, keepcols]), dataset.vocab, newtitles)
+def filter_smalldocs(dataset, token_threshold):
+    """Filters documents whose token count is less than the threshold"""
+    token_counts = dataset.docwords.sum(axis=0)
+    keep_index = []
+    stop_index = []
+    for i, count in enumerate(token_counts):
+        if count < token_threshold:
+            stop_index.append(i)
+        else:
+            keep_index.append(i)
+
+    docwords = dataset.docwords[:, keep_index]
+    titles = scipy.delete(dataset.titles, stop_index)
+    return Dataset(docwords, dataset.vocab, titles)
 
 
 def _prepare_split(dataset, indices):
