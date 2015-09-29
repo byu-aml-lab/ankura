@@ -268,7 +268,11 @@ def filter_commonwords(dataset, doc_threshold):
 
 
 def filter_smalldocs(dataset, token_threshold):
-    """Filters documents whose token count is less than the threshold"""
+    """Filters documents whose token count is less than the threshold
+
+    This function only removes short documents, and will not prune the
+    vocabulary, even if all documents containing a particular token are removed.
+    """
     token_counts = dataset.docwords.sum(axis=0)
     keep_index = []
     stop_index = []
