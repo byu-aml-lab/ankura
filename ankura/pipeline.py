@@ -276,7 +276,7 @@ def filter_smalldocs(dataset, token_threshold):
     token_counts = dataset.docwords.sum(axis=0)
     keep_index = []
     stop_index = []
-    for i, count in enumerate(token_counts):
+    for i, count in enumerate(token_counts.flat):
         if count < token_threshold:
             stop_index.append(i)
         else:
