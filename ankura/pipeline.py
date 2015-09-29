@@ -185,7 +185,7 @@ def read_uci(docwords_filename, vocab_filename):
 
     # construct and return the Dataset
     titles = [str(i) for i in xrange(num_docs)]
-    return Dataset(docwords, vocab, titles)
+    return Dataset(docwords.tocsc(), vocab, titles)
 
 
 def read_glob(glob_pattern, tokenizer=tokenize.simple):
@@ -221,7 +221,7 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
     vocab = [vocab[index] for index in xrange(len(vocab))]
 
     # construct and return the Dataset
-    return Dataset(docwords, vocab, titles)
+    return Dataset(docwords.tocsc(), vocab, titles)
 
 
 def _filter_vocab(dataset, filter_func):
