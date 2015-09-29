@@ -51,31 +51,16 @@ def demo():
     rng = random.Random(SEED)
     sampler.slda.set_seed(SEED)
     dataset = ankura.run_pipeline(PIPELINE)
-    labels = {}
+    pre_labels = {}
     with open(SOTU_LABELS) as ifh:
         for line in ifh:
             data = line.strip().split()
-            labels[data[0]] = float(data[1])
-    # expand dataset into word vectors
-    corpus = {}
-    for t in dataset.titles:
-        corpus[t] = []
-    indexTitleMap = {}
-    for (i, title) in enumerate(dataset.titles):
-        indexTitleMap[i] = title
-    (rows, cols, vals) = scipy.sparse.find(dataset.M)
-    for (i, col) in enumerate(cols):
-        for _ in range(int(vals[i])):
-            corpus[indexTitleMap[col]].append(dataset.vocab[int(rows[i])])
-    # make sure that word types aren't all clumped up together
-    for title in corpus:
-        rng.shuffle(corpus[title])
-    with open('corpus.txt', 'w') as ofh:
-        for title in corpus:
-            ofh.write(title)
-            ofh.write('\t')
-            ofh.write(' '.join(corpus[title]))
-            ofh.write('\n')
+            pre_labels[data[0]] = float(data[1])
+    labels = []
+    for doc_id in range(dataset.num_docs):
+        labels.append(pre_labels[dataset.titles[doc_id]])
+    # initialize document token ordering
+    dataset._pregenerate_doc_tokens()
     end = time.time()
     print 'Import took:', datetime.timedelta(seconds=end-start)
     print
@@ -83,47 +68,41 @@ def demo():
     start = time.time()
 
     # initialize sets
-    shuffled_titles = list(dataset.titles)
-    rng.shuffle(shuffled_titles)
-    test_titles = shuffled_titles[:TEST_SIZE]
+    shuffled_doc_ids = range(dataset.num_docs)
+    rng.shuffle(shuffled_doc_ids)
+    test_doc_ids = shuffled_doc_ids[:TEST_SIZE]
     test_labels = []
     test_words = []
-    for t in test_titles:
+    for t in test_doc_ids:
         test_labels.append(labels[t])
-        test_words.append(corpus[t])
+        test_words.append(dataset.doc_tokens(t))
     test_labels_mean = numpy.mean(test_labels)
-    labeled_titles = shuffled_titles[TEST_SIZE:TEST_SIZE+START_LABELED]
+    labeled_doc_ids = shuffled_doc_ids[TEST_SIZE:TEST_SIZE+START_LABELED]
     known_labels = []
-    for t in labeled_titles:
+    for t in labeled_doc_ids:
         known_labels.append(labels[t])
-    unlabeled_titles = set(shuffled_titles[TEST_SIZE+START_LABELED:])
+    unlabeled_doc_ids = set(shuffled_doc_ids[TEST_SIZE+START_LABELED:])
 
     model = sampler.slda.SamplingSLDA(rng, NUM_TOPICS, ALPHA, BETA, VAR,
             NUM_TRAIN, NUM_SAMPLES_TRAIN, TRAIN_BURN, TRAIN_LAG,
             NUM_SAMPLES_PREDICT, PREDICT_BURN, PREDICT_LAG)
 
     # learning loop
-    model.train(corpus, labeled_titles, known_labels)
+    model.train(dataset, labeled_doc_ids, known_labels)
     metric = active.evaluate.pR2(model, test_words, test_labels, test_labels_mean)
-    print len(labeled_titles), metric
-    while len(labeled_titles) < END_LABELED and len(unlabeled_titles) > 0:
-        candidates = active.select.reservoir(list(unlabeled_titles),
+    print len(labeled_doc_ids), metric
+    while len(labeled_doc_ids) < END_LABELED and len(unlabeled_doc_ids) > 0:
+        candidates = active.select.reservoir(list(unlabeled_doc_ids),
                 rng, CAND_SIZE)
         chosen = SELECT_METHOD(candidates, model, rng, LABEL_INCREMENT)
         for c in chosen:
             known_labels.append(labels[c])
-            labeled_titles.append(c)
-            unlabeled_titles.remove(c)
-        model.train(corpus, labeled_titles, known_labels, True)
+            labeled_doc_ids.append(c)
+            unlabeled_doc_ids.remove(c)
+        model.train(dataset, labeled_doc_ids, known_labels, True)
         metric = active.evaluate.pR2(model, test_words, test_labels, test_labels_mean)
-        print len(labeled_titles), metric
+        print len(labeled_doc_ids), metric
     model.cleanup()
-    with open('known.txt', 'w') as ofh:
-        for t, l in zip(labeled_titles, known_labels):
-            ofh.write(t)
-            ofh.write('\t')
-            ofh.write(str(l))
-            ofh.write('\n')
     end = time.time()
     print
     print 'Simulation took:', datetime.timedelta(seconds=end-start)

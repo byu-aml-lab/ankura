@@ -93,7 +93,7 @@ class MockModel(AbstractModel):
     '''MockModel requires no parameters to be given'''
     def __init__(self, rnd):
         self.rnd = rnd
-    def train(self, corpus, knownlabels):
+    def train(self, dataset, knownlabels):
         pass
     def predict(self, doc):
         return self.rnd.random()
@@ -153,38 +153,32 @@ class SamplingSLDA(AbstractModel):
         self.predictschedarr = ctypesutils.convertFromIntList(predictschedule)
 
         # other instance variables initialized in train:
-        #   self.trainingnames
+        #   self.trainingdoc_ids
         #   self.trainvectors
         #   self.wordindex
         #   self.prevlabeledcount
 
-    def train(self, corpus, trainingnames, knownresp, continue_training=False):
-        # trainingnames must be a list
-        # knownresp must be a list such that its values correspond with trainingnames
-        self.trainingnames = copy.deepcopy(trainingnames)
+    def train(self, dataset, trainingdoc_ids, knownresp, continue_training=False):
+        # trainingdoc_ids must be a list
+        # knownresp must be a list such that its values correspond with trainingdoc_ids
+        self.trainingdoc_ids = copy.deepcopy(trainingdoc_ids)
         responseValues = ctypesutils.convertFromDoubleList(knownresp)
         sizesList = []
-        for name in self.trainingnames:
-            sizesList.append(len(corpus[name]))
+        for doc_id in self.trainingdoc_ids:
+            sizesList.append(len(dataset.doc_tokens(doc_id)))
         docSizes = ctypesutils.convertFromIntList(sizesList)
         trainvectors, self.wordindex = \
-                wordindex.vectorize_training(self.trainingnames, corpus)
-        '''
-        for i, ds in enumerate(docSizes):
-            for j in range(ds):
-                print trainvectors[i][j], ' ',
-        print
-        '''
+                wordindex.vectorize_training(self.trainingdoc_ids, dataset)
         vocabSize = ctypes.c_int(self.wordindex.size())
         numVocabList = [self.wordindex.size()] * self.numtopics
         corpusData = CorpusData(
-                len(self.trainingnames), docSizes, trainvectors,
+                len(self.trainingdoc_ids), docSizes, trainvectors,
                 len(knownresp), ctypesutils.convertFromDoubleList(knownresp))
         loop_schedule = [self.trainlag] * self.numsamplespertrainchain
 
         for curchain in range(self.numtrainchains):
             topicassignments = sampling.init_topic_assignments(
-                    self.trainingnames, corpus, self.rnd, self.numtopics)
+                    self.trainingdoc_ids, dataset, self.rnd, self.numtopics)
             eta = (ctypes.c_double * self.numtopics)()
             if continue_training:
                 # fill back previous state of sampler
@@ -192,9 +186,9 @@ class SamplingSLDA(AbstractModel):
                 prev_assignments = self.saved_statesc[curchain][final_state].contents.topicAssignments
                 for i in range(self.prevlabeledcount):
                     # assuming that the first self.prevlabeledcount elements of
-                    # self.trainingnames are the same labeled documents trained
+                    # self.trainingdoc_ids are the same labeled documents trained
                     # on in the last training iteration
-                    for j in range(len(corpus[self.trainingnames[i]])):
+                    for j in range(len(dataset.doc_tokens(self.trainingdoc_ids[i]))):
                         topicassignments[i][j] = prev_assignments[i][j]
                 for i in range(self.numtopics):
                     eta[i] = self.saved_statesc[curchain][final_state].contents.eta[i]
@@ -209,8 +203,8 @@ class SamplingSLDA(AbstractModel):
                     eta[i] = ((float(i*2) - 1.0) / (float(self.numtopics) - 1.0)) \
                             + labelsmean
             doctopiccounts, topicwordcounts = \
-                    sampling.count_topic_assignments(self.trainingnames, self.numtopics,
-                            self.wordindex.size(), corpus, topicassignments,
+                    sampling.count_topic_assignments(self.trainingdoc_ids, self.numtopics,
+                            self.wordindex.size(), dataset, topicassignments,
                             self.wordindex)
 
             prepresums = np.array(ctypesutils.convertToListOfLists(topicwordcounts,
@@ -225,7 +219,7 @@ class SamplingSLDA(AbstractModel):
 
             self.saved_statesc[curchain] = sampling_sLDA(samplerState, ctypes.c_int(self.numsamplespertrainchain),
                     ctypesutils.convertFromIntList(loop_schedule))
-        self.prevlabeledcount = len(self.trainingnames)
+        self.prevlabeledcount = len(self.trainingdoc_ids)
 
     def predict(self, doc):
         resultsList = []

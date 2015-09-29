@@ -31,12 +31,12 @@ class WordIndex:
                 result.append(index)
         return result
 
-def vectorize_training(names, corpus):
+def vectorize_training(names, dataset):
     trainingvectors = (ctypes.POINTER(ctypes.c_int) * len(names))()
     wordindex = WordIndex()
     for i in range(len(names)):
         name = names[i]
-        curvector = wordindex.vectorize(corpus[name])
+        curvector = wordindex.vectorize(dataset.doc_tokens(name))
         convertedvector = (ctypes.c_int * len(curvector))()
         for j in range(len(curvector)):
             convertedvector[j] = ctypes.c_int(curvector[j])
