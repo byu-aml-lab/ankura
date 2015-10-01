@@ -64,7 +64,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
             decreased = True
             continue
 
-        #compute the new gradient
+        # compute the new gradient
         old_grad, grad = grad, 2 * (AXX - XY)
 
         # See if stepsize should increase

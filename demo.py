@@ -3,6 +3,7 @@
 import time
 import datetime
 import numpy
+import scipy.sparse
 
 import ankura
 from ankura import tokenize
@@ -15,7 +16,9 @@ PIPELINE = [(ankura.read_glob, NEWS_GLOB, tokenize.news),
             (ankura.filter_stopwords, ENGL_STOP),
             (ankura.filter_stopwords, NEWS_STOP),
             (ankura.filter_rarewords, 100),
-            (ankura.filter_commonwords, 1500)]
+            (ankura.filter_commonwords, 1500),
+            (ankura.convert_docwords, scipy.sparse.csc_matrix),
+            (ankura.pregenerate_doc_tokens)]
 
 NUM_TOPICS = 20
 CAND_THRESH = 500

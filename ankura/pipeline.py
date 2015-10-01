@@ -36,6 +36,7 @@ class Dataset(object):
         self._titles = titles
         self._cooccurrences = None
         self._tokens = {}
+        # TODO add ability to add document metadata or labels
 
     @property
     def M(self):
@@ -111,29 +112,14 @@ class Dataset(object):
         if doc_id in self._tokens:
             return self._tokens[doc_id]
 
+        token_ids, _, counts = scipy.sparse.find(self._docwords[:, doc_id])
         tokens = []
-        for token_id, count in enumerate(self._docwords[:, doc_id]):
-            if count:
-                tokens.extend([token_id] * count)
+        for token_id, count in zip(token_ids, counts):
+            tokens.extend([token_id] * count)
         rng.shuffle(tokens)
 
         self._tokens[doc_id] = tokens
         return tokens
-
-    def _pregenerate_doc_tokens(self, rng=random):
-        """Generates the token ids of all documents in the dataset
-
-        This function was necessary since the current implementation of the
-        cooccurrence matrix is extremely slow at slicing by columns
-        """
-        for doc_id in range(self.num_docs):
-            self._tokens[doc_id] = []
-        (rows, cols, vals) = scipy.sparse.find(self.M)
-        for (i, col) in enumerate(cols):
-            for _ in range(int(vals[i])):
-                self._tokens[col].append(int(rows[i]))
-        for doc_id in range(self.num_docs):
-            rng.shuffle(self._tokens[doc_id])
 
 
 def read_uci(docwords_filename, vocab_filename):
@@ -293,6 +279,29 @@ def filter_smalldocs(dataset, token_threshold, prune_vocab=True):
         return dataset
 
 
+def convert_docwords(dataset, conversion):
+    """Applies a transformation to the docwords matrix of a dataset
+
+    The most typical usage of this function will be to change the format of the
+    docwords matrix. For example, one could change the format from the default
+    lil matrix to a csc matrix with:
+    dataset = convert_docwords(dataset, scipy.sparse.csc_matrix)
+    """
+    return Dataset(conversion(dataset.docwords), dataset.vocab, dataset.titles)
+
+
+def pregenerate_doc_tokens(dataset):
+    """Pregenerates the doc tokens for each document in the dataset
+
+    In addition to generating the doc tokens for the entire dataset, this
+    function returns the original dataset so that it can be used inside a
+    pipeline.
+    """
+    for doc in xrange(dataset.num_docs):
+        dataset.doc_tokens(doc)
+    return dataset
+
+
 def _prepare_split(dataset, indices):
     split_docwords = dataset.docwords[:, indices]
     split_titles = [dataset.titles[i] for i in indices]
@@ -307,6 +316,8 @@ def train_test_split(dataset, train_percent=.75, rng=random):
     same vocab after the split, but the vocabulary is pruned so that words
     which only appear in test are discarded.
     """
+    # TODO make split preserve any lazily computed things like doc tokens
+
     # find the indices of the docs for both train and test
     shuffled_docs = range(dataset.num_docs)
     rng.shuffle(shuffled_docs)
@@ -340,5 +351,8 @@ def run_pipeline(pipeline):
     read, transformations = pipeline[0], pipeline[1:]
     dataset = read[0](*read[1:])
     for transform in transformations:
-        dataset = transform[0](dataset, *transform[1:])
+        try:
+            dataset = transform[0](dataset, *transform[1:])
+        except TypeError:
+            dataset = transform(dataset)
     return dataset
