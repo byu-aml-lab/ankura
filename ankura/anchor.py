@@ -91,24 +91,26 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
                 anchors[j + 1] = i
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
-    # return anchor vectors from the original Q
-    return dataset.Q[anchors, :]
+    return [[anchor] for anchor in anchors]
 
 
 def constraint_anchors(dataset, constraints):
     """Constructs anchors based on a set of user constraints"""
-    constraint_indicies = []
+    anchors = []
     for constraint in constraints:
-        indicies = []
+        anchor = []
         for word in constraint:
             try:
-                indicies.append(dataset.vocab.index(word))
+                anchor.append(dataset.vocab.index(word))
             except ValueError:
                 pass
-        constraint_indicies.append(indicies)
-
-    anchors = numpy.zeros((len(constraints), dataset.Q.shape[0]))
-    for i, constraint in enumerate(constraint_indicies):
-        anchors[i] = dataset.Q[constraint, :].sum(axis=0) / len(constraint)
-
+        anchors.append(anchor)
     return anchors
+
+
+def anchor_vectors(dataset, anchors):
+    """Constructs the basis from a list of anchor indicies"""
+    basis = numpy.zeros((len(anchors), dataset.Q.shape[0]))
+    for i, anchor in enumerate(anchors):
+        basis[i] = dataset.Q[anchor, :].sum(axis=0) / len(anchor)
+    return basis

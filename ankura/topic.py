@@ -3,6 +3,8 @@
 import numpy
 import random
 
+from .anchor import anchor_vectors
+
 
 def logsum_exp(y):
     """Computes the sum of y in log space"""
@@ -102,6 +104,7 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
         Q[word, :] = Q[word, :] / Q[word, :].sum()
 
     # compute normalized anchors X, and precompute X * X.T
+    anchors = anchor_vectors(dataset, anchors)
     X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
     XX = numpy.dot(X, X.transpose())
 

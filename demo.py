@@ -27,19 +27,19 @@ def demo():
     """Runs a demo of the anchors words algorithm"""
     start = time.time()
     dataset = ankura.run_pipeline(PIPELINE)
-    constraints = [line.split() for line in open(NEWS_CONSTRAINS)]
     end = time.time()
     print 'Import took:', datetime.timedelta(seconds=end-start)
     print 'Docwords shape:', dataset.docwords.shape
     print
 
     start = time.time()
-    anchors = ankura.constraint_anchors(dataset, constraints)
+    anchors = ankura.gramschmidt_anchors(dataset, 20, 500)
     topics = ankura.recover_topics(dataset, anchors)
     end = time.time()
     print 'Topic recovery took:', datetime.timedelta(seconds=end-start)
     print 'Topics:'
     for k in xrange(topics.shape[1]):
+        print '({}) :'.format(' '.join(dataset.vocab[i] for i in anchors[k])),
         topwords = numpy.argsort(topics[:, k])[-20:][::-1]
         for word in topwords:
             print dataset.vocab[word],
