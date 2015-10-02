@@ -98,6 +98,11 @@ class Dataset(object):
         self._cooccurrences = numpy.array(Q / num_docs)
 
     @property
+    def vocab_size(self):
+        """Gets the size of the dataset vocabulary"""
+        return self._docwords.shape[0]
+
+    @property
     def num_docs(self):
         """Gets the number of documents in the dataset"""
         return self._docwords.shape[1]
