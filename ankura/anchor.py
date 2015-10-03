@@ -39,7 +39,8 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors
 
     The original Q will not be modified. The anchors are returned in the form
-    of a list of k indicies into the original Q.
+    of a list of k indicies into the original Q. The candidate threshold is
+    used to determine which words are eligible to become an anchor.
     """
     # Find candidate words which appear in enough documents to be anchor words
     candidates = identify_candidates(dataset.M, candidate_threshold)
@@ -95,7 +96,12 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
 
 
 def constraint_anchors(dataset, constraints):
-    """Constructs anchors based on a set of user constraints"""
+    """Constructs anchors based on a set of user constraints
+
+    The constraints are given in the form of the string token. Any token which
+    is not present in the dataset vocabulary is ignored. The anchors are
+    returned as a list of indices for each anchor.
+    """
     anchors = []
     for constraint in constraints:
         anchor = []
@@ -109,7 +115,7 @@ def constraint_anchors(dataset, constraints):
 
 
 def anchor_vectors(dataset, anchors):
-    """Constructs the basis from a list of anchor indicies"""
+    """Constructs basis vectors from a list of anchor indices"""
     basis = numpy.zeros((len(anchors), dataset.Q.shape[0]))
     for i, anchor in enumerate(anchors):
         basis[i] = dataset.Q[anchor, :].sum(axis=0) / len(anchor)
