@@ -1,4 +1,12 @@
-"""Runs a demo of the anchor words algorithm"""
+"""Runs a demo of the anchor words algorithm
+
+This is really a proof of concept and is as ugly as sin.
+
+Note that if you want to run this, you'll have to update the file paths in the
+get_newsgroups function to be something useful to you. Those paths currently
+point at a clone of github.com/jlund3/data, so you may want to clone my data
+repo as well.
+"""
 
 import os
 import pickle
