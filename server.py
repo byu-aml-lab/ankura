@@ -1,12 +1,30 @@
 """Runs a demo of the anchor words algorithm"""
 
+import os
+import pickle
 import flask
 import json
 import numpy
 
 import ankura
 
-app = flask.Flask(__name__)
+app = flask.Flask(__name__, static_url_path='')
+
+
+def pickle_cache(pickle_path):
+    """Decorator to cache a function call to disk"""
+    def _cache(data_func):
+        def _load_data():
+            if os.path.exists(pickle_path):
+                print ' * Reading cached data from disk'
+                return pickle.load(open(pickle_path))
+            else:
+                data = data_func()
+                print ' * Caching data to disk'
+                pickle.dump(data, open(pickle_path, 'w'))
+                return data
+        return _load_data
+    return _cache
 
 
 class memoize(object): # pylint: disable=invalid-name
@@ -22,6 +40,7 @@ class memoize(object): # pylint: disable=invalid-name
         return self.cache[args]
 
 @memoize
+@pickle_cache('newsgroups.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
     news_glob = '/local/jlund3/data/newsgroups/*/*'
@@ -58,17 +77,28 @@ def reindex_anchors(dataset, anchors):
     return tuple(reindex_anchor(dataset, anchor) for anchor in anchors)
 
 
+def tokenify_anchor(dataset, anchor):
+    """Converts any token indexes in an anchors to tokens"""
+    return tuple(dataset.vocab[index] for index in anchor)
+
+
+def tokenify_anchors(dataset, anchors):
+    """Converts any token indexes in a set of anchors to tokens"""
+    return tuple(tokenify_anchor(dataset, anchor) for anchor in anchors)
+
+
 @app.route('/topics')
 def topic_request():
     """Performs a topic request using anchors from the query string"""
     dataset = get_newsgroups()
-    print dataset
-    anchors = json.loads(flask.request.args.get('anchors'))
-    print anchors
+    raw_anchors = flask.request.args.get('anchors')
+
+    if raw_anchors is None:
+        anchors = ankura.gramschmidt_anchors(dataset, 20, 500)
+    else:
+        anchors = json.loads(raw_anchors)
     anchors = reindex_anchors(dataset, anchors)
-    print anchors
     topics = get_topics(dataset, anchors)
-    print topics
 
     topic_summary = []
     for k in xrange(topics.shape[1]):
@@ -76,14 +106,20 @@ def topic_request():
         for word in numpy.argsort(topics[:, k])[-20:][::-1]:
             summary.append(dataset.vocab[word])
         topic_summary.append(summary)
-    print topic_summary
-    return flask.jsonify(topics=topic_summary)
+
+    if raw_anchors is None:
+        return flask.jsonify(
+            topics=topic_summary,
+            anchors=tokenify_anchors(dataset, anchors)
+        )
+    else:
+        return flask.jsonify(topics=topic_summary)
 
 
-@app.route('/dataset')
-def data_request():
-    """Gets the coocurrence matrix for the newsgroups dataset"""
-    return flask.jsonify(data=get_newsgroups().Q.tolist())
+@app.route('/demo')
+def root():
+    """Serves up the single page app which demos interactive topics"""
+    return flask.send_from_directory('.', 'demo.html')
 
 
 if __name__ == '__main__':
