@@ -116,7 +116,7 @@ def constraint_anchors(dataset, constraints):
 
 def anchor_vectors(dataset, anchors):
     """Constructs basis vectors from a list of anchor indices"""
-    basis = numpy.zeros((len(anchors), dataset.Q.shape[0]))
+    basis = numpy.zeros((len(anchors), dataset.Q.shape[1]))
     for i, anchor in enumerate(anchors):
         basis[i] = dataset.Q[anchor, :].sum(axis=0) / len(anchor)
     return basis

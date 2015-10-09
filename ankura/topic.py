@@ -154,4 +154,5 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
                 converged = False
             counts[z_n] += 1
 
+    # TODO Switch to counts to be consistent with dataset.M?
     return z
