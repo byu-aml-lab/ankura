@@ -94,7 +94,7 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
     K = len(anchors)
     A = numpy.zeros((V, K))
 
-    P_w = numpy.diag(numpy.dot(Q, numpy.ones(V)))
+    P_w = numpy.diag(Q.sum(axis=1))
     for word in xrange(V):
         if numpy.isnan(P_w[word, word]):
             P_w[word, word] = 1e-16
