@@ -1,6 +1,6 @@
 """Ankura provides the ability to experiment with anchor-based topic modeling"""
 
-from .pipeline import (read_uci, read_glob,
+from .pipeline import (read_uci, read_glob, read_file,
                        filter_stopwords, filter_rarewords, filter_commonwords,
                        filter_smalldocs,
                        convert_docwords, pregenerate_doc_tokens,
