@@ -180,10 +180,20 @@ def read_uci(docwords_filename, vocab_filename):
     return Dataset(docwords.tocsc(), vocab, titles)
 
 
-def _build_dataset(filename, read_docs, tokenizer=tokenize.simple):
-    """Helps build Dataset depending on how read_docs parses documents
-    """
-    docs, vocab, titles = read_docs(filename, tokenizer)
+def _build_dataset(docdata, tokenizer):
+    # read each file, tracking vocab and word counts
+    docs = []
+    vocab = {}
+    titles = []
+    for title, data in docdata:
+        doc = {}
+        for token in tokenizer(data):
+            if token not in vocab:
+                vocab[token] = len(vocab)
+            token_id = vocab[token]
+            doc[token_id] = doc.get(token_id, 0) + 1
+        docs.append(doc)
+        titles.append(title)
 
     # construct the docword matrix using the vocab map
     docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)), dtype='uint')
@@ -198,6 +208,7 @@ def _build_dataset(filename, read_docs, tokenizer=tokenize.simple):
     # construct and return the Dataset
     return Dataset(docwords.tocsc(), vocab, titles)
 
+
 def read_glob(glob_pattern, tokenizer=tokenize.simple):
     """Read a Dataset from a set of files found by a glob pattern
 
@@ -205,23 +216,10 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
     dataset. Each file object is then tokenized by the provided tokenizer
     function. The document titles are given by the corresponding filenames.
     """
-    def _read_docs(glob_pattern, tokenizer):
-        # read each document, tracking vocab and word counts
-        docs = []
-        vocab = {}
-        titles = []
-        for filename in glob.glob(glob_pattern):
-            with open(filename) as doc_file:
-                doc = {}
-                for token in tokenizer(doc_file):
-                    if token not in vocab:
-                        vocab[token] = len(vocab)
-                    token_id = vocab[token]
-                    doc[token_id] = doc.get(token_id, 0) + 1
-                docs.append(doc)
-                titles.append(filename)
-        return docs, vocab, titles
-    return _build_dataset(glob_pattern, _read_docs, tokenizer)
+    filenames = glob.glob(glob_pattern)
+    docdata = ((filename, open(filename)) for filename in filenames)
+    return _build_dataset(docdata, tokenizer)
+
 
 def read_file(filename, tokenizer=tokenize.simple):
     """Read a Dataset from one file containing one document per line
@@ -231,25 +229,10 @@ def read_file(filename, tokenizer=tokenize.simple):
     after the first non-newline whitespace sequence will be considered words of
     the document
     """
-    def _read_docs(filename, tokenizer):
-        # read each document, tracking vocab and word counts
-        docs = []
-        vocab = {}
-        titles = []
-        with open(filename) as corpus_file:
-            for line in corpus_file:
-                line = line.strip()
-                title, tokens = line.split(None, 1)
-                doc = {}
-                for token in tokenizer(StringIO.StringIO(tokens)):
-                    if token not in vocab:
-                        vocab[token] = len(vocab)
-                    token_id = vocab[token]
-                    doc[token_id] = doc.get(token_id, 0) + 1
-                docs.append(doc)
-                titles.append(title)
-        return docs, vocab, titles
-    return _build_dataset(filename, _read_docs, tokenizer)
+    lines = (line.split(None, 1) for line in open(filename))
+    docdata = ((title, StringIO.StringIO(doc)) for title, doc in lines)
+    return _build_dataset(docdata, tokenizer)
+
 
 def _filter_vocab(dataset, filter_func):
     """Filters out a set of stopwords based on a filter function"""
