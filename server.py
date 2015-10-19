@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Runs a demo of the anchor words algorithm
 
 This is really a proof of concept and is as ugly as sin.
@@ -51,9 +52,9 @@ class memoize(object): # pylint: disable=invalid-name
 @pickle_cache('newsgroups.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
-    news_glob = '/local/jlund3/data/newsgroups/*/*'
-    engl_stop = '/local/jlund3/data/stopwords/english.txt'
-    news_stop = '/local/jlund3/data/stopwords/newsgroups.txt'
+    news_glob = '/local/cojoco/git/jeffData/newsgroups/*/*'
+    engl_stop = '/local/cojoco/git/jeffData/stopwords/english.txt'
+    news_stop = '/local/cojoco/git/jeffData/stopwords/newsgroups.txt'
     pipeline = [(ankura.read_glob, news_glob, ankura.tokenize.news),
                 (ankura.filter_stopwords, engl_stop),
                 (ankura.filter_stopwords, news_stop),
@@ -129,6 +130,12 @@ def root():
     """Serves up the single page app which demos interactive topics"""
     return flask.send_from_directory('.', 'demo.html')
 
+@app.route('/test1')
+def serve_test1():
+    """Serves up the first test for making interactive topics look good"""
+    js_url = flask.url_for('static', filename='test1.js')
+    css_url = flask.url_for('static', filename='test1.css')
+    return flask.render_template("test1.html", jsurl=js_url, cssurl = css_url)
 
 if __name__ == '__main__':
     get_newsgroups()
