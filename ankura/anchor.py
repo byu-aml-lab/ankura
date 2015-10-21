@@ -2,6 +2,8 @@
 
 import numpy
 
+from .util import tuplize
+
 
 def random_projection(A, k, rng=numpy.random):
     """Randomly reduces the dimensionality of a n x d matrix A to k x d
@@ -92,7 +94,7 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
                 anchors[j + 1] = i
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
-    return [[anchor] for anchor in anchors]
+    return tuplize([anchor] for anchor in anchors)
 
 
 def constraint_anchors(dataset, constraints):
@@ -111,7 +113,7 @@ def constraint_anchors(dataset, constraints):
             except ValueError:
                 pass
         anchors.append(anchor)
-    return anchors
+    return tuplize(anchors)
 
 
 def anchor_vectors(dataset, anchors):

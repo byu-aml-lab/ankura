@@ -8,47 +8,18 @@ point at a clone of github.com/jlund3/data, so you may want to clone my data
 repo as well.
 """
 
-import os
-import pickle
 import flask
 import json
 import numpy
 
 import ankura
+from ankura import util
 
 app = flask.Flask(__name__, static_url_path='')
 
 
-def pickle_cache(pickle_path):
-    """Decorator to cache a function call to disk"""
-    def _cache(data_func):
-        def _load_data():
-            if os.path.exists(pickle_path):
-                print ' * Reading cached data from disk'
-                return pickle.load(open(pickle_path))
-            else:
-                data = data_func()
-                print ' * Caching data to disk'
-                pickle.dump(data, open(pickle_path, 'w'))
-                return data
-        return _load_data
-    return _cache
-
-
-class memoize(object): # pylint: disable=invalid-name
-    """Decorator to memoize a function"""
-
-    def __init__(self, func):
-        self.func = func
-        self.cache = {}
-
-    def __call__(self, *args):
-        if args not in self.cache:
-            self.cache[args] = self.func(*args)
-        return self.cache[args]
-
-@memoize
-@pickle_cache('newsgroups.pickle')
+@util.memoize
+@util.pickle_cache('newsgroups.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
     news_glob = '/local/jlund3/data/newsgroups/*/*'
@@ -64,35 +35,30 @@ def get_newsgroups():
     print ' * Pipeline complete'
     return dataset
 
+@util.memoize
+@util.pickle_cache('anchors.pickle')
+def default_anchors():
+    """Retrieves default anchors for newsgroups using Gram-Schmidt"""
+    return ankura.gramschmidt_anchors(get_newsgroups(), 20, 500)
 
-@memoize
+
+@util.memoize
 def get_topics(dataset, anchors):
     """Gets the topics for 20 newsgroups given a set of anchors"""
     return ankura.recover_topics(dataset, anchors)
 
 
-def reindex_token(dataset, token):
-    """Converts any string tokens to index of the token"""
-    return token if isinstance(token, int) else dataset.vocab.index(token)
-
-def reindex_anchor(dataset, anchor):
-    """Converts any tokens in an anchor to the index of token"""
-    return tuple(reindex_token(dataset, token) for token in anchor)
-
-
+@util.memoize
 def reindex_anchors(dataset, anchors):
     """Converts any tokens in a set of anchors to the index of token"""
-    return tuple(reindex_anchor(dataset, anchor) for anchor in anchors)
+    conversion = lambda t: t if isinstance(t, int) else dataset.vocab.index(t)
+    return util.tuplize(anchors, conversion)
 
 
-def tokenify_anchor(dataset, anchor):
-    """Converts any token indexes in an anchors to tokens"""
-    return tuple(dataset.vocab[index] for index in anchor)
-
-
+@util.memoize
 def tokenify_anchors(dataset, anchors):
-    """Converts any token indexes in a set of anchors to tokens"""
-    return tuple(tokenify_anchor(dataset, anchor) for anchor in anchors)
+    """Converts token indexes in a list of anchors to tokens"""
+    return [[dataset.vocab[token] for token in anchor] for anchor in anchors]
 
 
 @app.route('/topics')
@@ -102,9 +68,9 @@ def topic_request():
     raw_anchors = flask.request.args.get('anchors')
 
     if raw_anchors is None:
-        anchors = ankura.gramschmidt_anchors(dataset, 20, 500)
+        anchors = default_anchors()
     else:
-        anchors = json.loads(raw_anchors)
+        anchors = util.tuplize(json.loads(raw_anchors))
     anchors = reindex_anchors(dataset, anchors)
     topics = get_topics(dataset, anchors)
 
@@ -131,5 +97,5 @@ def root():
 
 
 if __name__ == '__main__':
-    get_newsgroups()
-    app.run(debug=True, use_reloader=False)
+    default_anchors()
+    app.run(debug=True)
