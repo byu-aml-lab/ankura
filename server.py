@@ -135,7 +135,17 @@ def serve_test1():
     """Serves up the first test for making interactive topics look good"""
     js_url = flask.url_for('static', filename='test1.js')
     css_url = flask.url_for('static', filename='test1.css')
-    return flask.render_template("test1.html", jsurl=js_url, cssurl = css_url)
+    return flask.send_from_directory('static', filename='test1.html')
+
+@app.route('/test1.css')
+def serve_test1css():
+    """Serves up the css for the first test"""
+    return flask.send_from_directory('static', filename='test1.css')
+
+@app.route('/test1.js')
+def serve_test1js():
+    """Serves up the js for the first test"""
+    return flask.send_from_directory('static', filename='test1.js')
 
 if __name__ == '__main__':
     get_newsgroups()
