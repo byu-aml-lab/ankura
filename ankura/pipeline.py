@@ -13,11 +13,11 @@ following way:
                 (filter_rarewords, 20)]
     dataset = run_pipeline(pipeline)
 """
+import StringIO
 import glob
 import numpy
 import random
 import scipy.sparse
-import StringIO
 
 from ankura import tokenize
 
