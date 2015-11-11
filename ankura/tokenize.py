@@ -12,16 +12,14 @@ def split(doc_file):
 def simple(doc_file, splitter=split):
     """A basic tokenizer which splits and does basic filtering.
 
-    The included filters and transofmrations include:
+    The included filters and transformations include:
     * lower case each token
     * filter out non-alphabetic characters
-    * filter out words with fewer than 3 characters
-    * filter out words with more than 20 characters
     """
     tokens = splitter(doc_file)
     tokens = [token.lower() for token in tokens]
     tokens = [re.sub(r'[^a-z]', '', token) for token in tokens]
-    tokens = [token for token in tokens if 3 < len(token) < 20]
+    tokens = [token for token in tokens if token]
     return tokens
 
 
