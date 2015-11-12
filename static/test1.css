@@ -1,12 +1,12 @@
 .topic {
   list-style-type: none;
   border: 1px solid gray;
-  height: 3em;
+  height: 2em;
   margin-bottom: 5px;
 }
 
 .anchor {
   resize: vertical;
-  height: 3em;
+  height: 2em;
   width: 8em;
 }

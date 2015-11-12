@@ -9,16 +9,17 @@
   </head>
   <body ng-controller="anchorController as ctrl">
     <div class="container">
-      <div class="row" ng-repeat="anchor in ctrl.getTopics()">
+      <div class="row" ng-repeat="anchor in ctrl.anchors">
         <div class="col-sm-2">
           <textarea class="anchor">{{anchor.anchor}}</textarea>
         </div>
         <div class="col-sm-10" id="topics">
           <p class="topic">{{anchor.topic}}</p>
         </div>
-        <form ng-submit="getNewTopics()">
-        </form>
       </div>
+      <form ng-submit="ctrl.getNewTopics()">
+        <button type="submit">Update Topics</button>
+      </form>
     </div>
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>

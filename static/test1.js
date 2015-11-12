@@ -1,26 +1,39 @@
 angular.module('anchorApp', [])
   .controller('anchorController', function($scope) {
     var ctrl = this;
-    $scope.getTopics() = function() {
-      ctrl.anchors = [];
+    ctrl.anchors = [];
+    ctrl.getTopics = function() {
       $.get("/topics", function(data) {
-        for (var i = 0; i < data["anchors"].length; i++) {
-          var anchor = JSON.stringify(data["anchors"][i]);
-          var topic = JSON.stringify(data["topics"][i]);
-          console.log(anchor);
-          console.log(topic);
-          ctrl.anchors.push({"anchor":anchor, "topic":topic});
-        }
-        console.log(ctrl.anchors);
-        return ctrl.anchors;
+        ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
+        $scope.$apply();
+      });
+    }
+    ctrl.getTopics();
+    ctrl.getNewTopics = function() {
+      var currentAnchors = [];
+      $(".container .anchor").each(function() {
+        var value = $(this).val().replace(/ /g, '');
+        var tempArray = value.split(",");
+        currentAnchors.push(tempArray);
+      });
+      var getParams = JSON.stringify(currentAnchors);
+      $.get("/topics", {anchors: getParams}, function(data) {
+        ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
+        $scope.$apply();
       });
     }
   });
 
-function update(anchors) {
-  console.log(anchors);
-  $("#topics").html(anchors);
+var getAnchorsArray = function(anchors, topics) {
+  var tempAnchors = [];
+  for (var i = 0; i < anchors.length; i++) {
+    var anchor = JSON.stringify(anchors[i]).replace(/"/g, '').replace(/\[/g, '').replace(/\]/g, '');
+    var topic = JSON.stringify(topics[i]).replace(/"/g, '').replace(/\[/g, '').replace(/\]/g, '');
+    tempAnchors.push({"anchor":anchor, "topic":topic});
+  }
+  return tempAnchors;
 }
+
 /*
 function update(data) {
   console.log(data);
