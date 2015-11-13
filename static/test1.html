@@ -9,14 +9,14 @@
   </head>
   <body ng-controller="anchorController as ctrl">
     <div class="container">
-      <div class="row" ng-repeat="anchor in ctrl.anchors">
+      <div class="row" ng-repeat="anchorObj in ctrl.anchors">
         <div class="col-sm-3">
           <button type="button" ng-click="ctrl.removeAnchor($index)" class="btn btn-danger removeButton">X</button>
-          <div class="anchor" ondrop="drop(event)" ondragover="allowDrop(event)"><span class="btn btn-default btn-sm anchorWord" draggable="true" ondragstart="drag(event)" id="anchor{{$index}}">{{anchor.anchor}}</span></div>
+          <div class="anchor" ondrop="drop(event)" ondragover="allowDrop(event)"><span class="btn btn-default btn-sm anchorWord" ng-repeat="anchorWord in anchorObj.anchors" draggable="true" ondragstart="drag(event)" id="anchor{{$parent.$index}}word{{this.$index}}">{{anchorWord}}</span></div>
         </div>
         <div class="col-sm-9">
           <div class="topic">
-            <span class="btn btn-default btn-sm topicWord" ng-repeat="word in anchor.topic" draggable="true" ondragstart="drag(event)" id="topic{{$parent.$index}}Word{{this.$index}}">{{word}}</span>
+            <span class="btn btn-default btn-sm topicWord" ng-repeat="word in anchorObj.topic" draggable="true" ondragstart="drag(event)" id="topic{{$parent.$index}}Word{{this.$index}}">{{word}}</span>
           </div>
         </div>
       </div>

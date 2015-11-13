@@ -4,7 +4,9 @@ angular.module('anchorApp', [])
     ctrl.anchors = [];
     ctrl.addAnchor = function() {
       //TODO: Ensure new anchor is in the vocabulary
-      var anchorObj = {"anchor":$scope.newAnchor,"topic":["Press Update Topics to get topics for this anchor"]};
+      var lowercaseAnchor = $scope.newAnchor.toLowerCase();
+      var newAnchors = lowercaseAnchor.split(',');
+      var anchorObj = {"anchors":newAnchors,"topic":["Press Update Topics to get topics for this anchor"]};
       ctrl.anchors.push(anchorObj);
       $scope.newAnchor = '';
     }
@@ -21,8 +23,9 @@ angular.module('anchorApp', [])
     ctrl.getNewTopics = function() {
       var currentAnchors = [];
       $(".container .anchor").each(function() {
-        console.log($(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span>/g, ',').replace(/,$/, ''));
         var value = $(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span>/g, ',').replace(/,$/, '');
+        //Remove ng-repeat garbage left in the document, and another comma that somehow sneaks in
+        value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '');
         console.log(value);
         var tempArray = value.split(",");
         console.log(tempArray);
@@ -39,12 +42,16 @@ angular.module('anchorApp', [])
 var getAnchorsArray = function(anchors, topics) {
   var tempAnchors = [];
   for (var i = 0; i < anchors.length; i++) {
-    var anchor = JSON.stringify(anchors[i]).replace(/"/g, '').replace(/\[/g, '').replace(/\]/g, '');
+    anchor = anchors[i];
     var topic = topics[i];
-    tempAnchors.push({"anchor":anchor, "topic":topic});
+    tempAnchors.push({"anchors":anchor, "topic":topic});
   }
   return tempAnchors;
 };
+
+
+//All functions below here enable dragging and dropping
+//They could possibly be in another file and included?
 
 var allowDrop = function(ev) {
   ev.preventDefault();
@@ -74,34 +81,3 @@ var drop = function(ev) {
     ev.target.appendChild(nodeCopy);
   }
 };
-
-/*
-function update(data) {
-  console.log(data);
-  $("#topics").html(
-    JSON.stringify(data["topics"])
-      .replace(/\],/g, "\n")
-      .replace(/["\[\]]/g, "")
-  )
-}
-
-$(document).ready(function() {
-  $.get("/topics", function(data) {
-    $("#anchors").val(JSON.stringify(data["topics"]));
-    console.log(JSON.stringify(data["anchors"].join()));
-    update(data);
-  });
-  $("#anchor-form").submit(function(e) {
-    e.preventDefault();
-    var anchorArr = $("#anchors").val().split("\n");
-    console.log(anchorArr);
-    for (var i = 0; i < anchorArr.length; i++) {
-      var anchor = anchorArr[i];
-      anchorArr[i] = anchor.split(",");
-    };
-    console.log(anchorArr);
-    console.log($("#anchors").val().split("\n"));
-    $.get("/topics", {anchors: anchorArr}, update);
-  });
-});
-*/
