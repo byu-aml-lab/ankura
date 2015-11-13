@@ -25,6 +25,13 @@
   padding-left: 3px;
 }
 
+.topicWord {
+  padding-top: 1px;
+  padding-bottom: 1px;
+  padding-right: 3px;
+  padding-left: 3px;
+}
+
 .removeButton {
   margin-top: 2.5px;
   margin-bottom: 2.5px;

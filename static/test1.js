@@ -4,7 +4,7 @@ angular.module('anchorApp', [])
     ctrl.anchors = [];
     ctrl.addAnchor = function() {
       //TODO: Ensure new anchor is in the vocabulary
-      var anchorObj = {"anchor":$scope.newAnchor,"topic":"Press Update Topics to get topics for this anchor"};
+      var anchorObj = {"anchor":$scope.newAnchor,"topic":["Press Update Topics to get topics for this anchor"]};
       ctrl.anchors.push(anchorObj);
       $scope.newAnchor = '';
     }
@@ -21,8 +21,11 @@ angular.module('anchorApp', [])
     ctrl.getNewTopics = function() {
       var currentAnchors = [];
       $(".container .anchor").each(function() {
-        var value = $(this).text().replace(/ /g, '');
+        console.log($(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span>/g, ',').replace(/,$/, ''));
+        var value = $(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span>/g, ',').replace(/,$/, '');
+        console.log(value);
         var tempArray = value.split(",");
+        console.log(tempArray);
         currentAnchors.push(tempArray);
       });
       var getParams = JSON.stringify(currentAnchors);
@@ -37,7 +40,7 @@ var getAnchorsArray = function(anchors, topics) {
   var tempAnchors = [];
   for (var i = 0; i < anchors.length; i++) {
     var anchor = JSON.stringify(anchors[i]).replace(/"/g, '').replace(/\[/g, '').replace(/\]/g, '');
-    var topic = JSON.stringify(topics[i]).replace(/"/g, '').replace(/\[/g, '').replace(/\]/g, '');
+    var topic = topics[i];
     tempAnchors.push({"anchor":anchor, "topic":topic});
   }
   return tempAnchors;
@@ -51,10 +54,25 @@ var drag = function(ev) {
   ev.dataTransfer.setData("text", ev.target.id);
 };
 
+//Holds id addition for when we copy nodes
+var copyId = 0;
+
 var drop = function(ev) {
   ev.preventDefault();
   var data = ev.dataTransfer.getData("text");
-  ev.target.appendChild(document.getElementById(data));
+  console.log(data);
+  console.log(JSON.stringify(data));
+  var dataString = JSON.stringify(data);
+  //If an anchor or a copy of a topic word, drop
+  if (dataString.indexOf("anchor") !== -1 || dataString.indexOf("copy") !== -1) {
+    ev.target.appendChild(document.getElementById(data));
+  }
+  //If a topic word, copy it
+  else {
+    var nodeCopy = document.getElementById(data).cloneNode(true);
+    nodeCopy.id = data + "copy" + copyId++;
+    ev.target.appendChild(nodeCopy);
+  }
 };
 
 /*

@@ -12,13 +12,11 @@
       <div class="row" ng-repeat="anchor in ctrl.anchors">
         <div class="col-sm-3">
           <button type="button" ng-click="ctrl.removeAnchor($index)" class="btn btn-danger removeButton">X</button>
-          <div class="anchor" ondrop="drop(event)" ondragover="allowDrop(event)">
-            <span class="btn btn-default btn-sm anchorWord" draggable="true" ondragstart="drag(event)" id="anchor{{$index}}">{{anchor.anchor}}</span>
-          </div>
+          <div class="anchor" ondrop="drop(event)" ondragover="allowDrop(event)"><span class="btn btn-default btn-sm anchorWord" draggable="true" ondragstart="drag(event)" id="anchor{{$index}}">{{anchor.anchor}}</span></div>
         </div>
         <div class="col-sm-9">
           <div class="topic">
-            <span class="topicWord" ng-repeat="word in anchor.topic" draggable="true" ondragstart="drag(event)" id="topic{{anchor.$index}}Word{{this.$index}}">{{word}}</span>
+            <span class="btn btn-default btn-sm topicWord" ng-repeat="word in anchor.topic" draggable="true" ondragstart="drag(event)" id="topic{{$parent.$index}}Word{{this.$index}}">{{word}}</span>
           </div>
         </div>
       </div>
