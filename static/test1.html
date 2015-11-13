@@ -10,15 +10,20 @@
   <body ng-controller="anchorController as ctrl">
     <div class="container">
       <div class="row" ng-repeat="anchor in ctrl.anchors">
-        <div class="col-sm-2">
+        <div class="col-sm-3">
+          <button type="button" ng-click="ctrl.removeAnchor($index)" class="btn btn-danger removeButton">X</button>
           <textarea class="anchor">{{anchor.anchor}}</textarea>
         </div>
-        <div class="col-sm-10" id="topics">
+        <div class="col-sm-9" id="topics">
           <p class="topic">{{anchor.topic}}</p>
         </div>
       </div>
-      <form ng-submit="ctrl.getNewTopics()">
-        <button type="submit">Update Topics</button>
+      <form id="updateForm" ng-submit="ctrl.getNewTopics()">
+        <button type="submit" class="btn btn-primary">Update Topics</button>
+      </form>
+      <form id="addAnchorForm" ng-submit="ctrl.addAnchor()">
+        <button type="submit" class="btn btn-success">Add Anchor</button>
+        <input ng-model="newAnchor" placeholder="New Anchor"></input>
       </form>
     </div>
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>

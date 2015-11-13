@@ -1,12 +1,31 @@
 .topic {
+  vertical-align: middle;
   list-style-type: none;
   border: 1px solid gray;
   height: 2em;
-  margin-bottom: 5px;
+  margin-bottom: 2.5px;
+  margin-top: 2.5px;
 }
 
 .anchor {
+  vertical-align: middle;
   resize: vertical;
   height: 2em;
   width: 8em;
+  margin-bottom: 2.5px;
+  margin-top: 2.5px;
+}
+
+.removeButton {
+  margin-top: 2.5px;
+  margin-bottom: 2.5px;
+  padding: 3px;
+}
+
+#updateForm {
+  float: right;
+}
+
+#addAnchorForm {
+  float: left;
 }

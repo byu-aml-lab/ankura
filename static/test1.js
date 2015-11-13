@@ -2,6 +2,15 @@ angular.module('anchorApp', [])
   .controller('anchorController', function($scope) {
     var ctrl = this;
     ctrl.anchors = [];
+    ctrl.addAnchor = function() {
+      //TODO: Ensure new anchor is in the vocabulary
+      var anchorObj = {"anchor":$scope.newAnchor,"topic":"Press Update Topics to get topics for this anchor"};
+      ctrl.anchors.push(anchorObj);
+      $scope.newAnchor = '';
+    }
+    ctrl.removeAnchor = function(index) {
+      ctrl.anchors.splice(index, 1);
+    }
     ctrl.getTopics = function() {
       $.get("/topics", function(data) {
         ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
