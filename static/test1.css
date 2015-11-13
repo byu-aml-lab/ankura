@@ -1,25 +1,37 @@
 .topic {
+  display: inline-block;
   vertical-align: middle;
   list-style-type: none;
   border: 1px solid gray;
-  height: 2em;
-  margin-bottom: 2.5px;
-  margin-top: 2.5px;
+  margin: 2.5px;
+  padding: 2px;
+  width: 100%;
 }
 
 .anchor {
+  display: inline-block;
   vertical-align: middle;
-  resize: vertical;
-  height: 2em;
-  width: 8em;
-  margin-bottom: 2.5px;
-  margin-top: 2.5px;
+  border: 1px solid gray;
+  padding: 2px;
+  width: 80%;
+  min-height: 28px;
+  margin: 2.5px;
+}
+
+.anchorWord {
+  padding-top: 1px;
+  padding-bottom: 1px;
+  padding-right: 3px;
+  padding-left: 3px;
 }
 
 .removeButton {
   margin-top: 2.5px;
   margin-bottom: 2.5px;
-  padding: 3px;
+  padding-right: 3px;
+  padding-left: 3px;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 #updateForm {

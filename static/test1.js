@@ -21,7 +21,7 @@ angular.module('anchorApp', [])
     ctrl.getNewTopics = function() {
       var currentAnchors = [];
       $(".container .anchor").each(function() {
-        var value = $(this).val().replace(/ /g, '');
+        var value = $(this).text().replace(/ /g, '');
         var tempArray = value.split(",");
         currentAnchors.push(tempArray);
       });
@@ -41,7 +41,21 @@ var getAnchorsArray = function(anchors, topics) {
     tempAnchors.push({"anchor":anchor, "topic":topic});
   }
   return tempAnchors;
-}
+};
+
+var allowDrop = function(ev) {
+  ev.preventDefault();
+};
+
+var drag = function(ev) {
+  ev.dataTransfer.setData("text", ev.target.id);
+};
+
+var drop = function(ev) {
+  ev.preventDefault();
+  var data = ev.dataTransfer.getData("text");
+  ev.target.appendChild(document.getElementById(data));
+};
 
 /*
 function update(data) {
