@@ -32,13 +32,39 @@
   padding-left: 3px;
 }
 
-.removeButton {
+.removeAnchor {
   margin-top: 2.5px;
   margin-bottom: 2.5px;
   padding-right: 3px;
   padding-left: 3px;
   padding-top: 2px;
   padding-bottom: 2px;
+}
+
+.removeWord {
+  padding-top: 0.5px;
+  padding-bottom: 0.5px;
+  padding-right: 1px;
+  padding-left: 1px;
+  color: red;
+}
+
+#trashLabel {
+    float: left;
+    margin: 0px;
+    margin-top: 6px;
+}
+
+#trashButton {
+    float: right;
+    margin: 0px;
+}
+
+#trash {
+   border: 1px solid black; 
+   margin-top: 35px;
+   padding: 6px;
+   min-height: 50px;
 }
 
 #updateForm {

@@ -26,9 +26,7 @@ angular.module('anchorApp', [])
         var value = $(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span>/g, ',').replace(/,$/, '');
         //Remove ng-repeat garbage left in the document, and another comma that somehow sneaks in
         value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '');
-        console.log(value);
         var tempArray = value.split(",");
-        console.log(tempArray);
         currentAnchors.push(tempArray);
       });
       var getParams = JSON.stringify(currentAnchors);
@@ -49,6 +47,10 @@ var getAnchorsArray = function(anchors, topics) {
   return tempAnchors;
 };
 
+var emptyTrash = function() {
+    $("#trash").html("<h4 id=\"trashLabel\">Trash</h4><button onclick=\"emptyTrash()\" class=\"btn btn-danger btn-sm\" id=\"trashButton\">Empty Trash</button>");
+}
+
 
 //All functions below here enable dragging and dropping
 //They could possibly be in another file and included?
@@ -61,23 +63,31 @@ var drag = function(ev) {
   ev.dataTransfer.setData("text", ev.target.id);
 };
 
-//Holds id addition for when we copy nodes
+//Holds next id for when we copy nodes
 var copyId = 0;
 
 var drop = function(ev) {
   ev.preventDefault();
   var data = ev.dataTransfer.getData("text");
-  console.log(data);
-  console.log(JSON.stringify(data));
   var dataString = JSON.stringify(data);
   //If an anchor or a copy of a topic word, drop
   if (dataString.indexOf("anchor") !== -1 || dataString.indexOf("copy") !== -1) {
-    ev.target.appendChild(document.getElementById(data));
+    if($(ev.target).hasClass( "droppable" )) {
+      ev.target.appendChild(document.getElementById(data));
+    }
+    if($(ev.target).hasClass( "draggable" )) {
+      $(ev.target).parent()[0].appendChild(document.getElementById(data));
+    }
   }
   //If a topic word, copy it
   else {
     var nodeCopy = document.getElementById(data).cloneNode(true);
     nodeCopy.id = data + "copy" + copyId++;
-    ev.target.appendChild(nodeCopy);
+    if($(ev.target).hasClass( "droppable" )) {
+      ev.target.appendChild(nodeCopy);
+    }
+    if($(ev.target).hasClass( "draggable" )) {
+      $(ev.target).parent()[0].appendChild(nodeCopy);
+    }
   }
 };
