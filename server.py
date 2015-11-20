@@ -113,6 +113,29 @@ def serve_test1js():
     """Serves up the js for the first test"""
     return flask.send_from_directory('static', filename='test1.js')
 
+@app.route('/test2')
+def serve_linear():
+    """Serves up the second test, this one using client-side Javascript to find topics for anchors instead of using server-side Python"""
+    return flask.send_from_directory('static', filename='test2.html')
+
+@app.route('/test2.css')
+def serve_test2css():
+    return flask.send_from_directory('static', filename='test2.css')
+
+@app.route('/test2.js')
+def serve_test2js():
+    return flask.send_from_directory('static', filename='test2.js')
+
+@app.route('/linear.js')
+def serve_linearjs():
+    return flask.send_from_directory('static', filename='linear.js')
+
+@app.route('/linear-dataset')
+def get_dataset():
+    dataset = get_newsgroups()
+    return flask.jsonify(vocab=dataset.vocab,
+                         cooccurrences=dataset.Q.tolist())
+
 if __name__ == '__main__':
     default_anchors()
     app.run(debug=True)
