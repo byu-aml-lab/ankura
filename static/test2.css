@@ -55,23 +55,23 @@
     padding-left: 2px;
 }
 
-#trashLabel {
-    float: left;
-    margin: 0px;
-    margin-top: 6px;
-}
-
-#trashButton {
-    float: right;
-    margin: 0px;
-}
-
-#trash {
-   border: 1px solid black; 
-   margin-top: 35px;
-   padding: 6px;
-   min-height: 50px;
-}
+// #trashLabel {
+//     float: left;
+//     margin: 0px;
+//     margin-top: 6px;
+// }
+// 
+// #trashButton {
+//     float: right;
+//     margin: 0px;
+// }
+// 
+// #trash {
+//    border: 1px solid black; 
+//    margin-top: 35px;
+//    padding: 6px;
+//    min-height: 50px;
+// }
 
 #updateForm {
   float: right;

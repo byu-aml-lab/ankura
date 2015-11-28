@@ -2,13 +2,35 @@ angular.module('anchorApp', [])
   .controller('anchorController', function($scope) {
     var ctrl = this;
     ctrl.anchors = [];
+    ctrl.vocab;
+    $.get("/vocab", function(data) {
+        ctrl.vocab = data.vocab;
+    });    
     ctrl.addAnchor = function() {
       //TODO: Ensure new anchor is in the vocabulary
+      $scope.$broadcast("autofillfix:update");
       var lowercaseAnchor = $scope.newAnchor.toLowerCase();
-      var newAnchors = lowercaseAnchor.split(',');
-      var anchorObj = {"anchors":newAnchors,"topic":["Press Update Topics to get topics for this anchor"]};
-      ctrl.anchors.push(anchorObj);
-      $scope.newAnchor = '';
+      var inVocab = false;
+      for (var i = 0; i < ctrl.vocab.length; i++) {
+          if (ctrl.vocab[i] === lowercaseAnchor) inVocab = true;
+      }
+      console.log(inVocab);
+      if (inVocab) {
+          var newAnchors = lowercaseAnchor.split(',');
+          var anchorObj = {"anchors":newAnchors,"topic":["Press Update Topics to get topics for this anchor"]};
+          ctrl.anchors.push(anchorObj);
+          $scope.newAnchor = '';
+      }
+      else {
+          $("#addAnchorInput").popover({
+              placement:'top',
+              trigger:'manual',
+              html:true,
+              content:'Please enter a valid vocabulary word'
+          }).popover('show');
+          //TODO: Set a timeout here
+          $("#addAnchorInput").popover('hide');
+      }
     }
     ctrl.removeAnchor = function(index) {
       ctrl.anchors.splice(index, 1);
@@ -23,9 +45,11 @@ angular.module('anchorApp', [])
     ctrl.getNewTopics = function() {
       var currentAnchors = [];
       $(".container .anchor").each(function() {
-        var value = $(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span>/g, ',').replace(/,$/, '');
-        //Remove ng-repeat garbage left in the document, and another comma that somehow sneaks in
-        value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '');
+        var value = $(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
+        value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\s\u2716/g, '');
+        if (value === "") {
+            return true;
+        }
         var tempArray = value.split(",");
         currentAnchors.push(tempArray);
       });
@@ -35,21 +59,26 @@ angular.module('anchorApp', [])
         $scope.$apply();
       });
     }
-    ctrl.deleteWord = function(closeButton) {
-        console.log(closeButton);
-        var toClose = closeButton.target.parentNode.id;
-        console.log(toClose);
-        $("#"+toClose).remove();
-    }
-    $.getScript('linear.js', function() {
-        console.log("getScript run");
-        linear.getData();
+    var initAutocomplete = function() {
+        $.get("/vocab", function(data) {
+            $( "#addAnchorInput" ).autocomplete({
+                minLength: 3,
+                source: data.vocab
+            });
+        });
+    };
+    initAutocomplete();
+  }).directive("autofillfix", function() {
+        //This is required because of some problem between Angular and autofill
+        return {
+            require: "ngModel",
+            link: function(scope, element, attrs, ngModel) {
+                scope.$on("autofillfix:update", function() {
+                    ngModel.$setViewValue(element.val());
+                });
+            }
+        }
     });
-    $.getScript('http://www.numericjs.com/lib/numeric-1.2.6.min.js', function() {
-        console.log(numeric['abs']([1,-2]));
-    });
-  });
-
 
 var getAnchorsArray = function(anchors, topics) {
   var tempAnchors = [];
@@ -61,10 +90,12 @@ var getAnchorsArray = function(anchors, topics) {
   return tempAnchors;
 };
 
-var emptyTrash = function() {
-    $("#trash").html("<h4 id=\"trashLabel\">Trash</h4><button onclick=\"emptyTrash()\" class=\"btn btn-danger btn-sm\" id=\"trashButton\">Empty Trash</button>");
+var deleteWord = function(closeButton) {
+    console.log(closeButton);
+    var toClose = closeButton.target.parentNode.id;
+    console.log(toClose);
+    $("#"+toClose).remove();
 }
-
 
 //All functions below here enable dragging and dropping
 //They could possibly be in another file and included?
@@ -97,6 +128,9 @@ var drop = function(ev) {
   else {
     var nodeCopy = document.getElementById(data).cloneNode(true);
     nodeCopy.id = data + "copy" + copyId++;
+    var closeButton = addDeleteButton(nodeCopy.id + "close");
+    nodeCopy.appendChild(closeButton);
+    console.log(nodeCopy);
     if($(ev.target).hasClass( "droppable" )) {
       ev.target.appendChild(nodeCopy);
     }
@@ -104,4 +138,19 @@ var drop = function(ev) {
       $(ev.target).parent()[0].appendChild(nodeCopy);
     }
   }
+};
+
+var addDeleteButton = function(id) {
+    var closeButton = document.createElement("span");
+    closeButton.innerHTML = " &#10006"
+    var closeClass = document.createAttribute("class");
+    closeClass.value = "close";
+    closeButton.setAttributeNode(closeClass);
+    var closeId = document.createAttribute("id");
+    closeId.value = id;
+    closeButton.setAttributeNode(closeId);
+    var closeClick = document.createAttribute("onclick");
+    closeClick.value = "deleteWord(event)";
+    closeButton.setAttributeNode(closeClick);
+    return closeButton
 };

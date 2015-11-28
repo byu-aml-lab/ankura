@@ -3,6 +3,7 @@
   <head>
     <title>Anchor words</title>
     <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
     <link href="test2.css" rel="stylesheet">
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular.min.js"></script>
     <script type="text/javascript" src="http://www.numericjs.com/lib/numeric-1.2.6.min.js"></script>
@@ -13,7 +14,7 @@
       <div class="row" ng-repeat="anchorObj in ctrl.anchors">
         <div class="col-sm-3">
           <button type="button" ng-click="ctrl.removeAnchor($index)" class="btn btn-danger removeAnchor">X</button>
-          <div class="anchor droppable" ondrop="drop(event)" ondragover="allowDrop(event)"><span class="btn btn-default btn-sm anchorWord draggable" ng-repeat="anchorWord in anchorObj.anchors" draggable="true" ondragstart="drag(event)" id="anchor{{$parent.$index}}word{{this.$index}}">{{anchorWord}} <span class="close" id="anchor{{$parent.$index}}word{{this.$index}}close" ng-click="ctrl.deleteWord($event)">&#10006;</span></span></div>
+          <div class="anchor droppable" ondrop="drop(event)" ondragover="allowDrop(event)"><span class="btn btn-default btn-sm anchorWord draggable" ng-repeat="anchorWord in anchorObj.anchors track by $index" draggable="true" ondragstart="drag(event)" id="anchor{{$parent.$index}}word{{this.$index}}">{{anchorWord}} <span class="close" id="anchor{{$parent.$index}}word{{this.$index}}close" onclick="deleteWord(event)">&#10006;</span></span></div>
         </div>
         <div class="col-sm-9">
           <div class="topic">
@@ -26,11 +27,11 @@
       </form>
       <form id="addAnchorForm" ng-submit="ctrl.addAnchor()">
         <button type="submit" class="btn btn-success btn-sm">Add Anchor</button>
-        <input ng-model="newAnchor" placeholder="New Anchor"></input>
+        <input id="addAnchorInput" ng-model="newAnchor" placeholder="New Anchor" autofillfix></input>
       </form>
-      <div id="trash" class="droppable" ondrop="drop(event)" ondragover="allowDrop(event)"><h4 id="trashLabel">Trash</h4><button onclick="emptyTrash()" class="btn btn-danger btn-sm" id="trashButton">Empty Trash</button></div>
     </div>
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
   </body>
 </html>

@@ -130,11 +130,15 @@ def serve_test2js():
 def serve_linearjs():
     return flask.send_from_directory('static', filename='linear.js')
 
-@app.route('/linear-dataset')
-def get_dataset():
+@app.route('/vocab')
+def get_vocab():
     dataset = get_newsgroups()
-    return flask.jsonify(vocab=dataset.vocab,
-                         cooccurrences=dataset.Q.tolist())
+    return flask.jsonify(vocab=dataset.vocab)
+
+@app.route('/cooccurrences')
+def get_cooccurrences():
+    dataset = get_newsgroups()
+    return flask.jsonify(cooccurrences=dataset.Q.tolist())
 
 if __name__ == '__main__':
     default_anchors()
