@@ -1,5 +1,5 @@
 angular.module('anchorApp', [])
-  .controller('anchorController', function($scope) {
+  .controller('anchorController', function($scope, $timeout) {
     var ctrl = this;
     ctrl.anchors = [];
     ctrl.vocab;
@@ -22,14 +22,15 @@ angular.module('anchorApp', [])
           $scope.newAnchor = '';
       }
       else {
-          $("#addAnchorInput").popover({
-              placement:'top',
-              trigger:'manual',
-              html:true,
-              content:'Please enter a valid vocabulary word'
-          }).popover('show');
-          //TODO: Set a timeout here
-          $("#addAnchorInput").popover('hide');
+          if ($(".addAnchorInputClean").length !== 0) {
+             $(".addAnchorInputClean").popover({
+                 placement:'top',
+                 trigger:'manual',
+                 html:true,
+                 content:'Please enter a valid vocabulary word'
+             }).popover('show').addClass("addAnchorInputDirty").removeClass("addAnchorInputClean");
+             $timeout(function() {$(".addAnchorInputDirty").popover('hide').addClass("addAnchorInputClean").removeClass("addAnchorInputDirty");}, 2000);
+          }
       }
     }
     ctrl.removeAnchor = function(index) {
