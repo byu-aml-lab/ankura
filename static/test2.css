@@ -1,3 +1,8 @@
+h4 {
+    margin-bottom: 5px;
+    text-align: center;
+}
+
 .topic {
     display: inline-block;
     vertical-align: middle;
