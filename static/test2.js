@@ -21,7 +21,11 @@ angular.module('anchorApp', [])
             for (var i = 0; i < ctrl.vocab.length; i++) {
                 if (ctrl.vocab[i] === lowercaseAnchor) inVocab = true;
             }
-            if (inVocab) {
+            if (lowercaseAnchor === '') {
+                var anchorObj = {"anchors":[], "topic":[]};
+                ctrl.anchors.push(anchorObj);
+            }
+            else if (inVocab) {
                 //The backend is expecting an array of anchor words, even if there's only one anchor word.
                 var newAnchors = lowercaseAnchor.split(',');
                 var anchorObj = {"anchors":newAnchors,"topic":[]};
