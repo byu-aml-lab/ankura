@@ -3,6 +3,24 @@ h4 {
     text-align: center;
 }
 
+.anchorContainer {
+    float: left;
+}
+
+.anchorInput {
+    width: 100%;
+    border: none;
+}
+
+.anchorInput:focus {
+    outline: 0;
+}
+
+.anchorInputContainer {
+    display: block;
+    overflow: hidden;
+}
+
 .topic {
     display: inline-block;
     vertical-align: middle;
@@ -29,6 +47,7 @@ h4 {
     padding-bottom: 1px;
     padding-right: 3px;
     padding-left: 3px;
+    margin-right: 2px;
 }
 
 .topicWord {
@@ -36,6 +55,7 @@ h4 {
     padding-bottom: 1px;
     padding-right: 3px;
     padding-left: 3px;
+    margin-right: 2px;
 }
 
 .removeAnchor {

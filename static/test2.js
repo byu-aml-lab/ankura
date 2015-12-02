@@ -88,8 +88,8 @@ angular.module('anchorApp', [])
         ctrl.getNewTopics = function() {
             var currentAnchors = [];
             //The server throws an error if there are no anchors, so we want to get new anchors if needed.
-            if ($(".container .anchor").length !== 0) {    
-                $(".container .anchor").each(function() {
+            if ($(".anchorContainer").length !== 0) {    
+                $(".anchorContainer").each(function() {
                     var value = $(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
                     value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\s\u2716/g, '');
                     if (value === "") {
