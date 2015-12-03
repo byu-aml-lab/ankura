@@ -172,8 +172,17 @@ var drop = function(ev) {
         if($(ev.target).hasClass( "droppable" )) {
             ev.target.appendChild(document.getElementById(data));
         }
-        if($(ev.target).hasClass( "draggable" )) {
+        else if($(ev.target).hasClass( "draggable" )) {
             $(ev.target).parent()[0].appendChild(document.getElementById(data));
+        }
+        else if($(ev.target).hasClass( "anchorInputContainer" )) {
+            $(ev.target).siblings(".anchorContainer")[0].appendChild(document.getElementById(data));
+        }
+        else if ($(ev.target).hasClass( "anchorInput" )) {
+            $(ev.target).parent().siblings(".anchorContainer")[0].appendChild(document.getElementById(data));
+        }
+        else if ($(ev.target).hasClass( "anchor" )) {
+            $(ev.target).children(".anchorContainer")[0].appendChild(document.getElementById(data));
         }
     }
     //If a topic word, copy it
@@ -182,11 +191,22 @@ var drop = function(ev) {
         nodeCopy.id = data + "copy" + copyId++;
         var closeButton = addDeleteButton(nodeCopy.id + "close");
         nodeCopy.appendChild(closeButton);
+        console.log(ev.target);
+        console.log($(ev.target));
         if($(ev.target).hasClass( "droppable" )) {
             ev.target.appendChild(nodeCopy);
         }
-        if($(ev.target).hasClass( "draggable" )) {
+        else if($(ev.target).hasClass( "draggable" )) {
             $(ev.target).parent()[0].appendChild(nodeCopy);
+        }
+        else if($(ev.target).hasClass( "anchorInputContainer" )) {
+            $(ev.target).siblings(".anchorContainer")[0].appendChild(nodeCopy);
+        }
+        else if ($(ev.target).hasClass( "anchorInput" )) {
+            $(ev.target).parent().siblings(".anchorContainer")[0].appendChild(nodeCopy);
+        }
+        else if ($(ev.target).hasClass( "anchor" )) {
+            $(ev.target).children(".anchorContainer")[0].appendChild(nodeCopy);
         }
     }
 };

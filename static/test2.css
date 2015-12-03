@@ -19,6 +19,7 @@ h4 {
 .anchorInputContainer {
     display: block;
     overflow: hidden;
+    width: 100%;
 }
 
 .topic {

@@ -18,7 +18,7 @@
       <div class="row" ng-repeat="anchorObj in ctrl.anchors">
         <div class="col-sm-3">
           <button type="button" ng-click="ctrl.removeAnchor($index)" class="btn btn-danger removeAnchor">X</button>
-          <div class="anchor droppable" ondrop="drop(event)" ondragover="allowDrop(event)"><span class="anchorContainer"><span class="btn btn-default btn-sm anchorWord draggable" ng-repeat="anchorWord in anchorObj.anchors track by $index" draggable="true" ondragstart="drag(event)" id="anchor{{$parent.$index}}word{{this.$index}}">{{anchorWord}} <span class="close" id="anchor{{$parent.$index}}word{{this.$index}}close" onclick="deleteWord(event)">&#10006;</span></span></span><span class="anchorInputContainer"><input class="anchorInput"></input></span></div>
+          <div class="anchor" ondrop="drop(event)" ondragover="allowDrop(event)"><span class="anchorContainer droppable"><span class="btn btn-default btn-sm anchorWord draggable" ng-repeat="anchorWord in anchorObj.anchors track by $index" draggable="true" ondragstart="drag(event)" id="anchor{{$parent.$index}}word{{this.$index}}">{{anchorWord}} <span class="close" id="anchor{{$parent.$index}}word{{this.$index}}close" onclick="deleteWord(event)">&#10006;</span></span></span><span class="anchorInputContainer"><input class="anchorInput"></input></span></div>
         </div>
         <div class="col-sm-9">
           <div class="topic">
