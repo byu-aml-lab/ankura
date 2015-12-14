@@ -251,18 +251,32 @@ def _filter_vocab(dataset, filter_func):
     return Dataset(docwords, vocab.tolist(), dataset.titles)
 
 
+def _get_wordlist(filename, tokenizer):
+    if tokenizer:
+        return set(tokenizer(open(filename)))
+    else:
+        return {word.strip() for word in open(filename)}
+
+
 def filter_stopwords(dataset, stopword_filename, tokenizer=None):
     """Filters out a set of stopwords from a dataset
 
     The stopwords file is expected to contain a single stopword token per line.
     The original data is unchanged.
     """
-    if tokenizer:
-        stopwords = set(tokenizer(open(stopword_filename)))
-    else:
-        stopwords = {word.strip() for word in open(stopword_filename)}
+    stopwords = _get_wordlist(stopword_filename, tokenizer)
     keep = lambda i, v: v not in stopwords
     return _filter_vocab(dataset, keep)
+
+
+def combine_words(dataset, combine_filename, replace, tokenizer=None):
+    """Combines a set of words into a single token
+
+    The combine file is expected to contain a single token per line. The
+    original data is unchanged.
+    """
+    combinewords = _get_wordlist(combine_filename, tokenizer)
+    # TODO Finish combine_words
 
 
 def filter_rarewords(dataset, doc_threshold):

@@ -4,6 +4,7 @@ import numpy
 import random
 
 from .anchor import anchor_vectors
+from .pipeline import Dataset
 
 
 def logsum_exp(y):
@@ -154,5 +155,13 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
                 converged = False
             counts[z_n] += 1
 
-    # TODO Switch to counts to be consistent with dataset.M?
-    return z
+    return counts
+
+
+def topic_transform(topics, dataset, alpha=.01, rng=random):
+    """Transforms a dataset to use topic assignments instead of tokens"""
+    T = topics.shape[1]
+    Z = numpy.zeros((T, dataset.num_docs))
+    for doc in xrange(dataset.num_docs):
+        Z[:, doc] = predict_topics(topics, dataset.doc_tokens(doc), alpha, rng)
+    return Dataset(Z, [str(i) for i in xrange(T)], dataset.titles)
