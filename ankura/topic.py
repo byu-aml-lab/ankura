@@ -140,7 +140,7 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
         counts[z_n] += 1
 
     def _prob(w_n, t):
-        return (alpha * counts[t]) * topics[w_n, t]
+        return (alpha + counts[t]) * topics[w_n, t]
 
     # iterate until no further changes
     converged = False
