@@ -46,11 +46,11 @@ class NaiveBayes(object):
             log_likelihood += self.word_counts[label_index, token] * count
         return self.label_counts[label_index] + log_likelihood
 
-    def validate(self, data, labels):
+    def validate(self, dataset, labels):
         """Computes the accuracy of the classifier on the given data"""
         correct = 0
         for doc, label in enumerate(labels):
-            predicted = self.classify(data[:, doc])
+            predicted = self.classify(dataset.docwords[:, doc])
             if label == predicted:
                 correct += 1
         return correct / len(labels)

@@ -5,4 +5,6 @@ from .pipeline import (read_uci, read_glob, read_file,
                        filter_smalldocs,
                        run_pipeline)
 from .anchor import gramschmidt_anchors, constraint_anchors
-from .topic import recover_topics, predict_topics
+from .topic import recover_topics, topic_transform
+
+from . import measure, util

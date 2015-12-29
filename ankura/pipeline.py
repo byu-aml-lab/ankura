@@ -19,7 +19,8 @@ import numpy
 import random
 import scipy.sparse
 
-from ankura import tokenize
+from . import tokenize
+# from ankura import tokenize
 
 
 class Dataset(object):

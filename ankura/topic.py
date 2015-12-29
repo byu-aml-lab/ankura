@@ -1,5 +1,6 @@
 """Functions for recovering anchor based topics from a coocurrence matrix"""
 
+import scipy.sparse
 import numpy
 import random
 
@@ -132,7 +133,7 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
     """
     T = topics.shape[1]
     z = numpy.zeros(len(tokens))
-    counts = numpy.zeros(T)
+    counts = numpy.zeros(T, dtype='uint8')
 
     # init topics and topic counts
     for n in xrange(len(tokens)):
@@ -161,7 +162,9 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
 def topic_transform(topics, dataset, alpha=.01, rng=random):
     """Transforms a dataset to use topic assignments instead of tokens"""
     T = topics.shape[1]
-    Z = numpy.zeros((T, dataset.num_docs))
+    Z = numpy.zeros((T, dataset.num_docs), dtype='uint8')
     for doc in xrange(dataset.num_docs):
-        Z[:, doc] = predict_topics(topics, dataset.doc_tokens(doc), alpha, rng)
+        counts = predict_topics(topics, dataset.doc_tokens(doc), alpha, rng)
+        Z[:, doc] = counts
+    Z = scipy.sparse.csc_matrix(Z)
     return Dataset(Z, [str(i) for i in xrange(T)], dataset.titles)
