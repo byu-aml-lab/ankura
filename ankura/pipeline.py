@@ -276,8 +276,15 @@ def combine_words(dataset, combine_filename, replace, tokenizer=None):
     The combine file is expected to contain a single token per line. The
     original data is unchanged.
     """
-    combinewords = _get_wordlist(combine_filename, tokenizer)
-    # TODO Finish combine_words
+    words = _get_wordlist(combine_filename, tokenizer)
+    index = sorted([dataset.vocab.index(v) for v in words])
+    sums = dataset.docwords[index, :].sum(axis=0)
+
+    keep = lambda i, v: i not in index[1:]
+    combined = _filter_vocab(dataset, keep)
+    combined.docwords[index[0], :] = sums
+    combined.vocab[index[0]] = replace
+    return combined
 
 
 def filter_rarewords(dataset, doc_threshold):

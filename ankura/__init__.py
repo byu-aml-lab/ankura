@@ -2,6 +2,7 @@
 
 from .pipeline import (read_uci, read_glob, read_file,
                        filter_stopwords, filter_rarewords, filter_commonwords,
+                       combine_words,
                        filter_smalldocs,
                        run_pipeline)
 from .anchor import gramschmidt_anchors, constraint_anchors
