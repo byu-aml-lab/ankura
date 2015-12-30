@@ -8,10 +8,15 @@ angular.module('anchorApp', [])
         $.get("/vocab", function(data) {
             ctrl.vocab = data.vocab;
         });    
+        ctrl.addAnchor = function() {
+            var anchorObj = {"anchors":[], "topic":[]};
+            ctrl.anchors.push(anchorObj);
+            initAutocomplete();
+        }
         //This function adds a new anchor (which is a new anchor word on a new line).
         //  It checks that the anchor word to be added is in the vocabulary.
         //  It also prompts the user to update the topics to get new words for the added anchor.
-        ctrl.addAnchor = function() {
+        ctrl.addAnchorWordOther = function() {
             $scope.$broadcast("autofillfix:update"); //Needed to make autofill and Angular work well together
             var lowercaseAnchor = $scope.newAnchor.toLowerCase();
             //We are checking to see if the new anchor word is in the vocabulary.
@@ -74,6 +79,23 @@ angular.module('anchorApp', [])
         ctrl.removeAnchor = function(index) {
             ctrl.anchors.splice(index, 1);
         }
+        //This function adds an anchor word when entered in via the input in the anchor's left column
+        ctrl.addAnchorWord = function(textForm, newAnchor) {
+            $scope.$broadcast("autofillfix:update"); //Needed to make autofill and Angular work well together
+            newAnchor.push(textForm.target.children[0].value);
+            textForm.target.children[0].value = "";
+        }
+
+        //This function deletes an anchor word (when you click on the little 'x' in the bubble)
+        ctrl.deleteWord = function(closeButton, array) {
+            var toClose = closeButton.target.parentNode.id;
+            $("#"+toClose).remove();
+            var index = array.indexOf(closeButton.target.parentNode.textContent.replace(/ ✖/, ""));
+            console.log(closeButton.target.parentNode.textContent.replace(/ ✖/, ""));
+            if (index !== -1) {
+                array.splice(index, 1);
+            }
+        }
         //This function only gets the topics when we have no current anchors.
         ctrl.getTopics = function() {
             $.get("/topics", function(data) {
@@ -108,11 +130,12 @@ angular.module('anchorApp', [])
             else {
                 ctrl.getTopics();
             }
+            initAutocomplete();
         }           
         //This initializes autocompletion for entering new anchor words
         var initAutocomplete = function() {
             $.get("/vocab", function(data) {
-                $(".addAnchorInputClean" ).autocomplete({
+                $(".anchorInput" ).autocomplete({
                     minLength: 3,
                     source: data.vocab
                 });
@@ -143,11 +166,6 @@ var getAnchorsArray = function(anchors, topics) {
     return tempAnchors;
 };
 
-//This function deleted an anchor word (when you click on the little 'x' in the bubble)
-var deleteWord = function(closeButton) {
-    var toClose = closeButton.target.parentNode.id;
-    $("#"+toClose).remove();
-}
 
 //All functions below here enable dragging and dropping
 //They could possibly be in another file and included?
@@ -179,7 +197,7 @@ var drop = function(ev) {
             $(ev.target).siblings(".anchorContainer")[0].appendChild(document.getElementById(data));
         }
         else if ($(ev.target).hasClass( "anchorInput" )) {
-            $(ev.target).parent().siblings(".anchorContainer")[0].appendChild(document.getElementById(data));
+            $(ev.target).parent().parent().siblings(".anchorContainer")[0].appendChild(document.getElementById(data));
         }
         else if ($(ev.target).hasClass( "anchor" )) {
             $(ev.target).children(".anchorContainer")[0].appendChild(document.getElementById(data));
@@ -203,7 +221,7 @@ var drop = function(ev) {
             $(ev.target).siblings(".anchorContainer")[0].appendChild(nodeCopy);
         }
         else if ($(ev.target).hasClass( "anchorInput" )) {
-            $(ev.target).parent().siblings(".anchorContainer")[0].appendChild(nodeCopy);
+            $(ev.target).parent().parent().siblings(".anchorContainer")[0].appendChild(nodeCopy);
         }
         else if ($(ev.target).hasClass( "anchor" )) {
             $(ev.target).children(".anchorContainer")[0].appendChild(nodeCopy);
@@ -221,8 +239,8 @@ var addDeleteButton = function(id) {
     var closeId = document.createAttribute("id");
     closeId.value = id;
     closeButton.setAttributeNode(closeId);
-    var closeClick = document.createAttribute("onclick");
-    closeClick.value = "deleteWord(event)";
+    var closeClick = document.createAttribute("ng-click");
+    closeClick.value = "ctrl.deleteWord($event, anchorObj.anchors)";
     closeButton.setAttributeNode(closeClick);
     return closeButton
 };

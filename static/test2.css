@@ -10,6 +10,7 @@ h4 {
 .anchorInput {
     width: 100%;
     border: none;
+    overflow: visible;
 }
 
 .anchorInput:focus {
@@ -19,7 +20,7 @@ h4 {
 .anchorInputContainer {
     display: block;
     overflow: hidden;
-    width: 100%;
+    min-width: 20px;
 }
 
 .topic {
