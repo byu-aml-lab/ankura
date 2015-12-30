@@ -38,7 +38,7 @@ def topic_request():
     topics = get_topics(dataset, anchors)
 
     topic_summary = []
-    for k in xrange(topics.shape[1]):
+    for k in range(topics.shape[1]):
         summary = []
         for word in numpy.argsort(topics[:, k])[-10:][::-1]:
             summary.append(dataset.vocab[word])

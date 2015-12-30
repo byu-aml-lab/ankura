@@ -13,7 +13,7 @@ following way:
                 (filter_rarewords, 20)]
     dataset = run_pipeline(pipeline)
 """
-import StringIO
+import io
 import glob
 import numpy
 import random
@@ -80,7 +80,7 @@ class Dataset(object):
         H_hat = numpy.zeros(vocab_size)
 
         # Construct H_tilde and H_hat
-        for j in xrange(H_tilde.indptr.size - 1):
+        for j in range(H_tilde.indptr.size - 1):
             # get indices of column j
             col_start = H_tilde.indptr[j]
             col_end = H_tilde.indptr[j + 1]
@@ -177,7 +177,7 @@ def read_uci(docwords_filename, vocab_filename):
             docwords[word - 1, doc - 1] = count
 
     # construct and return the Dataset
-    titles = [str(i) for i in xrange(num_docs)]
+    titles = [str(i) for i in range(num_docs)]
     return Dataset(docwords.tocsc(), vocab, titles)
 
 
@@ -199,12 +199,12 @@ def _build_dataset(docdata, tokenizer):
     # construct the docword matrix using the vocab map
     docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)), dtype='uint')
     for doc, counts in enumerate(docs):
-        for word, count in counts.iteritems():
+        for word, count in counts.items():
             docwords[word, doc] = count
 
     # convert vocab from a token to index map into a list of tokens
     vocab = {index: token for token, index in vocab.items()}
-    vocab = [vocab[index] for index in xrange(len(vocab))]
+    vocab = [vocab[index] for index in range(len(vocab))]
 
     # construct and return the Dataset
     return Dataset(docwords.tocsc(), vocab, titles)
@@ -218,7 +218,7 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
     function. The document titles are given by the corresponding filenames.
     """
     filenames = glob.glob(glob_pattern)
-    docdata = ((filename, open(filename)) for filename in filenames)
+    docdata = ((name, open(name, errors='replace')) for name in filenames)
     return _build_dataset(docdata, tokenizer)
 
 
@@ -231,7 +231,7 @@ def read_file(filename, tokenizer=tokenize.simple):
     the document
     """
     lines = (line.split(None, 1) for line in open(filename))
-    docdata = ((title, StringIO.StringIO(doc)) for title, doc in lines)
+    docdata = ((title, io.StringIO(doc)) for title, doc in lines)
     return _build_dataset(docdata, tokenizer)
 
 
@@ -336,7 +336,7 @@ def pregenerate_doc_tokens(dataset):
     function returns the original dataset so that it can be used inside a
     pipeline.
     """
-    for doc in xrange(dataset.num_docs):
+    for doc in range(dataset.num_docs):
         dataset.doc_tokens(doc)
     return dataset
 

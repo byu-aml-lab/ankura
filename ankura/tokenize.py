@@ -30,12 +30,16 @@ def news(doc_file, tokenizer=simple):
     header to be everything before the first empty line in the file. The
     remaining contents of the file are then tokenized.
     """
-    # skip header by finding first empty line
-    line = doc_file.readline()
-    while line.strip():
+    try:
+        # skip header by finding first empty line
         line = doc_file.readline()
-    # use tokenizer on what remains in file
-    return tokenizer(doc_file)
+        while line.strip():
+            line = doc_file.readline()
+        # use tokenizer on what remains in file
+        return tokenizer(doc_file)
+    except:
+        print(doc_file)
+        raise
 
 
 def html(doc_file, tokenizer=simple):

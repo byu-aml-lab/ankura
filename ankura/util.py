@@ -9,10 +9,10 @@ def pickle_cache(pickle_path):
     def _cache(data_func):
         def _load_data():
             if os.path.exists(pickle_path):
-                return pickle.load(open(pickle_path))
+                return pickle.load(open(pickle_path, 'rb'))
             else:
                 data = data_func()
-                pickle.dump(data, open(pickle_path, 'w'))
+                pickle.dump(data, open(pickle_path, 'wb'))
                 return data
         return _load_data
     return _cache
@@ -32,8 +32,7 @@ class memoize(object): # pylint: disable=invalid-name
 
 
 def _iscontainer(data):
-    return (isinstance(data, collections.Iterable) and
-            not isinstance(data, basestring))
+    return isinstance(data, collections.Iterable) and not isinstance(data, str)
 
 
 def tuplize(data, conversion=None):

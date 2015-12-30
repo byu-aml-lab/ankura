@@ -36,7 +36,7 @@ class NaiveBayes(object):
 
     def classify(self, data):
         """Returns the label with max posterior probability given the data"""
-        posts = [self._log_posterior(l, data) for l in xrange(len(self.labels))]
+        posts = [self._log_posterior(l, data) for l in range(len(self.labels))]
         return self.labels[numpy.argmax(posts)]
 
     def _log_posterior(self, label_index, data):
