@@ -133,7 +133,7 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
     """
     T = topics.shape[1]
     z = numpy.zeros(len(tokens))
-    counts = numpy.zeros(T, dtype='uint8')
+    counts = numpy.zeros(T)
 
     # init topics and topic counts
     for n in range(len(tokens)):
@@ -156,15 +156,14 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
                 converged = False
             counts[z_n] += 1
 
-    return counts
+    return counts.astype('uint')
 
 
 def topic_transform(topics, dataset, alpha=.01, rng=random):
     """Transforms a dataset to use topic assignments instead of tokens"""
     T = topics.shape[1]
-    Z = numpy.zeros((T, dataset.num_docs), dtype='uint8')
+    Z = numpy.zeros((T, dataset.num_docs), dtype='uint')
     for doc in range(dataset.num_docs):
-        counts = predict_topics(topics, dataset.doc_tokens(doc), alpha, rng)
-        Z[:, doc] = counts
+        Z[:, doc] = predict_topics(topics, dataset.doc_tokens(doc), alpha, rng)
     Z = scipy.sparse.csc_matrix(Z)
     return Dataset(Z, [str(i) for i in range(T)], dataset.titles)
