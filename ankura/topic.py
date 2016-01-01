@@ -150,7 +150,7 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
         converged = True
         for n, w_n in enumerate(tokens):
             counts[z[n]] -= 1
-            z_n = max(range(T), key=lambda t: _prob(w_n, t)) # pylint:disable=cell-var-from-loop
+            z_n = numpy.argmax([_prob(w_n, t) for t in range(T)])
             if z_n != z[n]:
                 z[n] = z_n
                 converged = False
