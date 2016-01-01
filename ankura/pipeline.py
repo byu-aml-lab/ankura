@@ -379,7 +379,7 @@ def train_test_split(dataset, train_percent=.75, rng=random):
     return _filter_vocab(train_data, keep), _filter_vocab(test_data, keep)
 
 
-def run_pipeline(pipeline):
+def run_pipeline(pipeline, append_pregenerate=True):
     """Runs an import pipeline consisting of a sequence of instructions
 
     Each instruction in the sequence should consist of another sequence giving
@@ -401,4 +401,6 @@ def run_pipeline(pipeline):
             dataset = transform[0](dataset, *transform[1:])
         except TypeError:
             dataset = transform(dataset)
+    if append_pregenerate:
+        dataset = pregenerate_doc_tokens(dataset)
     return dataset
