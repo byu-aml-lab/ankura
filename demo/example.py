@@ -18,9 +18,11 @@ def get_newsgroups():
     news_glob = '/local/jlund3/data/newsgroups/*/*'
     engl_stop = '/local/jlund3/data/stopwords/english.txt'
     news_stop = '/local/jlund3/data/stopwords/newsgroups.txt'
+    name_stop = '/local/jlund3/data/stopwords/malenames.txt'
     pipeline = [(ankura.read_glob, news_glob, ankura.tokenize.news),
                 (ankura.filter_stopwords, engl_stop),
                 (ankura.filter_stopwords, news_stop),
+                (ankura.combine_words, name_stop, '<name>'),
                 (ankura.filter_rarewords, 100),
                 (ankura.filter_commonwords, 1500)]
     dataset = ankura.run_pipeline(pipeline)
@@ -54,8 +56,8 @@ def main():
     """Runs the example code"""
     dataset = get_newsgroups()
 
-    # anchors = default_anchors()
-    anchors = constraint_anchors(dataset)
+    anchors = default_anchors()
+    # anchors = constraint_anchors(dataset)
 
     topics = get_topics(dataset, anchors)
 
