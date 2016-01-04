@@ -400,7 +400,10 @@ def run_pipeline(pipeline, append_pregenerate=True):
         try:
             dataset = transform[0](dataset, *transform[1:])
         except TypeError:
+            if not callable(transform):
+                raise
             dataset = transform(dataset)
+
     if append_pregenerate:
         dataset = pregenerate_doc_tokens(dataset)
     return dataset
