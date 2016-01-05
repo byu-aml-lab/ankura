@@ -21,6 +21,7 @@ h4 {
     display: block;
     overflow: hidden;
     min-width: 20px;
+    max-width:100%;
 }
 
 .topic {
