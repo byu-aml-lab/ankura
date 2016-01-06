@@ -229,6 +229,12 @@ var drop = function(ev) {
     }
 };
 
+//used to delete words that are copies (because they can't access the function in the Angular scope)
+var deleteWord = function(ev) {
+    console.log($("#"+ev.target.id).parent()[0]);
+    $("#"+ev.target.id).parent()[0].remove();
+}
+
 //Adds a delete button (little 'x' on the right side) of an anchor word
 var addDeleteButton = function(id) {
     var closeButton = document.createElement("span");
@@ -239,8 +245,8 @@ var addDeleteButton = function(id) {
     var closeId = document.createAttribute("id");
     closeId.value = id;
     closeButton.setAttributeNode(closeId);
-    var closeClick = document.createAttribute("ng-click");
-    closeClick.value = "ctrl.deleteWord($event, anchorObj.anchors)";
+    var closeClick = document.createAttribute("onclick");
+    closeClick.value = "deleteWord(event)";
     closeButton.setAttributeNode(closeClick);
     return closeButton
 };
