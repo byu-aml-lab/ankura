@@ -113,7 +113,15 @@ angular.module('anchorApp', [])
                 textForm.target.children[0].value = "";
             }
             else {
-                
+                $("#"+textForm.target.id).popover({
+                    placement:'top',
+                    trigger:'manual',
+                    html:true,
+                    content:'Invalid anchor word.'
+                }).popover('show');
+                $timeout(function() {
+                    $("#"+textForm.target.id).popover('hide');
+                }, 2000);
             }
         }
 
@@ -121,8 +129,7 @@ angular.module('anchorApp', [])
         ctrl.deleteWord = function(closeButton, array) {
             var toClose = closeButton.target.parentNode.id;
             $("#"+toClose).remove();
-            var index = array.indexOf(closeButton.target.parentNode.textContent.replace(/ ✖/, ""));
-            console.log(closeButton.target.parentNode.textContent.replace(/ ✖/, ""));
+            var index = array.indexOf(closeButton.target.parentNode.textContent.replace(/✖/, "").replace(/\s/g, ''));
             if (index !== -1) {
                 array.splice(index, 1);
             }
@@ -240,8 +247,6 @@ var drop = function(ev) {
         nodeCopy.id = data + "copy" + copyId++;
         var closeButton = addDeleteButton(nodeCopy.id + "close");
         nodeCopy.appendChild(closeButton);
-        console.log(ev.target);
-        console.log($(ev.target));
         if($(ev.target).hasClass( "droppable" )) {
             ev.target.appendChild(nodeCopy);
         }
@@ -262,7 +267,6 @@ var drop = function(ev) {
 
 //used to delete words that are copies (because they can't access the function in the Angular scope)
 var deleteWord = function(ev) {
-    console.log($("#"+ev.target.id).parent()[0]);
     $("#"+ev.target.id).parent()[0].remove();
 }
 

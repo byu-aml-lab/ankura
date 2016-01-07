@@ -1,9 +1,11 @@
 """Functions for recovering anchor based topics from a coocurrence matrix"""
 
+import scipy.sparse
 import numpy
 import random
 
 from .anchor import anchor_vectors
+from .pipeline import Dataset
 
 
 def logsum_exp(y):
@@ -95,12 +97,12 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
     A = numpy.zeros((V, K))
 
     P_w = numpy.diag(Q.sum(axis=1))
-    for word in xrange(V):
+    for word in range(V):
         if numpy.isnan(P_w[word, word]):
             P_w[word, word] = 1e-16
 
     # normalize the rows of Q to get Q_prime
-    for word in xrange(V):
+    for word in range(V):
         Q[word, :] = Q[word, :] / Q[word, :].sum()
 
     # compute normalized anchors X, and precompute X * X.T
@@ -108,7 +110,7 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
     X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
     XX = numpy.dot(X, X.transpose())
 
-    for word in xrange(V):
+    for word in range(V):
         alpha = exponentiated_gradient(Q[word, :], X, XX, epsilon)
         if numpy.isnan(alpha).any():
             alpha = numpy.ones(K) / K
@@ -116,7 +118,7 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
 
     # Use Bayes rule to compute topic matrix
     A = numpy.matrix(P_w) * numpy.matrix(A) # TODO is matrix conversion needed?
-    for k in xrange(K):
+    for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()
 
     return numpy.array(A)
@@ -134,13 +136,13 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
     counts = numpy.zeros(T)
 
     # init topics and topic counts
-    for n in xrange(len(tokens)):
+    for n in range(len(tokens)):
         z_n = rng.randrange(T)
         z[n] = z_n
         counts[z_n] += 1
 
     def _prob(w_n, t):
-        return (alpha * counts[t]) * topics[w_n, t]
+        return (alpha + counts[t]) * topics[w_n, t]
 
     # iterate until no further changes
     converged = False
@@ -148,11 +150,20 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
         converged = True
         for n, w_n in enumerate(tokens):
             counts[z[n]] -= 1
-            z_n = max(xrange(T), key=lambda t: _prob(w_n, t)) # pylint:disable=cell-var-from-loop
+            z_n = numpy.argmax([_prob(w_n, t) for t in range(T)])
             if z_n != z[n]:
                 z[n] = z_n
                 converged = False
             counts[z_n] += 1
 
-    # TODO Switch to counts to be consistent with dataset.M?
-    return z
+    return counts.astype('uint')
+
+
+def topic_transform(topics, dataset, alpha=.01, rng=random):
+    """Transforms a dataset to use topic assignments instead of tokens"""
+    T = topics.shape[1]
+    Z = numpy.zeros((T, dataset.num_docs), dtype='uint')
+    for doc in range(dataset.num_docs):
+        Z[:, doc] = predict_topics(topics, dataset.doc_tokens(doc), alpha, rng)
+    Z = scipy.sparse.csc_matrix(Z)
+    return Dataset(Z, [str(i) for i in range(T)], dataset.titles)

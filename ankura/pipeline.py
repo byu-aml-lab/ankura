@@ -13,13 +13,14 @@ following way:
                 (filter_rarewords, 20)]
     dataset = run_pipeline(pipeline)
 """
-import StringIO
+import io
 import glob
 import numpy
 import random
 import scipy.sparse
 
-from ankura import tokenize
+from . import tokenize
+# from ankura import tokenize
 
 
 class Dataset(object):
@@ -79,7 +80,7 @@ class Dataset(object):
         H_hat = numpy.zeros(vocab_size)
 
         # Construct H_tilde and H_hat
-        for j in xrange(H_tilde.indptr.size - 1):
+        for j in range(H_tilde.indptr.size - 1):
             # get indices of column j
             col_start = H_tilde.indptr[j]
             col_end = H_tilde.indptr[j + 1]
@@ -176,7 +177,7 @@ def read_uci(docwords_filename, vocab_filename):
             docwords[word - 1, doc - 1] = count
 
     # construct and return the Dataset
-    titles = [str(i) for i in xrange(num_docs)]
+    titles = [str(i) for i in range(num_docs)]
     return Dataset(docwords.tocsc(), vocab, titles)
 
 
@@ -198,12 +199,12 @@ def _build_dataset(docdata, tokenizer):
     # construct the docword matrix using the vocab map
     docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)), dtype='uint')
     for doc, counts in enumerate(docs):
-        for word, count in counts.iteritems():
+        for word, count in counts.items():
             docwords[word, doc] = count
 
     # convert vocab from a token to index map into a list of tokens
     vocab = {index: token for token, index in vocab.items()}
-    vocab = [vocab[index] for index in xrange(len(vocab))]
+    vocab = [vocab[index] for index in range(len(vocab))]
 
     # construct and return the Dataset
     return Dataset(docwords.tocsc(), vocab, titles)
@@ -217,7 +218,7 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
     function. The document titles are given by the corresponding filenames.
     """
     filenames = glob.glob(glob_pattern)
-    docdata = ((filename, open(filename)) for filename in filenames)
+    docdata = ((name, open(name, errors='replace')) for name in filenames)
     return _build_dataset(docdata, tokenizer)
 
 
@@ -230,7 +231,7 @@ def read_file(filename, tokenizer=tokenize.simple):
     the document
     """
     lines = (line.split(None, 1) for line in open(filename))
-    docdata = ((title, StringIO.StringIO(doc)) for title, doc in lines)
+    docdata = ((title, io.StringIO(doc)) for title, doc in lines)
     return _build_dataset(docdata, tokenizer)
 
 
@@ -251,18 +252,39 @@ def _filter_vocab(dataset, filter_func):
     return Dataset(docwords, vocab.tolist(), dataset.titles)
 
 
+def _get_wordlist(filename, tokenizer):
+    if tokenizer:
+        return set(tokenizer(open(filename)))
+    else:
+        return {word.strip() for word in open(filename)}
+
+
 def filter_stopwords(dataset, stopword_filename, tokenizer=None):
     """Filters out a set of stopwords from a dataset
 
     The stopwords file is expected to contain a single stopword token per line.
     The original data is unchanged.
     """
-    if tokenizer:
-        stopwords = set(tokenizer(open(stopword_filename)))
-    else:
-        stopwords = {word.strip() for word in open(stopword_filename)}
+    stopwords = _get_wordlist(stopword_filename, tokenizer)
     keep = lambda i, v: v not in stopwords
     return _filter_vocab(dataset, keep)
+
+
+def combine_words(dataset, combine_filename, replace, tokenizer=None):
+    """Combines a set of words into a single token
+
+    The combine file is expected to contain a single token per line. The
+    original data is unchanged.
+    """
+    words = _get_wordlist(combine_filename, tokenizer)
+    index = sorted([dataset.vocab.index(v) for v in words])
+    sums = dataset.docwords[index, :].sum(axis=0)
+
+    keep = lambda i, v: i not in index[1:]
+    combined = _filter_vocab(dataset, keep)
+    combined.docwords[index[0], :] = sums
+    combined.vocab[index[0]] = replace
+    return combined
 
 
 def filter_rarewords(dataset, doc_threshold):
@@ -321,7 +343,7 @@ def pregenerate_doc_tokens(dataset):
     function returns the original dataset so that it can be used inside a
     pipeline.
     """
-    for doc in xrange(dataset.num_docs):
+    for doc in range(dataset.num_docs):
         dataset.doc_tokens(doc)
     return dataset
 
@@ -357,7 +379,7 @@ def train_test_split(dataset, train_percent=.75, rng=random):
     return _filter_vocab(train_data, keep), _filter_vocab(test_data, keep)
 
 
-def run_pipeline(pipeline):
+def run_pipeline(pipeline, append_pregenerate=True):
     """Runs an import pipeline consisting of a sequence of instructions
 
     Each instruction in the sequence should consist of another sequence giving
@@ -378,5 +400,10 @@ def run_pipeline(pipeline):
         try:
             dataset = transform[0](dataset, *transform[1:])
         except TypeError:
+            if not callable(transform):
+                raise
             dataset = transform(dataset)
+
+    if append_pregenerate:
+        dataset = pregenerate_doc_tokens(dataset)
     return dataset
