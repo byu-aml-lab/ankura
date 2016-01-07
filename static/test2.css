@@ -8,7 +8,7 @@ h4 {
 }
 
 .anchorInput {
-    width: 100%;
+    max-width: 100%;
     border: none;
     overflow: visible;
 }
@@ -17,11 +17,15 @@ h4 {
     outline: 0;
 }
 
+.anchorInputForm {
+    max-width: 100%;
+}
+
 .anchorInputContainer {
     display: block;
     overflow: hidden;
     min-width: 20px;
-    max-width:100%;
+    max-width: 100%;
 }
 
 .topic {

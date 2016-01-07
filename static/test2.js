@@ -82,8 +82,39 @@ angular.module('anchorApp', [])
         //This function adds an anchor word when entered in via the input in the anchor's left column
         ctrl.addAnchorWord = function(textForm, newAnchor) {
             $scope.$broadcast("autofillfix:update"); //Needed to make autofill and Angular work well together
-            newAnchor.push(textForm.target.children[0].value);
-            textForm.target.children[0].value = "";
+            var lowercaseAnchor = textForm.target.children[0].value.toLowerCase();
+            //We are checking to see if the new anchor word is in the vocabulary.
+            //  If it is, we add a new anchor and prompt to update topics.
+            //  If it is not, we prompt to add a valid anchor.
+            var inVocab = false;
+            for (var i = 0; i < ctrl.vocab.length; i++) {
+                if (ctrl.vocab[i] === lowercaseAnchor) inVocab = true;
+             }
+            if (inVocab) {
+                newAnchor.push(lowercaseAnchor);
+                //This timeout ensures that the added anchor is put in before the popover appears.
+                //  If removed, the popover will appear too high above the "Update Topics" button.
+                $timeout(function() {
+                    $(".updateTopicsButtonClean").popover({
+                        placement:'top',
+                        trigger:'manual',
+                        html:true,
+                        content:'To see topic words for new anchors, press "Update Topics" here.'
+                    }).popover('show')
+                        .addClass("updateTopicsButtonDirty")
+                        .removeClass("updateTopicsButtonClean");
+                    //This timeout indicates how long the popover above will stay visible for.
+                    $timeout(function() {
+                        $(".updateTopicsButtonDirty").popover('hide')
+                            .addClass("updateTopicsButtonClean")
+                            .removeClass("updateTopicsButtonDirty");
+                    }, 5000);
+                }, 20);
+                textForm.target.children[0].value = "";
+            }
+            else {
+                
+            }
         }
 
         //This function deletes an anchor word (when you click on the little 'x' in the bubble)
@@ -112,8 +143,8 @@ angular.module('anchorApp', [])
             //The server throws an error if there are no anchors, so we want to get new anchors if needed.
             if ($(".anchorContainer").length !== 0) {    
                 $(".anchorContainer").each(function() {
-                    var value = $(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
-                    value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\s\u2716/g, '');
+                    var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
+                    value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\u2716/g, '');
                     if (value === "") {
                         return true;
                     }
