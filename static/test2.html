@@ -26,7 +26,7 @@
               </span>
             </span>
             <span class="anchorInputContainer">
-              <form class="anchorInputForm" ng-submit="ctrl.addAnchorWord($event, anchorObj.anchors)">
+              <form class="anchorInputForm" id="anchorInputForm{{index}}" ng-submit="ctrl.addAnchorWord($event, anchorObj.anchors)">
                 <input class="anchorInput" type="text" ng-submit="ctrl.addAnchorWord(this)"></input>
               </form>
             </span>
