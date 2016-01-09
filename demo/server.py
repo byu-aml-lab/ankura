@@ -80,6 +80,16 @@ def serveTest2CSS():
 def serveTest2JS():
     return flask.send_from_directory('../static', 'test2.js')
 
+@app.route('/vocab')
+def get_vocab():
+    dataset = get_newsgroups()
+    return flask.jsonify(vocab=dataset.vocab)
+
+@app.route('/cooccurrences')
+def get_cooccurrences():
+    dataset = get_newsgroups()
+    return flask.jsonify(cooccurrences=dataset.Q.tolist())
+
 if __name__ == '__main__':
     default_anchors()
     app.run(debug=True)
