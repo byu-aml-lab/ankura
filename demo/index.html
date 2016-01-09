@@ -30,12 +30,13 @@
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
     <script type="text/javascript">
       function update(data) {
+        console.log(data);
         $("#topics pre").html(
           JSON.stringify(data["topics"])
             .replace(/\],/g, "\n")
             .replace(/["\[\]]/g, "")
         )
-      }
+      };
       $(function() {
         $.get("/topics", function(data) {
           $("#anchors").val(JSON.stringify(data["anchors"]).replace(/,/g, ",\n"));
@@ -43,6 +44,7 @@
         });
         $("#anchor-form").submit(function(e) {
           e.preventDefault();
+          console.log($("#anchors").val());
           $.get("/topics", {anchors: $("#anchors").val()}, update);
         });
       });
