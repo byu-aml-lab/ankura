@@ -5,16 +5,26 @@ This is really a proof of concept and is ugly as sin.
 import flask
 import json
 import numpy
+import numbers
 
 import ankura
 from demo.example import get_newsgroups, default_anchors, get_topics
 
 app = flask.Flask(__name__, static_url_path='')
 
+
+def convert_anchor(dataset, anchor):
+    """Converts an anchor it its integer index"""
+    if isinstance(anchor, numbers.Integral):
+        return anchor
+    else:
+        return dataset.vocab.index(anchor)
+
+
 @ankura.util.memoize
 def reindex_anchors(dataset, anchors):
     """Converts any tokens in a set of anchors to the index of token"""
-    conversion = lambda t: t if isinstance(t, int) else dataset.vocab.index(t)
+    conversion = lambda t: convert_anchor(dataset, t)
     return ankura.util.tuplize(anchors, conversion)
 
 
@@ -56,7 +66,7 @@ def topic_request():
 @app.route('/')
 def root():
     """Serves up the single page app which demos interactive topics"""
-    return flask.send_from_directory('.', 'index.html')
+    return flask.send_file('index.html')
 
 @app.route('/test2')
 def serveTest2():
