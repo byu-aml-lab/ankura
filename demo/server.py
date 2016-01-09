@@ -68,6 +68,27 @@ def root():
     """Serves up the single page app which demos interactive topics"""
     return flask.send_file('index.html')
 
+@app.route('/test2')
+def serveTest2():
+    return flask.send_from_directory('../static', 'test2.html')
+
+@app.route('/test2.css')
+def serveTest2CSS():
+    return flask.send_from_directory('../static', 'test2.css')
+
+@app.route('/test2.js')
+def serveTest2JS():
+    return flask.send_from_directory('../static', 'test2.js')
+
+@app.route('/vocab')
+def get_vocab():
+    dataset = get_newsgroups()
+    return flask.jsonify(vocab=dataset.vocab)
+
+@app.route('/cooccurrences')
+def get_cooccurrences():
+    dataset = get_newsgroups()
+    return flask.jsonify(cooccurrences=dataset.Q.tolist())
 
 if __name__ == '__main__':
     default_anchors()
