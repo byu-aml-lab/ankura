@@ -58,6 +58,17 @@ def root():
     """Serves up the single page app which demos interactive topics"""
     return flask.send_from_directory('.', 'index.html')
 
+@app.route('/test2')
+def serveTest2():
+    return flask.send_from_directory('../static', 'test2.html')
+
+@app.route('/test2.css')
+def serveTest2CSS():
+    return flask.send_from_directory('../static', 'test2.css')
+
+@app.route('/test2.js')
+def serveTest2JS():
+    return flask.send_from_directory('../static', 'test2.js')
 
 if __name__ == '__main__':
     default_anchors()

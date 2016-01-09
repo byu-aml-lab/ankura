@@ -1,4 +1,4 @@
-angular.module('anchorApp', [])
+var app = angular.module('anchorApp', [])
     .controller('anchorController', function($scope, $timeout) {
         var ctrl = this;
         //This holds all of the anchor objects.
@@ -7,7 +7,7 @@ angular.module('anchorApp', [])
         ctrl.vocab;
         $.get("/vocab", function(data) {
             ctrl.vocab = data.vocab;
-        });    
+        });
         ctrl.addAnchor = function() {
             var anchorObj = {"anchors":[], "topic":[]};
             ctrl.anchors.push(anchorObj);
@@ -52,7 +52,7 @@ angular.module('anchorApp', [])
                         $(".updateTopicsButtonDirty").popover('hide')
                             .addClass("updateTopicsButtonClean")
                             .removeClass("updateTopicsButtonDirty");
-                    }, 5000);
+                    }, 4000);
                 }, 20);
             }
             else {
@@ -148,7 +148,7 @@ angular.module('anchorApp', [])
         ctrl.getNewTopics = function() {
             var currentAnchors = [];
             //The server throws an error if there are no anchors, so we want to get new anchors if needed.
-            if ($(".anchorContainer").length !== 0) {    
+            if ($(".anchorContainer").length !== 0) {
                 $(".anchorContainer").each(function() {
                     var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
                     value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\u2716/g, '');
@@ -162,14 +162,14 @@ angular.module('anchorApp', [])
                 $.get("/topics", {anchors: getParams}, function(data) {
                     ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
                     $scope.$apply();
-                }); 
+                });
             }
             //This gets new anchors if we need them.
             else {
                 ctrl.getTopics();
             }
             initAutocomplete();
-        }           
+        }
         //This initializes autocompletion for entering new anchor words
         var initAutocomplete = function() {
             $.get("/vocab", function(data) {
