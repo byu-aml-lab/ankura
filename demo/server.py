@@ -68,17 +68,33 @@ def root():
     """Serves up the single page app which demos interactive topics"""
     return flask.send_file('index.html')
 
-@app.route('/test2')
-def serveTest2():
-    return flask.send_from_directory('../static', 'test2.html')
+@app.route('/python')
+def servePythonITM():
+    return flask.send_from_directory('static', 'python.html')
 
-@app.route('/test2.css')
-def serveTest2CSS():
-    return flask.send_from_directory('../static', 'test2.css')
+@app.route('/python.css')
+def servePythonITMCSS():
+    return flask.send_from_directory('static', 'python.css')
 
-@app.route('/test2.js')
-def serveTest2JS():
-    return flask.send_from_directory('../static', 'test2.js')
+@app.route('/python.js')
+def servePythonITMJS():
+    return flask.send_from_directory('static', 'python.js')
+
+@app.route('/test3')
+def serveTest3():
+    return flask.send_from_directory('static', 'test3.html')
+
+@app.route('/test3.css')
+def serveTest3CSS():
+    return flask.send_from_directory('static', 'test3.css')
+
+@app.route('/test3.js')
+def serveTest3JS():
+    return flask.send_from_directory('static', 'test3.js')
+
+@app.route('/linear.js')
+def serveLinearJS():
+    return flask.send_from_directory('static', 'linear.js')
 
 @app.route('/vocab')
 def get_vocab():
@@ -90,6 +106,11 @@ def get_cooccurrences():
     dataset = get_newsgroups()
     return flask.jsonify(cooccurrences=dataset.Q.tolist())
 
+@app.route('/spinner.gif')
+def getSpinner():
+    return flask.send_from_directory('static', 'spinner.gif')
+
 if __name__ == '__main__':
     default_anchors()
-    app.run(debug=True)
+    app.run(debug=True,
+            host='0.0.0.0')

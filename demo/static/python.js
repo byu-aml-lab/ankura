@@ -158,11 +158,17 @@ var app = angular.module('anchorApp', [])
                     var tempArray = value.split(",");
                     currentAnchors.push(tempArray);
                 });
-                var getParams = JSON.stringify(currentAnchors);
-                $.get("/topics", {anchors: getParams}, function(data) {
-                    ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
-                    $scope.$apply();
-                });
+                console.log(currentAnchors);
+                if (currentAnchors.length !== 0) {
+                    var getParams = JSON.stringify(currentAnchors);
+                    $.get("/topics", {anchors: getParams}, function(data) {
+                        ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
+                        $scope.$apply();
+                    });
+                }
+                else {
+                    ctrl.getTopics();
+                }
             }
             //This gets new anchors if we need them.
             else {

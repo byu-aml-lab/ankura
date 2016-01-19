@@ -1,13 +1,19 @@
-var module = angular.module('anchorApp', [])
+var app = angular.module('anchorApp', [])
     .controller('anchorController', function($scope, $timeout) {
         var ctrl = this;
+        ctrl.loading = true;
         //This holds all of the anchor objects.
         //  An anchor holds both anchor words for a single anchor and topic words that describe that anchor.
         ctrl.anchors = [];
         ctrl.vocab;
+        ctrl.cooccurrences;
         $.get("/vocab", function(data) {
             ctrl.vocab = data.vocab;
-        });    
+        });
+        $.get("/cooccurrences", function(data) {
+            ctrl.cooccurrences = data.cooccurrences;
+            ctrl.loading = false;
+        })
         ctrl.addAnchor = function() {
             var anchorObj = {"anchors":[], "topic":[]};
             ctrl.anchors.push(anchorObj);
@@ -52,7 +58,7 @@ var module = angular.module('anchorApp', [])
                         $(".updateTopicsButtonDirty").popover('hide')
                             .addClass("updateTopicsButtonClean")
                             .removeClass("updateTopicsButtonDirty");
-                    }, 5000);
+                    }, 4000);
                 }, 20);
             }
             else {
@@ -82,38 +88,77 @@ var module = angular.module('anchorApp', [])
         //This function adds an anchor word when entered in via the input in the anchor's left column
         ctrl.addAnchorWord = function(textForm, newAnchor) {
             $scope.$broadcast("autofillfix:update"); //Needed to make autofill and Angular work well together
-            newAnchor.push(textForm.target.children[0].value);
-            textForm.target.children[0].value = "";
+            var lowercaseAnchor = textForm.target.children[0].value.toLowerCase();
+            //We are checking to see if the new anchor word is in the vocabulary.
+            //  If it is, we add a new anchor and prompt to update topics.
+            //  If it is not, we prompt to add a valid anchor.
+            var inVocab = false;
+            for (var i = 0; i < ctrl.vocab.length; i++) {
+                if (ctrl.vocab[i] === lowercaseAnchor) inVocab = true;
+             }
+            if (inVocab) {
+                newAnchor.push(lowercaseAnchor);
+                //This timeout ensures that the added anchor is put in before the popover appears.
+                //  If removed, the popover will appear too high above the "Update Topics" button.
+                $timeout(function() {
+                    $(".updateTopicsButtonClean").popover({
+                        placement:'top',
+                        trigger:'manual',
+                        html:true,
+                        content:'To see topic words for new anchors, press "Update Topics" here.'
+                    }).popover('show')
+                        .addClass("updateTopicsButtonDirty")
+                        .removeClass("updateTopicsButtonClean");
+                    //This timeout indicates how long the popover above will stay visible for.
+                    $timeout(function() {
+                        $(".updateTopicsButtonDirty").popover('hide')
+                            .addClass("updateTopicsButtonClean")
+                            .removeClass("updateTopicsButtonDirty");
+                    }, 5000);
+                }, 20);
+                textForm.target.children[0].value = "";
+            }
+            else {
+                $("#"+textForm.target.id).popover({
+                    placement:'top',
+                    trigger:'manual',
+                    html:true,
+                    content:'Invalid anchor word.'
+                }).popover('show');
+                $timeout(function() {
+                    $("#"+textForm.target.id).popover('hide');
+                }, 2000);
+            }
         }
 
         //This function deletes an anchor word (when you click on the little 'x' in the bubble)
         ctrl.deleteWord = function(closeButton, array) {
             var toClose = closeButton.target.parentNode.id;
             $("#"+toClose).remove();
-            var index = array.indexOf(closeButton.target.parentNode.textContent.replace(/ ✖/, ""));
-            console.log(closeButton.target.parentNode.textContent.replace(/ ✖/, ""));
+            var index = array.indexOf(closeButton.target.parentNode.textContent.replace(/✖/, "").replace(/\s/g, ''));
             if (index !== -1) {
                 array.splice(index, 1);
             }
         }
         //This function only gets the topics when we have no current anchors.
-        ctrl.getTopics = function() {
+        ctrl.getBaseTopics = function() {
             $.get("/topics", function(data) {
                 ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
                 $scope.$apply();
             });
         }
         //We actually call the above function here, so we get the original topics
-        ctrl.getTopics();
+        ctrl.getBaseTopics();
         //This function takes all anchors from the left column and gets their new topic words.
         //  It then repaints the page to include the new topic words.
         ctrl.getNewTopics = function() {
             var currentAnchors = [];
-            //The server throws an error if there are no anchors, so we want to get new anchors if needed.
-            if ($(".anchorContainer").length !== 0) {    
+            //The server throws an error if there are no anchors,
+            //  so we want to get new anchors if needed.
+            if ($(".anchorContainer").length !== 0) {
                 $(".anchorContainer").each(function() {
-                    var value = $(this).html().replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
-                    value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\s\u2716/g, '');
+                    var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
+                    value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\u2716/g, '');
                     if (value === "") {
                         return true;
                     }
@@ -124,40 +169,28 @@ var module = angular.module('anchorApp', [])
                 $.get("/topics", {anchors: getParams}, function(data) {
                     ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
                     $scope.$apply();
-                }); 
+                });
             }
             //This gets new anchors if we need them.
             else {
-                ctrl.getTopics();
+                ctrl.getBaseTopics();
             }
             initAutocomplete();
-        }           
+        }
+        // Performs a topic request using current anchors
+        // cooccMatrix is the cooccurrences matrix, vocab is the vocabulary
+        ctrl.topicRequest = function(cooccMatrix, vocab) {
+            linear.recoverTopics(cooccMatrix, ctrl.anchors);
+        }
         //This initializes autocompletion for entering new anchor words
         var initAutocomplete = function() {
-            $.get("/vocab", function(data) {
-                $(".anchorInput" ).autocomplete({
-                    minLength: 3,
-                    source: data.vocab
-                });
+            $(".anchorInput" ).autocomplete({
+                minLength: 3,
+                source: ctrl.vocab
             });
         };
-        initAutocomplete();
-        //This function returns an array of anchor objects from arrays of anchors and topics.
-        //Anchor objects hold both anchor words and topic words related to the anchor words.
-        var getAnchorsArray = function(anchors, topics) {
-            var tempAnchors = [];
-            for (var i = 0; i < anchors.length; i++) {
-                anchor = anchors[i];
-                var topic = topics[i];
-                tempAnchors.push({"anchors":anchor, "topic":topic});
-            }
-            return tempAnchors;
-        };
-        $scope.dropped = function(dragEl, dropEl) {
-            var drag = angular.element(dragEl);
-            var drop = angular.element(dropEl);
-            console.log(drag + " was dropped on " + drop);
-        }
+        $timeout(function() {initAutocomplete();}, 500);
+        $timeout(function() {ctrl.topicRequest(ctrl.cooccurrences, ctrl.vocab);}, 10000);
     }).directive("autofillfix", function() {
         //This is required because of some problem between Angular and autofill
         return {
@@ -169,88 +202,22 @@ var module = angular.module('anchorApp', [])
             }
         }
     });
-    module.directive("draggable", ['$rootScope', function($rootScope) {
-        return {
-            restrict: 'A',
-            link: function(scope, el, attrs, controller) {
-                angular.element(el).attr("draggable", "true");
-                
-                var id = angular.element(el).attr("id");
-                el.bind("dragstart", function(e) {
-                    console.log("Drag started");
-                    e.dataTransfer.setData('text', angular.element(el).attr("id"));
-                    console.log(e.dataTransfer.getData('text'));
-                    $rootScope.$emit("drag-start");
-                });
-                
-                
-                el.bind("dragend", function(e) {
-                    $rootScope.$emit("drag-end");
-                });
-            }
-        }
-    }]);
-    module.directive('dropTarget', ['$rootScope', function($rootScope) {
-        return {
-            restrict: 'A',
-            scope: {
-                onDrop: '&'
-            },
-            link: function(scope, el, attrs, controller) {
-                var id = angular.element(el).attr("id");
 
-                el.bind("dragover", function(e) {
-                    if (e.preventDefault) {
-                        e.preventDefault();
-                    }
-                    if (e.stopPropagation) {
-                        e.stopPropagation();
-                    }
-
-                    e.dataTransfer.dropEffect = 'move';
-                    return false;
-                });
-
-                el.bind("dragenter", function(e) {
-                    angular.element(e.target).addClass('over');
-                });
-
-                el.bind("dragleave", function(e) {
-                    angular.element(e.target).removeClass('over');
-                });
-
-                el.bind("drop", function(e) {
-                    console.log(e);
-                    if (e.preventDefault) {
-                        e.preventDefault();
-                    }
-                    if (e.stopPropagation) {
-                        e.stopPropagation();
-                    }
-
-                    var data = e.dataTransfer.getData("text");
-                    var dest = document.getElementById(id);
-                    var src = document.getElementById(data);
-
-                    scope.onDrop({dragEl: src, dropEl: dest});
-                });
-
-                $rootScope.$on("drag-start", function() {
-                    var el = document.getElementById(id);
-                    angular.element(el).addClass("target");
-                });
-
-                $rootScope.$on("drag-end", function() {
-                    var el = document.getElementById(id);
-                    angular.element(el).removeClass("target");
-                    angular.element(el).removeClass("over");
-                });
-            }
-        }
-    }]);
+//This function returns an array of anchor objects from arrays of anchors and topics.
+//Anchor objects hold both anchor words and topic words related to the anchor words.
+var getAnchorsArray = function(anchors, topics) {
+    var tempAnchors = [];
+    for (var i = 0; i < anchors.length; i++) {
+        anchor = anchors[i];
+        var topic = topics[i];
+        tempAnchors.push({"anchors":anchor, "topic":topic});
+    }
+    return tempAnchors;
+};
 
 
 //All functions below here enable dragging and dropping
+//They could possibly be in another file and included?
 
 var allowDrop = function(ev) {
     ev.preventDefault();
@@ -291,8 +258,6 @@ var drop = function(ev) {
         nodeCopy.id = data + "copy" + copyId++;
         var closeButton = addDeleteButton(nodeCopy.id + "close");
         nodeCopy.appendChild(closeButton);
-        console.log(ev.target);
-        console.log($(ev.target));
         if($(ev.target).hasClass( "droppable" )) {
             ev.target.appendChild(nodeCopy);
         }
@@ -311,6 +276,11 @@ var drop = function(ev) {
     }
 };
 
+//used to delete words that are copies (because they can't access the function in the Angular scope)
+var deleteWord = function(ev) {
+    $("#"+ev.target.id).parent()[0].remove();
+}
+
 //Adds a delete button (little 'x' on the right side) of an anchor word
 var addDeleteButton = function(id) {
     var closeButton = document.createElement("span");
@@ -321,8 +291,8 @@ var addDeleteButton = function(id) {
     var closeId = document.createAttribute("id");
     closeId.value = id;
     closeButton.setAttributeNode(closeId);
-    var closeClick = document.createAttribute("ng-click");
-    closeClick.value = "ctrl.deleteWord($event, anchorObj.anchors)";
+    var closeClick = document.createAttribute("onclick");
+    closeClick.value = "deleteWord(event)";
     closeButton.setAttributeNode(closeClick);
     return closeButton
 };
