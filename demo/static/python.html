@@ -5,11 +5,13 @@
     <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
     <link href="python.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular.min.js"></script>
     <script type="text/javascript" src="http://www.numericjs.com/lib/numeric-1.2.6.min.js"></script>
     <script type="text/javascript" src="python.js"></script>
   </head>
   <body ng-controller="anchorController as ctrl">
+    <div class="loading" ng-show="ctrl.loading"><img class="loadingImage" src="spinner.gif"/></div>
     <div class="container">
         <div class="row">
             <div class="col-sm-3"><h4>Anchor Words</h4></div>
@@ -46,7 +48,6 @@
         <button type="submit" class="btn btn-primary btn-sm updateTopicsButtonClean">Update Topics</button>
       </form>
     </div>
-    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
   </body>

@@ -161,8 +161,10 @@ var app = angular.module('anchorApp', [])
                 console.log(currentAnchors);
                 if (currentAnchors.length !== 0) {
                     var getParams = JSON.stringify(currentAnchors);
+                    ctrl.loading = true;
                     $.get("/topics", {anchors: getParams}, function(data) {
                         ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
+                        ctrl.loading = false;
                         $scope.$apply();
                     });
                 }
@@ -197,6 +199,7 @@ var app = angular.module('anchorApp', [])
             }
         }
     });
+
 
 //This function returns an array of anchor objects from arrays of anchors and topics.
 //Anchor objects hold both anchor words and topic words related to the anchor words.
