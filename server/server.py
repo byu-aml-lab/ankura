@@ -90,26 +90,26 @@ def topic_request():
 
 
 @app.route('/')
-def servePythonITM():
+def serve_itm():
     """Serves the Interactive Topic Modeling UI"""
     return flask.send_from_directory('static', 'index.html')
 
 @app.route('/style/stylesheet.css')
-def servePythonITMCSS():
+def serve_itm_css():
     """Serves the CSS for the ITM UI"""
     return flask.send_from_directory('static/style', 'stylesheet.css')
 
 @app.route('/scripts/script.js')
-def servePythonITMJS():
+def serve_itm_js():
     """Serves the Javascript for the ITM UI"""
     return flask.send_from_directory('static/scripts', 'script.js')
 
-@app.route('/finished', methods=['GET','POST'])
-def getUserData():
+@app.route('/finished', methods=['GET', 'POST'])
+def get_user_data():
     """Receives and saves user data when done button is clicked in the ITM UI"""
     flask.request.get_data()
-    inputJson = flask.request.get_json(force=True)
-    userDataDir = os.path.dirname(os.path.realpath(__file__)) + "/userData"
+    inputJson=flask.request.get_json(force=True)
+    userDataDir=os.path.dirname(os.path.realpath(__file__)) + "/userData"
     if not os.path.exists(userDataDir):
         os.makedirs(userDataDir)
     with tempfile.NamedTemporaryFile(mode='w', prefix="itmUserData", dir=os.path.dirname(os.path.realpath(__file__)) + "/userData", delete=False) as dataFile:
@@ -117,39 +117,39 @@ def getUserData():
     return 'OK'
 
 @app.route('/test3')
-def serveTest3():
+def serve_test3():
     """Serves the test for the anchor words algorithm done in Javascript"""
     return flask.send_from_directory('static', 'test3.html')
 
 @app.route('/style/test3.css')
-def serveTest3CSS():
+def serve_test3_css():
     """Serves the CSS for the test anchor words in Javascript"""
     return flask.send_from_directory('static/style', 'test3.css')
 
 @app.route('/scripts/test3.js')
-def serveTest3JS():
+def serve_test3_js():
     """Serves the Javascript for the test anchor words in Javascript"""
     return flask.send_from_directory('static/scripts', 'test3.js')
 
 @app.route('/scripts/linear.js')
-def serveLinearJS():
+def serve_linear_js():
     """Serves the Javascript methods for the anchor word algorithm"""
     return flask.send_from_directory('static/scripts', 'linear.js')
 
 @app.route('/vocab')
 def get_vocab():
     """Returns all valid vocabulary words in the dataset"""
-    dataset = get_newsgroups()
+    dataset=get_newsgroups()
     return flask.jsonify(vocab=dataset.vocab)
 
 @app.route('/cooccurrences')
 def get_cooccurrences():
     """Returns the cooccurrences matrix from the dataset"""
-    dataset = get_newsgroups()
+    dataset=get_newsgroups()
     return flask.jsonify(cooccurrences=dataset.Q.tolist())
 
 @app.route('/images/spinner.gif')
-def getSpinner():
+def get_spinner():
     """Serves the spinning wheel gif"""
     return flask.send_from_directory('static/images', 'spinner.gif')
 
