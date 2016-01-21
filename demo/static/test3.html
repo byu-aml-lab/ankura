@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" class="no-js" ng-app="anchorApp">
+  <head>
+    <title>Interactive Topic Modeling</title>
+    <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+    <link href="test3.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular.min.js"></script>
+    <script type="text/javascript" src="http://www.numericjs.com/lib/numeric-1.2.6.min.js"></script>
+    <script type="text/javascript" src="linear.js"></script>
+    <script type="text/javascript" src="test3.js"></script>
+  </head>
+  <body ng-controller="anchorController as ctrl">
+    <div class="loading" ng-show="ctrl.loading"><img class="loadingImage" src="spinner.gif"/></div>
+    <div class="container" ng-hide="ctrl.finished">
+        <div class="row">
+            <div class="col-sm-3"><h4>Anchor Words</h4></div>
+            <div class="col-sm-9"><h4>Topic Words</h4></div>
+        </div>
+      <div class="row" ng-repeat="anchorObj in ctrl.anchors">
+        <div class="col-sm-3">
+          <button type="button" ng-click="ctrl.removeAnchor($index)" class="btn btn-danger removeAnchor">X</button>
+          <div class="anchor" ondrop="drop(event)" ondragover="allowDrop(event)">
+            <span class="anchorContainer droppable">
+              <span class="btn btn-default btn-sm anchorWord draggable" ng-repeat="anchorWord in anchorObj.anchors track by $index" draggable="true" ondragstart="drag(event)" id="anchor{{$parent.$index}}word{{this.$index}}">
+                  {{anchorWord}}
+                  <span class="close" id="anchor{{$parent.$index}}word{{this.$index}}close" ng-click="ctrl.deleteWord($event, anchorObj.anchors)">&#10006;</span>
+              </span>
+            </span>
+            <span class="anchorInputContainer">
+              <form class="anchorInputForm" id="anchorInputForm{{index}}" ng-submit="ctrl.addAnchorWord($event, anchorObj.anchors)">
+                <input class="anchorInput" type="text" ng-submit="ctrl.addAnchorWord(this)"></input>
+              </form>
+            </span>
+          </div>
+        </div>
+        <div class="col-sm-9">
+          <div class="topic">
+            <span class="btn btn-default btn-sm topicWord draggable" ng-repeat="word in anchorObj.topic" draggable="true" ondragstart="drag(event)" id="topic{{$parent.$index}}Word{{this.$index}}">{{word}}</span>
+          </div>
+        </div>
+      </div>
+      <form id="addAnchorForm" ng-submit="ctrl.addAnchor()">
+        <button type="submit" class="btn btn-success btn-sm">Add Anchor</button>
+      </form>
+      <form id="undoForm" ng-submit="ctrl.undo()">
+        <button type="submit" class="btn btn-sm">Undo</button>
+      </form>
+      <form id="redoForm" ng-submit="ctrl.redo()">
+        <button type="submit" class="btn btn-sm">Redo</button>
+      </form>
+      <form id="doneForm" ng-submit="ctrl.done()">
+        <button type="submit" class="btn btn-danger btn-sm">I'm Finished!</button>
+      </form>
+      <form id="updateForm" ng-submit="ctrl.getNewTopics()">
+        <button type="submit" class="btn btn-primary btn-sm updateTopicsButtonClean">Update Topics</button>
+      </form>
+    </div>
+    <div ng-show="ctrl.finished">
+        <h1>Thank you!</h1>
+    </div>
+    <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+  </body>
+</html>
