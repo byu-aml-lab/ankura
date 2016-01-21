@@ -1,7 +1,5 @@
-"""Runs a demo of an interactive anchor words algorithm
+"""Runs a user interface for the interactive anchor words algorithm"""
 
-This is really a proof of concept and is ugly as sin.
-"""
 import flask
 import json
 import numpy
@@ -10,7 +8,6 @@ import tempfile
 import os
 
 import ankura
-from demo.example import get_newsgroups, default_anchors, get_topics
 
 app = flask.Flask(__name__, static_url_path='')
 
@@ -22,6 +19,33 @@ def convert_anchor(dataset, anchor):
     else:
         return dataset.vocab.index(anchor)
 
+@ankura.util.memoize
+@ankura.util.pickle_cache('newsgroups.pickle')
+def get_newsgroups():
+    """Retrieves the 20 newsgroups dataset"""
+    news_glob = '/local/cojoco/git/jeffData/newsgroups/*/*'
+    engl_stop = '/local/cojoco/git/jeffData/stopwords/english.txt'
+    news_stop = '/local/cojoco/git/jeffData/stopwords/newsgroups.txt'
+    name_stop = '/local/cojoco/git/jeffData/stopwords/malenames.txt'
+    pipeline = [(ankura.read_glob, news_glob, ankura.tokenize.news),
+                (ankura.filter_stopwords, engl_stop),
+                (ankura.filter_stopwords, news_stop),
+                (ankura.combine_words, name_stop, '<name>'),
+                (ankura.filter_rarewords, 100),
+                (ankura.filter_commonwords, 1500)]
+    dataset = ankura.run_pipeline(pipeline)
+    return dataset
+
+@ankura.util.memoize
+@ankura.util.pickle_cache('anchors-default.pickle')
+def default_anchors():
+    """Retrieves default anchors for newsgroups using Gram-Schmidt"""
+    return ankura.gramschmidt_anchors(get_newsgroups(), 20, 500)
+
+@ankura.util.memoize
+def get_topics(dataset, anchors):
+    """Gets the topics for 20 newsgroups given a set of anchors"""
+    return ankura.recover_topics(dataset, anchors)
 
 @ankura.util.memoize
 def reindex_anchors(dataset, anchors):
@@ -66,24 +90,23 @@ def topic_request():
 
 
 @app.route('/')
-def root():
-    """Serves up the single page app which demos interactive topics"""
-    return flask.send_file('index.html')
-
-@app.route('/python')
 def servePythonITM():
-    return flask.send_from_directory('static', 'python.html')
+    """Serves the Interactive Topic Modeling UI"""
+    return flask.send_from_directory('static', 'index.html')
 
-@app.route('/python.css')
+@app.route('/style/stylesheet.css')
 def servePythonITMCSS():
-    return flask.send_from_directory('static', 'python.css')
+    """Serves the CSS for the ITM UI"""
+    return flask.send_from_directory('static/style', 'stylesheet.css')
 
-@app.route('/python.js')
+@app.route('/scripts/script.js')
 def servePythonITMJS():
-    return flask.send_from_directory('static', 'python.js')
+    """Serves the Javascript for the ITM UI"""
+    return flask.send_from_directory('static/scripts', 'script.js')
 
 @app.route('/finished', methods=['GET','POST'])
 def getUserData():
+    """Receives and saves user data when done button is clicked in the ITM UI"""
     flask.request.get_data()
     inputJson = flask.request.get_json(force=True)
     userDataDir = os.path.dirname(os.path.realpath(__file__)) + "/userData"
@@ -95,33 +118,40 @@ def getUserData():
 
 @app.route('/test3')
 def serveTest3():
+    """Serves the test for the anchor words algorithm done in Javascript"""
     return flask.send_from_directory('static', 'test3.html')
 
-@app.route('/test3.css')
+@app.route('/style/test3.css')
 def serveTest3CSS():
-    return flask.send_from_directory('static', 'test3.css')
+    """Serves the CSS for the test anchor words in Javascript"""
+    return flask.send_from_directory('static/style', 'test3.css')
 
-@app.route('/test3.js')
+@app.route('/scripts/test3.js')
 def serveTest3JS():
-    return flask.send_from_directory('static', 'test3.js')
+    """Serves the Javascript for the test anchor words in Javascript"""
+    return flask.send_from_directory('static/scripts', 'test3.js')
 
-@app.route('/linear.js')
+@app.route('/scripts/linear.js')
 def serveLinearJS():
-    return flask.send_from_directory('static', 'linear.js')
+    """Serves the Javascript methods for the anchor word algorithm"""
+    return flask.send_from_directory('static/scripts', 'linear.js')
 
 @app.route('/vocab')
 def get_vocab():
+    """Returns all valid vocabulary words in the dataset"""
     dataset = get_newsgroups()
     return flask.jsonify(vocab=dataset.vocab)
 
 @app.route('/cooccurrences')
 def get_cooccurrences():
+    """Returns the cooccurrences matrix from the dataset"""
     dataset = get_newsgroups()
     return flask.jsonify(cooccurrences=dataset.Q.tolist())
 
-@app.route('/spinner.gif')
+@app.route('/images/spinner.gif')
 def getSpinner():
-    return flask.send_from_directory('static', 'spinner.gif')
+    """Serves the spinning wheel gif"""
+    return flask.send_from_directory('static/images', 'spinner.gif')
 
 if __name__ == '__main__':
     default_anchors()
