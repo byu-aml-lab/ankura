@@ -6,6 +6,8 @@ import flask
 import json
 import numpy
 import numbers
+import tempfile
+import os
 
 import ankura
 from demo.example import get_newsgroups, default_anchors, get_topics
@@ -79,6 +81,14 @@ def servePythonITMCSS():
 @app.route('/python.js')
 def servePythonITMJS():
     return flask.send_from_directory('static', 'python.js')
+
+@app.route('/finished', methods=['GET','POST'])
+def getUserData():
+    flask.request.get_data()
+    inputJson = flask.request.get_json(force=True)
+    with tempfile.NamedTemporaryFile(mode='w', prefix="itmUserData", dir=os.path.dirname(os.path.realpath(__file__)) + "/userData", delete=False) as dataFile:
+        json.dump(inputJson, dataFile, sort_keys = True, indent = 2, ensure_ascii=False)
+    return 'OK'
 
 @app.route('/test3')
 def serveTest3():

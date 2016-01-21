@@ -1,10 +1,59 @@
 var app = angular.module('anchorApp', [])
-    .controller('anchorController', function($scope, $timeout) {
+    .controller('anchorController', function($scope, $timeout, $http) {
         var ctrl = this;
         ctrl.loading = true;
         //This holds all of the anchor objects.
         //  An anchor holds both anchor words for a single anchor and topic words that describe that anchor.
         ctrl.anchors = [];
+        ctrl.anchorsHistory = [];
+        ctrl.historyIndex = 0;
+        ctrl.undo = function() {
+            if (ctrl.historyIndex > 0) {
+                ctrl.anchors = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex-1]["anchors"],
+                                               ctrl.anchorsHistory[ctrl.historyIndex-1]["topics"]);
+                ctrl.historyIndex -= 1;
+                console.log(ctrl.historyIndex);
+                console.log(ctrl.anchorsHistory);
+            }
+            else {
+                $("#undoForm").popover({
+                    placement:'top',
+                    trigger:'manual',
+                    html:true,
+                    content:'Nothing to undo.'
+                }).popover('show');
+                $timeout(function() {
+                    $("#undoForm").popover('hide');
+                }, 1000);
+            }
+        }
+        ctrl.redo = function() {
+            if (ctrl.historyIndex+1 < ctrl.anchorsHistory.length) {
+                ctrl.anchors = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex+1]["anchors"],
+                                               ctrl.anchorsHistory[ctrl.historyIndex+1]["topics"]);
+                ctrl.historyIndex += 1;
+                console.log(ctrl.historyIndex);
+                console.log(ctrl.anchorsHistory);
+            }
+            else {
+                $("#redoForm").popover({
+                    placement:'top',
+                    trigger:'manual',
+                    html:true,
+                    content:'Nothing to redo.'
+                }).popover('show');
+                $timeout(function() {
+                    $("#redoForm").popover('hide');
+                }, 1000);
+            }
+        }
+        ctrl.finished = false;
+        ctrl.done = function() {
+            var data = JSON.stringify(ctrl.anchorsHistory);
+            $http.post("/finished", data).success(function(data, status) {
+                ctrl.finished = true;
+            });
+        }
         ctrl.vocab;
         ctrl.cooccurrences;
         $.get("/vocab", function(data) {
@@ -19,6 +68,7 @@ var app = angular.module('anchorApp', [])
             ctrl.anchors.push(anchorObj);
             initAutocomplete();
         }
+        // THIS FUNCTION IS NOT USED ANYMORE, but is here to help me remember what I did
         //This function adds a new anchor (which is a new anchor word on a new line).
         //  It checks that the anchor word to be added is in the vocabulary.
         //  It also prompts the user to update the topics to get new words for the added anchor.
@@ -120,7 +170,7 @@ var app = angular.module('anchorApp', [])
             }
             else {
                 $("#"+textForm.target.id).popover({
-                    placement:'top',
+                    placement:'bottom',
                     trigger:'manual',
                     html:true,
                     content:'Invalid anchor word.'
@@ -143,6 +193,10 @@ var app = angular.module('anchorApp', [])
         //This function only gets the topics when we have no current anchors.
         ctrl.getBaseTopics = function() {
             $.get("/topics", function(data) {
+                //Ensure we can't redo something that's been written over
+                ctrl.anchorsHistory.splice(ctrl.historyIndex, ctrl.anchorsHistory.length-ctrl.historyIndex-1);
+                //Save the data
+                ctrl.anchorsHistory.push(data);
                 ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
                 $scope.$apply();
             });
@@ -165,11 +219,27 @@ var app = angular.module('anchorApp', [])
                     var tempArray = value.split(",");
                     currentAnchors.push(tempArray);
                 });
-                var getParams = JSON.stringify(currentAnchors);
-                $.get("/topics", {anchors: getParams}, function(data) {
-                    ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
-                    $scope.$apply();
-                });
+                if (currentAnchors.length !== 0) {
+                    var getParams = JSON.stringify(currentAnchors);
+                    ctrl.loading = true;
+                    $.get("/topics", {anchors: getParams}, function(data) {
+                        var saveState = {anchors: currentAnchors,
+                                   topics: data["topics"]};
+                        //This gets rid of the possibility of redoing if another state was saved since the last undo. If nothing has been undone, this should do nothing.
+                        ctrl.anchorsHistory.splice(ctrl.historyIndex+1, ctrl.anchorsHistory.length-ctrl.historyIndex-1);
+                        //Increment historyIndex
+                        ctrl.historyIndex += 1;
+                        //Save the current state (anchors and topic words)
+                        ctrl.anchorsHistory.push(saveState);
+                        //Update the anchors in the UI
+                        ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
+                        ctrl.loading = false;
+                        $scope.$apply();
+                    });
+                }
+                else {
+                    ctrl.getBaseTopics();
+                }
             }
             //This gets new anchors if we need them.
             else {
@@ -236,6 +306,7 @@ var drop = function(ev) {
     var dataString = JSON.stringify(data);
     //If an anchor or a copy of a topic word, drop
     if (dataString.indexOf("anchor") !== -1 || dataString.indexOf("copy") !== -1) {
+        //Need to cover all the possible places in the main div it could be dropped
         if($(ev.target).hasClass( "droppable" )) {
             ev.target.appendChild(document.getElementById(data));
         }
@@ -258,6 +329,7 @@ var drop = function(ev) {
         nodeCopy.id = data + "copy" + copyId++;
         var closeButton = addDeleteButton(nodeCopy.id + "close");
         nodeCopy.appendChild(closeButton);
+        //Need to cover all the possible places in the main div it could be dropped
         if($(ev.target).hasClass( "droppable" )) {
             ev.target.appendChild(nodeCopy);
         }

@@ -103,10 +103,26 @@ h4 {
     z-index: 1;
 }
 
-#updateForm {
-    float: right;
-}
-
 #addAnchorForm {
     float: left;
+}
+
+#undoForm {
+    margin-left: 5px;
+    float: left;
+}
+
+#redoForm {
+    margin-left: 5px;
+    float: left;
+}
+
+#doneForm {
+    margin-left: 100px;
+    margin-top: 40px;
+    float: left;
+}
+
+#updateForm {
+    float: right;
 }
