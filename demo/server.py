@@ -86,6 +86,9 @@ def servePythonITMJS():
 def getUserData():
     flask.request.get_data()
     inputJson = flask.request.get_json(force=True)
+    userDataDir = os.path.dirname(os.path.realpath(__file__)) + "/userData"
+    if not os.path.exists(userDataDir):
+        os.makedirs(userDataDir)
     with tempfile.NamedTemporaryFile(mode='w', prefix="itmUserData", dir=os.path.dirname(os.path.realpath(__file__)) + "/userData", delete=False) as dataFile:
         json.dump(inputJson, dataFile, sort_keys = True, indent = 2, ensure_ascii=False)
     return 'OK'
