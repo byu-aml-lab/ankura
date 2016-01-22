@@ -108,12 +108,12 @@ def serve_itm_js():
 def get_user_data():
     """Receives and saves user data when done button is clicked in the ITM UI"""
     flask.request.get_data()
-    inputJson=flask.request.get_json(force=True)
-    userDataDir=os.path.dirname(os.path.realpath(__file__)) + "/userData"
-    if not os.path.exists(userDataDir):
-        os.makedirs(userDataDir)
+    input_json = flask.request.get_json(force=True)
+    user_data_dir = os.path.dirname(os.path.realpath(__file__)) + "/userData"
+    if not os.path.exists(user_data_dir):
+        os.makedirs(user_data_dir)
     with tempfile.NamedTemporaryFile(mode='w', prefix="itmUserData", dir=os.path.dirname(os.path.realpath(__file__)) + "/userData", delete=False) as dataFile:
-        json.dump(inputJson, dataFile, sort_keys = True, indent = 2, ensure_ascii=False)
+        json.dump(input_json, dataFile, sort_keys=True, indent=2, ensure_ascii=False)
     return 'OK'
 
 @app.route('/test3')
@@ -139,13 +139,13 @@ def serve_linear_js():
 @app.route('/vocab')
 def get_vocab():
     """Returns all valid vocabulary words in the dataset"""
-    dataset=get_newsgroups()
+    dataset = get_newsgroups()
     return flask.jsonify(vocab=dataset.vocab)
 
 @app.route('/cooccurrences')
 def get_cooccurrences():
     """Returns the cooccurrences matrix from the dataset"""
-    dataset=get_newsgroups()
+    dataset = get_newsgroups()
     return flask.jsonify(cooccurrences=dataset.Q.tolist())
 
 @app.route('/images/spinner.gif')
