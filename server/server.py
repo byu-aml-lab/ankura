@@ -59,6 +59,11 @@ def tokenify_anchors(dataset, anchors):
     """Converts token indexes in a list of anchors to tokens"""
     return [[dataset.vocab[token] for token in anchor] for anchor in anchors]
 
+@app.route('/base-anchors')
+def get_base_anchors():
+    """Gets the base set of anchors to send to the client"""
+    base_anchors = default_anchors()
+    return flask.jsonify(anchors=tokenify_anchors(get_newsgroups(), base_anchors))
 
 @app.route('/topics')
 def topic_request():

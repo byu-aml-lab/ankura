@@ -80,7 +80,6 @@ linear.createBasisVector = function createBasisVector(cooccMatrix, anchor) {
         var sum = 0;
         for (var j = 0; j < anchor.length; j++) {
             sum += cooccMatrix[anchor[j]][i];
-
         }
         basisVector[i] = sum / anchor.length;
     }
@@ -92,8 +91,8 @@ linear.anchorVectors = function anchorVectors(cooccMatrix, anchors, vocab) {
     var basis = [];
     for (var i = 0; i < anchors.length; i++) {
         var anchor = [];
-        for (var j = 0; j < anchors[i]["anchors"].length; j++) {
-            anchor.push(vocab.indexOf(anchors[i]["anchors"][j]));
+        for (var j = 0; j < anchors[i].length; j++) {
+            anchor.push(vocab.indexOf(anchors[i][j]));
         }
         basis[i] = linear.createBasisVector(cooccMatrix, anchor, vocab);
     }
@@ -112,7 +111,11 @@ linear.computeX = function computeX(anchors) {
     return X;
 }
 
-//Recovers topics given a set of anchors and cooccurrences matrix
+linear.exponentiatedGradient = function exponentiatedGradient(Y, X, XX, epsilon) {
+
+}
+
+//Recovers topics given a set of anchors (as words) and a cooccurrences matrix
 linear.recoverTopics = function recoverTopics(cooccMatrix, anchors, vocab) {
     //We don't want to modify the original cooccurrences matrix
     var Q = linear.deepCloneMatrix(cooccMatrix);
@@ -134,7 +137,6 @@ linear.recoverTopics = function recoverTopics(cooccMatrix, anchors, vocab) {
     //Normalize the rows of Q to get Q_prime
     Q = linear.normalizeMatrixRows(Q);
 
-    anchorCopy = linear.deepCloneMatrix(anchors);
     //Compute normalized anchors X, and precompute X * X.T
     anchors = linear.anchorVectors(cooccMatrix, anchors, vocab);
     var X = linear.computeX(anchors);
@@ -143,4 +145,11 @@ linear.recoverTopics = function recoverTopics(cooccMatrix, anchors, vocab) {
     var XX = numeric.dot(X, X_T);
 
     //Do exponentiated gradient descent
+    var epsilon = Math.pow(10, -7);
+    for (var i = 0; i < V; i++) {
+        //Y = cooccMatrix[i];
+        var alpha = linear.exponentiatedGradient(cooccMatrix[i],
+                                                    X, XX, epsilon);
+        //if numpy.isnan(alpha).any():?????
+    }
 }
