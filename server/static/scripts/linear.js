@@ -64,27 +64,56 @@ linear.normalizeMatrixRows = function normalizeMatrixRows(matrix) {
     return normalizedMatrix;
 }
 
+//Sums an array of numbers
 linear.sumRow = function sumRow(row) {
-    var rowLen = row.length;
     var sum = 0;
-    for (var i = 0; i < rowLen; i++) {
+    for (var i = 0; i < row.length; i++) {
         sum += row[i];
     }
     return sum;
 }
 
+//Creates a single basis vector given the cooccurrences matrix and an anchor
+linear.createBasisVector = function createBasisVector(cooccMatrix, anchor) {
+    var basisVector = [];
+    for (var i = 0; i < cooccMatrix.length; i++) {
+        var sum = 0;
+        for (var j = 0; j < anchor.length; j++) {
+            sum += cooccMatrix[anchor[j]][i];
+
+        }
+        basisVector[i] = sum / anchor.length;
+    }
+    return basisVector;
+}
+
 //Constructs basis vectors from a list of anchor indices
-linear.anchorVectors = function anchorVectors(cooccMatrix, anchors) {
-    var basis = linear.matrixZeroes(anchors.length, cooccMatrix[0].length);
-    var cooccLength = cooccMatrix.length;
-    for (var i = 0; i < cooccLength; i++) {
-        basis[i] = (linear.sumRow(cooccMatrix[i])/cooccMatrix[i].length);
+linear.anchorVectors = function anchorVectors(cooccMatrix, anchors, vocab) {
+    var basis = [];
+    for (var i = 0; i < anchors.length; i++) {
+        var anchor = [];
+        for (var j = 0; j < anchors[i]["anchors"].length; j++) {
+            anchor.push(vocab.indexOf(anchors[i]["anchors"][j]));
+        }
+        basis[i] = linear.createBasisVector(cooccMatrix, anchor, vocab);
     }
     return basis;
 }
 
+//Computes the X matrix, which is just a row-normalized basis
+linear.computeX = function computeX(anchors) {
+    var X = linear.deepCloneMatrix(anchors);
+    for (var i = 0; i < X.length; i++) {
+        var rowSum = linear.sumRow(X[i]);
+        for (var j = 0; j < X[i].length; j++) {
+            X[i][j] = (X[i][j]/rowSum);
+        }
+    }
+    return X;
+}
+
 //Recovers topics given a set of anchors and cooccurrences matrix
-linear.recoverTopics = function recoverTopics(cooccMatrix, anchors) {
+linear.recoverTopics = function recoverTopics(cooccMatrix, anchors, vocab) {
     //We don't want to modify the original cooccurrences matrix
     var Q = linear.deepCloneMatrix(cooccMatrix);
 
@@ -95,19 +124,23 @@ linear.recoverTopics = function recoverTopics(cooccMatrix, anchors) {
     //Create a diagonal matrix, where the ith entry of the ith row in
     //  P_w is the sum of the row in Q.
     var P_w = numeric.diag(linear.sumMatrixRows(Q));
-    var P_wLength = P_w.length;
     //This check was in the Python code, not sure why.
-    for (var i = 0; i < P_wLength; i++) {
+    for (var i = 0; i < P_w.length; i++) {
         if (isNaN(P_w[i][i])) {
-            P_w[i][i] = Math.pow(1, -16);
+            //Put in a really small number to avoid division by zero?
+            P_w[i][i] = Math.pow(10, -16);
         }
     }
     //Normalize the rows of Q to get Q_prime
     Q = linear.normalizeMatrixRows(Q);
 
-    var anchorCopy = linear.deepCloneMatrix(anchors);
-    console.log(anchorCopy);
+    anchorCopy = linear.deepCloneMatrix(anchors);
     //Compute normalized anchors X, and precompute X * X.T
-    anchors = linear.anchorVectors(cooccMatrix, anchors);
-    console.log(anchors);
+    anchors = linear.anchorVectors(cooccMatrix, anchors, vocab);
+    var X = linear.computeX(anchors);
+    var X_T = linear.deepCloneMatrix(X);
+    X_T = numeric.transpose(X_T);
+    var XX = numeric.dot(X, X_T);
+
+    //Do exponentiated gradient descent
 }

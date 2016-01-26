@@ -4,16 +4,14 @@ var app = angular.module('anchorApp', [])
         ctrl.loading = true;
         //This holds all of the anchor objects.
         //  An anchor holds both anchor words for a single anchor and topic words that describe that anchor.
-        ctrl.anchors = [];
+        ctrl.anchorObjects = [];
         ctrl.anchorsHistory = [];
         ctrl.historyIndex = 0;
         ctrl.undo = function() {
             if (ctrl.historyIndex > 0) {
-                ctrl.anchors = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex-1]["anchors"],
+                ctrl.anchorObjects = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex-1]["anchors"],
                                                ctrl.anchorsHistory[ctrl.historyIndex-1]["topics"]);
                 ctrl.historyIndex -= 1;
-                console.log(ctrl.historyIndex);
-                console.log(ctrl.anchorsHistory);
             }
             else {
                 $("#undoForm").popover({
@@ -29,11 +27,9 @@ var app = angular.module('anchorApp', [])
         }
         ctrl.redo = function() {
             if (ctrl.historyIndex+1 < ctrl.anchorsHistory.length) {
-                ctrl.anchors = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex+1]["anchors"],
+                ctrl.anchorObjects = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex+1]["anchors"],
                                                ctrl.anchorsHistory[ctrl.historyIndex+1]["topics"]);
                 ctrl.historyIndex += 1;
-                console.log(ctrl.historyIndex);
-                console.log(ctrl.anchorsHistory);
             }
             else {
                 $("#redoForm").popover({
@@ -65,7 +61,7 @@ var app = angular.module('anchorApp', [])
         })
         ctrl.addAnchor = function() {
             var anchorObj = {"anchors":[], "topic":[]};
-            ctrl.anchors.push(anchorObj);
+            ctrl.anchorObjects.push(anchorObj);
             initAutocomplete();
         }
         // THIS FUNCTION IS NOT USED ANYMORE, but is here to help me remember what I did
@@ -84,13 +80,13 @@ var app = angular.module('anchorApp', [])
             }
             if (lowercaseAnchor === '') {
                 var anchorObj = {"anchors":[], "topic":[]};
-                ctrl.anchors.push(anchorObj);
+                ctrl.anchorObjects.push(anchorObj);
             }
             else if (inVocab) {
                 //The backend is expecting an array of anchor words, even if there's only one anchor word.
                 var newAnchors = lowercaseAnchor.split(',');
                 var anchorObj = {"anchors":newAnchors,"topic":[]};
-                ctrl.anchors.push(anchorObj);
+                ctrl.anchorObjects.push(anchorObj);
                 $scope.newAnchor = '';
                 //This timeout ensures that the added anchor is put in before the popover appears.
                 //  If removed, the popover will appear too high above the "Update Topics" button.
@@ -133,7 +129,7 @@ var app = angular.module('anchorApp', [])
          //This function simply removes an anchor from the current list of anchors.
          //  In essence, it deletes a whole line (both anchor words and their topic words).
         ctrl.removeAnchor = function(index) {
-            ctrl.anchors.splice(index, 1);
+            ctrl.anchorObjects.splice(index, 1);
         }
         //This function adds an anchor word when entered in via the input in the anchor's left column
         ctrl.addAnchorWord = function(textForm, newAnchor) {
@@ -197,7 +193,7 @@ var app = angular.module('anchorApp', [])
                 ctrl.anchorsHistory.splice(ctrl.historyIndex, ctrl.anchorsHistory.length-ctrl.historyIndex-1);
                 //Save the data
                 ctrl.anchorsHistory.push(data);
-                ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
+                ctrl.anchorObjects = getAnchorsArray(data["anchors"], data["topics"]);
                 $scope.$apply();
             });
         }
@@ -232,7 +228,7 @@ var app = angular.module('anchorApp', [])
                         //Save the current state (anchors and topic words)
                         ctrl.anchorsHistory.push(saveState);
                         //Update the anchors in the UI
-                        ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
+                        ctrl.anchorObjects = getAnchorsArray(currentAnchors, data["topics"], ctrl.vocab);
                         ctrl.loading = false;
                         $scope.$apply();
                     });
@@ -249,8 +245,8 @@ var app = angular.module('anchorApp', [])
         }
         // Performs a topic request using current anchors
         // cooccMatrix is the cooccurrences matrix, vocab is the vocabulary
-        ctrl.topicRequest = function(cooccMatrix, vocab) {
-            linear.recoverTopics(cooccMatrix, ctrl.anchors);
+        ctrl.topicRequest = function(cooccMatrix, anchorObjects, vocab) {
+            linear.recoverTopics(cooccMatrix, anchorObjects, vocab);
         }
         //This initializes autocompletion for entering new anchor words
         var initAutocomplete = function() {
@@ -260,7 +256,7 @@ var app = angular.module('anchorApp', [])
             });
         };
         $timeout(function() {initAutocomplete();}, 500);
-        $timeout(function() {ctrl.topicRequest(ctrl.cooccurrences, ctrl.vocab);}, 10000);
+        $timeout(function() {ctrl.topicRequest(ctrl.cooccurrences, ctrl.anchorObjects, ctrl.vocab);}, 10000);
     }).directive("autofillfix", function() {
         //This is required because of some problem between Angular and autofill
         return {
@@ -275,10 +271,10 @@ var app = angular.module('anchorApp', [])
 
 //This function returns an array of anchor objects from arrays of anchors and topics.
 //Anchor objects hold both anchor words and topic words related to the anchor words.
-var getAnchorsArray = function(anchors, topics) {
+var getAnchorsArray = function(anchorObjects, topics) {
     var tempAnchors = [];
-    for (var i = 0; i < anchors.length; i++) {
-        anchor = anchors[i];
+    for (var i = 0; i < anchorObjects.length; i++) {
+        anchor = anchorObjects[i];
         var topic = topics[i];
         tempAnchors.push({"anchors":anchor, "topic":topic});
     }
