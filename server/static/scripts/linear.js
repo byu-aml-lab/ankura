@@ -150,6 +150,12 @@ linear.recoverTopics = function recoverTopics(cooccMatrix, anchors, vocab) {
         //Y = cooccMatrix[i];
         var alpha = linear.exponentiatedGradient(cooccMatrix[i],
                                                     X, XX, epsilon);
-        //if numpy.isnan(alpha).any():?????
+        //linear.exponentiatedGradient is not started. See line 114 above.
+        //  This is based on ankura/topic.py, line 20
+        //Need to ask Jeff about: if numpy.isnan(alpha).any()
+        // This is in ankura/topic.py, line 115
+        // I am basically rewriting the recover_topics function right now
+        //Overall, I am trying to translate what happens starting at line 79
+        // in server.py
     }
 }
