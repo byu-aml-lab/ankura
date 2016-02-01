@@ -111,8 +111,32 @@ linear.computeX = function computeX(anchors) {
     return X;
 }
 
+//Solves an exponentiated gradient problem with L2 divergence
 linear.exponentiatedGradient = function exponentiatedGradient(Y, X, XX, epsilon) {
+    //Generate all the stuff we need for the beginning
+    var XY = numeric.dot(X, Y);
+    var YY = numeric.dot(Y, Y);
 
+    var alpha = [];
+    alpha[0] = [];
+    for (var i = 0; i < X.length; i++) {
+        alpha[0][i] = 1/X.length;
+    }
+    var oldAlpha = linear.deepCloneMatrix(alpha);
+    var logAlpha = numeric.log(alpha);
+    var oldLogAlpha = linear.deepCloneMatrix(logAlpha);
+
+    var AXX = numeric.dot(alpha[0], XX);
+    var AXY = numeric.dot(alpha[0], XY);
+    var AXXA = numeric.dot(AXX, numeric.transpose(alpha));
+
+    var alphaTranspose = numeric.transpose(alpha);
+
+    var grad = numeric.mul(2, numeric.sub(AXX, XY));
+    var oldGrad = linear.deepCloneMatrix(grad);
+
+    newObj = numeric.add(numeric.sub(AXXA, numeric.mul(2, AXY)), YY);
+    console.log(newObj);
 }
 
 //Recovers topics given a set of anchors (as words) and a cooccurrences matrix
@@ -146,11 +170,11 @@ linear.recoverTopics = function recoverTopics(cooccMatrix, anchors, vocab) {
 
     //Do exponentiated gradient descent
     var epsilon = Math.pow(10, -7);
-    for (var i = 0; i < V; i++) {
+    for (var i = 0; i < 1; i++) {
         //Y = cooccMatrix[i];
         var alpha = linear.exponentiatedGradient(cooccMatrix[i],
                                                     X, XX, epsilon);
-        //linear.exponentiatedGradient is not started. See line 114 above.
+        //linear.exponentiatedGradient is in progress. See line 114 above.
         //  This is based on ankura/topic.py, line 20
         //Need to ask Jeff about: if numpy.isnan(alpha).any()
         // This is in ankura/topic.py, line 115
