@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Runs a user interface for the interactive anchor words algorithm"""
 
 import flask
@@ -23,10 +25,10 @@ def convert_anchor(dataset, anchor):
 @ankura.util.pickle_cache('newsgroups.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
-    news_glob = '/local/cojoco/git/jeffData/newsgroups/*/*'
-    engl_stop = '/local/cojoco/git/jeffData/stopwords/english.txt'
-    news_stop = '/local/cojoco/git/jeffData/stopwords/newsgroups.txt'
-    name_stop = '/local/cojoco/git/jeffData/stopwords/malenames.txt'
+    news_glob = '/local/jlund3/data/newsgroups/*/*'
+    engl_stop = '/local/jlund3/data/stopwords/english.txt'
+    news_stop = '/local/jlund3/data/stopwords/newsgroups.txt'
+    name_stop = '/local/jlund3/data/stopwords/malenames.txt'
     pipeline = [(ankura.read_glob, news_glob, ankura.tokenize.news),
                 (ankura.filter_stopwords, engl_stop),
                 (ankura.filter_stopwords, news_stop),
