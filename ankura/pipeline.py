@@ -408,6 +408,7 @@ def run_pipeline(pipeline, append_pregenerate=True):
         dataset = pregenerate_doc_tokens(dataset)
     return dataset
 
+
 def get_word_cooccurrences(dataset):
     """Generates a new matrix by taking the minimum value of each row
     representing word frequency in the original docwords matrix, thereby
@@ -445,7 +446,7 @@ def get_word_cooccurrences(dataset):
     if size > 0:
         docs = dataset.titles
 
-    newVocab = []
+    new_vocab = []
 
     #Generates new vocab list for new matrix
     for i in range(0, len(vocab)):
