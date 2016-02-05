@@ -148,12 +148,6 @@ def test_dataset_transform6():
     assert dataset_equals(new_dataset6, expected_dataset6)
 
 def dataset_equals(dataset1, dataset2):
-    print(dataset1.vocab)
-    print(dataset2.vocab)
-    print(dataset1.M.toarray())
-    print(dataset2.M.toarray())
-    print(dataset1.titles)
-    print(dataset2.titles)
     if dataset1.vocab != dataset2.vocab:
         return False
     elif numpy.array_equal(dataset1.M, dataset2.M):
@@ -162,9 +156,3 @@ def dataset_equals(dataset1, dataset2):
         return False
     else:
         return True
-test_dataset_transform1()
-test_dataset_transform2()
-test_dataset_transform3()
-test_dataset_transform4()
-test_dataset_transform5()
-test_dataset_transform6()
