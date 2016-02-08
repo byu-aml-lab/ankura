@@ -5,17 +5,29 @@ if(typeof global !== "undefined") { global.linear = linear; }
 
 //Returns an array with the sums of each row of a matrix
 linear.sumMatrixRows = function sumMatrixRows(matrix) {
-    var colLength = matrix.length;
     var sumOfRows = [];
-    for (var i = 0; i < colLength; i++) {
-        var rowLength = matrix[i].length;
+    for (var i = 0; i < matrix.length; i++) {
         var sum = 0;
-        for (var j = 0; j < rowLength; j++) {
+        for (var j = 0; j < matrix[i].length; j++) {
             sum += matrix[i][j];
         }
         sumOfRows.push(sum);
     }
     return sumOfRows;
+}
+
+//Returns an array with the sums of each column of a matrix
+linear.sumMatrixCols = function sumMatrixCols(matrix) {
+    var sumOfCols = [];
+    for (var i = 0; i < matrix[i].length; i++) {
+        sumOfCols[i] = 0;
+    }
+    for (var i = 0; i < matrix.length; i++) {
+        for (var j = 0; j < matrix[i].length; j++) {
+            sumOfCols[j] += matrix[i][j];
+        }
+    }
+    return sumOfCols;
 }
 
 //Creates a matrix of the specified number of rows and columns full of zeroes
@@ -73,6 +85,15 @@ linear.sumRow = function sumRow(row) {
     return sum;
 }
 
+//Sums a row of a matrix
+linear.sumCol = function sumCol(colNum, matrix) {
+    var sum = 0;
+    for (var i = 0; i < matrix.length; i++) {
+        sum += matrix[i][colNum];
+    }
+    return sum;
+}
+
 //Creates a single basis vector given the cooccurrences matrix and an anchor
 linear.createBasisVector = function createBasisVector(cooccMatrix, anchor) {
     var basisVector = [];
@@ -111,75 +132,43 @@ linear.computeX = function computeX(anchors) {
     return X;
 }
 
-//Solves an exponentiated gradient problem with L2 divergence
-linear.exponentiatedGradient = function exponentiatedGradient(Y, X, XX, epsilon) {
-    //Generate all the stuff we need for the beginning
-    var XY = numeric.dot(X, Y);
-    var YY = numeric.dot(Y, Y);
-
-    var alpha = [];
-    alpha[0] = [];
-    for (var i = 0; i < X.length; i++) {
-        alpha[0][i] = 1/X.length;
-    }
-    var oldAlpha = linear.deepCloneMatrix(alpha);
-    var logAlpha = numeric.log(alpha);
-    var oldLogAlpha = linear.deepCloneMatrix(logAlpha);
-
-    var AXX = numeric.dot(alpha[0], XX);
-    var AXY = numeric.dot(alpha[0], XY);
-    var AXXA = numeric.dot(AXX, numeric.transpose(alpha));
-
-    var alphaTranspose = numeric.transpose(alpha);
-
-    var grad = numeric.mul(2, numeric.sub(AXX, XY));
-    var oldGrad = linear.deepCloneMatrix(grad);
-
-    newObj = numeric.add(numeric.sub(AXXA, numeric.mul(2, AXY)), YY);
-    console.log(newObj);
-}
-
-//Recovers topics given a set of anchors (as words) and a cooccurrences matrix
-linear.recoverTopics = function recoverTopics(cooccMatrix, anchors, vocab) {
-    //We don't want to modify the original cooccurrences matrix
-    var Q = linear.deepCloneMatrix(cooccMatrix);
-
-    var V = cooccMatrix.length;
-    var K = anchors.length;
-    var A = linear.matrixZeroes(V, K);
-
-    //Create a diagonal matrix, where the ith entry of the ith row in
-    //  P_w is the sum of the row in Q.
-    var P_w = numeric.diag(linear.sumMatrixRows(Q));
-    //This check was in the Python code, not sure why.
-    for (var i = 0; i < P_w.length; i++) {
-        if (isNaN(P_w[i][i])) {
-            //Put in a really small number to avoid division by zero?
-            P_w[i][i] = Math.pow(10, -16);
+linear.matrixLog = function matrixLog(matrix) {
+    for (var i = 0; i < matrix.length; i++) {
+        for (var j = 0; j < matrix[i].length; j++) {
+            matrix[i][j] = Math.log(matrix[i][j]);
         }
     }
-    //Normalize the rows of Q to get Q_prime
-    Q = linear.normalizeMatrixRows(Q);
+    return matrix;
+}
 
-    //Compute normalized anchors X, and precompute X * X.T
-    anchors = linear.anchorVectors(cooccMatrix, anchors, vocab);
-    var X = linear.computeX(anchors);
-    var X_T = linear.deepCloneMatrix(X);
-    X_T = numeric.transpose(X_T);
-    var XX = numeric.dot(X, X_T);
+//Computes the sum of a matrix in log space
+linear.logsumExp = function logsumExp(matrix) {
+    max = linear.matrixMax(matrix);
+    return max + Math.log(numeric.sum(numeric.exp(numeric.sub(matrix, max))));
+}
 
-    //Do exponentiated gradient descent
-    var epsilon = Math.pow(10, -7);
-    for (var i = 0; i < 1; i++) {
-        //Y = cooccMatrix[i];
-        var alpha = linear.exponentiatedGradient(cooccMatrix[i],
-                                                    X, XX, epsilon);
-        //linear.exponentiatedGradient is in progress. See line 114 above.
-        //  This is based on ankura/topic.py, line 20
-        //Need to ask Jeff about: if numpy.isnan(alpha).any()
-        // This is in ankura/topic.py, line 115
-        // I am basically rewriting the recover_topics function right now
-        //Overall, I am trying to translate what happens starting at line 79
-        // in server.py
+//Finds the minimum value in a 2D matrix
+linear.matrixMin = function matrixMin(matrix) {
+    var min = matrix[0][0];
+    for (var i = 0; i < matrix.length; i++) {
+        for (var j = 0; j < matrix[i].length; j++) {
+            if (matrix[i][j] < min) {
+                min = matrix[i][j];
+            }
+        }
     }
+    return min;
+}
+
+//Finds the maximum value in a 2D matrix
+linear.matrixMax = function matrixMax(matrix) {
+    var max = matrix[0][0];
+    for (var i = 0; i < matrix.length; i++) {
+        for (var j = 0; j < matrix[i].length; j++) {
+            if (matrix[i][j] > max) {
+                max = matrix[i][j];
+            }
+        }
+    }
+    return max;
 }
