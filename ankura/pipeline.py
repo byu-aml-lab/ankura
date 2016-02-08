@@ -410,9 +410,12 @@ def run_pipeline(pipeline, append_pregenerate=True):
 
 
 def get_word_cooccurrences(dataset):
-    """Generates a new matrix by taking the minimum value of each row
+    """Transforms a Dataset to use cooccurrence features
+
+    Generates a new matrix by taking the minimum value of each row
     representing word frequency in the original docwords matrix, thereby
     creating a word cooccurrence matrix.
+
     For example:
                     doc1 doc2
                 cat  1    1
@@ -421,39 +424,26 @@ def get_word_cooccurrences(dataset):
                     doc1 doc2
             cat-dog  1    1
     """
-    #Calculates the size of the new matrix
+    # calculates the size of the new matrix
     size = int((dataset.vocab_size * (dataset.vocab_size - 1)) / 2)
-    row = 0
-    docsize = len(dataset.titles)
-    old_matrix = dataset.M
-    vocab_size = len(dataset.vocab)
-    new_dataset = scipy.sparse.lil_matrix((size, docsize))
 
-    #Compares each row in original matrix to the ones that come after
-    for wordi in range(vocab_size):
-        for wordj in range(wordi + 1,vocab_size):
-            for doc in range(docsize):
-                new_dataset[row, doc] = min(old_matrix[wordi, doc],
-                                            old_matrix[wordj, doc])
+    if size == 0:
+        return Dataset(scipy.sparse.csc_matrix((0, 0)), [], [])
+    docwords = scipy.sparse.lil_matrix((size, dataset.num_docs))
 
-            #row variable determines what row we're inserting
-            #into in the new matrix
-            row+=1
-    vocab = dataset.vocab
-    docs = []
+    # compares each row in original matrix to the ones that come after
+    row_index = 0
+    for wordi in range(dataset.vocab_size):
+        for wordj in range(wordi + 1, dataset.vocab_size):
+            for doc in range(dataset.num_docs):
+                docwords[row_index, doc] = min(dataset.M[wordi, doc],
+                                               dataset.M[wordj, doc])
+            row_index += 1
 
-    #Determines if new matrix is empty to set documents accordingly
-    if size > 0:
-        docs = dataset.titles
-
+    # generates new vocab list for new matrix
     new_vocab = []
+    for i in range(dataset.vocab_size):
+        for j in range(i + 1, dataset.vocab_size):
+            new_vocab.append(dataset.vocab[i] + '-' + dataset.vocab[j])
 
-    #Generates new vocab list for new matrix
-    for i in range(0, len(vocab)):
-        for j in range(i + 1, len(vocab)):
-            new_vocab.append(vocab[i] + '-' + vocab[j])
-
-    #Creates new dataset based off of the calculated matrix and vocab
-    result = Dataset(new_dataset, new_vocab, docs)
-    result = filter_rarewords(result, 1)
-    return result;
+    return filter_rarewords(Dataset(docwords, new_vocab, dataset.titles), 1)
