@@ -451,9 +451,9 @@ def get_word_cooccurrences(dataset):
     #Generates new vocab list for new matrix
     for i in range(0, len(vocab)):
         for j in range(i + 1, len(vocab)):
-            newVocab.append(vocab[i] + '-' + vocab[j])
+            new_vocab.append(vocab[i] + '-' + vocab[j])
 
     #Creates new dataset based off of the calculated matrix and vocab
-    result = Dataset(new_dataset, newVocab, docs)
+    result = Dataset(new_dataset, new_vocab, docs)
     result = filter_rarewords(result, 1)
     return result;
