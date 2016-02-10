@@ -20,14 +20,15 @@ def convert_anchor(dataset, anchor):
         return dataset.vocab.index(anchor)
 
 @ankura.util.memoize
-@ankura.util.pickle_cache('newsgroups.pickle')
+@ankura.util.pickle_cache('amazon.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
-    news_glob = '/local/cojoco/git/jeffData/newsgroups/*/*'
+    filename = '/local/cojoco/git/amazon/amazon.txt'
+#    news_glob = '/local/cojoco/git/jeffData/newsgroups/*/*'
     engl_stop = '/local/cojoco/git/jeffData/stopwords/english.txt'
     news_stop = '/local/cojoco/git/jeffData/stopwords/newsgroups.txt'
     name_stop = '/local/cojoco/git/jeffData/stopwords/malenames.txt'
-    pipeline = [(ankura.read_glob, news_glob, ankura.tokenize.news),
+    pipeline = [(ankura.read_file, filename, ankura.tokenize.simple),
                 (ankura.filter_stopwords, engl_stop),
                 (ankura.filter_stopwords, news_stop),
                 (ankura.combine_words, name_stop, '<name>'),
@@ -37,7 +38,7 @@ def get_newsgroups():
     return dataset
 
 @ankura.util.memoize
-@ankura.util.pickle_cache('anchors-default.pickle')
+@ankura.util.pickle_cache('amazon-anchors-default.pickle')
 def default_anchors():
     """Retrieves default anchors for newsgroups using Gram-Schmidt"""
     return ankura.gramschmidt_anchors(get_newsgroups(), 20, 500)
@@ -146,6 +147,12 @@ def get_vocab():
     """Returns all valid vocabulary words in the dataset"""
     dataset = get_newsgroups()
     return flask.jsonify(vocab=dataset.vocab)
+
+@app.route('/vocabsize')
+def get_vocab_size():
+    """Returns the size of the vocab being used"""
+    dataset = get_newsgroups()
+    return "Vocabulary Size: " + str(dataset.vocab_size)
 
 @app.route('/cooccurrences')
 def get_cooccurrences():
