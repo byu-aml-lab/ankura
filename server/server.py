@@ -147,6 +147,12 @@ def get_vocab():
     dataset = get_newsgroups()
     return flask.jsonify(vocab=dataset.vocab)
 
+@app.route('/vocabsize')
+def get_vocab_size():
+    """Gets the size of the vocabulary"""
+    dataset = get_newsgroups()
+    return "Vocabulary size: " + str(dataset.vocab_size)
+
 @app.route('/cooccurrences')
 def get_cooccurrences():
     """Returns the cooccurrences matrix from the dataset"""
