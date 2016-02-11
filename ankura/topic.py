@@ -87,7 +87,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
     return alpha
 
 
-def recover_topics(dataset, anchors, epsilon=1e-7):
+def recover_topics(dataset, anchors, epsilon=2e-7):
     """Recovers topics given a cooccurence matrix and a set of anchor vectors"""
     # dont modify original Q
     Q = dataset.Q.copy()
