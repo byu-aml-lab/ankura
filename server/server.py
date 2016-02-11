@@ -20,7 +20,7 @@ def convert_anchor(dataset, anchor):
         return dataset.vocab.index(anchor)
 
 @ankura.util.memoize
-@ankura.util.pickle_cache('amazon.pickle')
+@ankura.util.pickle_cache('frus.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
     filename = '/local/cojoco/git/amazon/amazon.txt'
@@ -38,7 +38,7 @@ def get_newsgroups():
     return dataset
 
 @ankura.util.memoize
-@ankura.util.pickle_cache('amazon-anchors-default.pickle')
+@ankura.util.pickle_cache('frus-anchors-default.pickle')
 def default_anchors():
     """Retrieves default anchors for newsgroups using Gram-Schmidt"""
     return ankura.gramschmidt_anchors(get_newsgroups(), 20, 500)
