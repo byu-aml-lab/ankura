@@ -23,15 +23,15 @@ def convert_anchor(dataset, anchor):
 @ankura.util.pickle_cache('frus.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
-    filename = '/local/cojoco/git/amazon/amazon.txt'
+    filenames = '/local/cojoco/git/foreign_relations/frus/documents/*.txt'
 #    news_glob = '/local/cojoco/git/jeffData/newsgroups/*/*'
     engl_stop = '/local/cojoco/git/jeffData/stopwords/english.txt'
     news_stop = '/local/cojoco/git/jeffData/stopwords/newsgroups.txt'
-    name_stop = '/local/cojoco/git/jeffData/stopwords/malenames.txt'
-    pipeline = [(ankura.read_file, filename, ankura.tokenize.simple),
+#    name_stop = '/local/cojoco/git/jeffData/stopwords/malenames.txt'
+    pipeline = [(ankura.read_glob, filenames, ankura.tokenize.simple),
                 (ankura.filter_stopwords, engl_stop),
                 (ankura.filter_stopwords, news_stop),
-                (ankura.combine_words, name_stop, '<name>'),
+#                (ankura.combine_words, name_stop, '<name>'),
                 (ankura.filter_rarewords, 100),
                 (ankura.filter_commonwords, 1500)]
     dataset = ankura.run_pipeline(pipeline)
