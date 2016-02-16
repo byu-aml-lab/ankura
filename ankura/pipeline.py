@@ -65,7 +65,7 @@ class Dataset(object):
         """Gets the word cooccurrence matrix"""
         # TODO add ways to augment Q with additional labeled data
         if self._cooccurrences is None:
-            self._compute_cooccurrences()
+            self.compute_cooccurrences()
         return self._cooccurrences
 
     @property
@@ -73,7 +73,8 @@ class Dataset(object):
         """Gets the word cooccurrence matrix"""
         return self.Q
 
-    def _compute_cooccurrences(self):
+    def compute_cooccurrences(self):
+        """Computes the cooccurrence matrix for the dataset"""
         # See supplementary 4.1 of Aurora et. al. 2012 for information on these
         vocab_size, num_docs = self.M.shape
         H_tilde = scipy.sparse.csc_matrix(self.M, dtype=float)
@@ -348,6 +349,16 @@ def pregenerate_doc_tokens(dataset):
     return dataset
 
 
+def pregenerate_Q(dataset):
+    """Pregenerate the Q matrix for the dataset
+
+    In addition to generating the Q matrix for the dataset, this function
+    returns the original dataset so that it can be used inside a pipeline.
+    """
+    dataset.compute_cooccurrences()
+    return dataset
+
+
 def _prepare_split(dataset, indices):
     split_docwords = dataset.docwords[:, indices]
     split_titles = [dataset.titles[i] for i in indices]
@@ -406,44 +417,8 @@ def run_pipeline(pipeline, append_pregenerate=True):
 
     if append_pregenerate:
         dataset = pregenerate_doc_tokens(dataset)
+        dataset = pregenerate_Q(dataset)
+
     return dataset
 
 
-def get_word_cooccurrences(dataset):
-    """Transforms a Dataset to use cooccurrence features
-
-    Generates a new matrix by taking the minimum value of each row
-    representing word frequency in the original docwords matrix, thereby
-    creating a word cooccurrence matrix.
-
-    For example:
-                    doc1 doc2
-                cat  1    1
-                dog  2    2
-    becomes:
-                    doc1 doc2
-            cat-dog  1    1
-    """
-    # calculates the size of the new matrix
-    size = int((dataset.vocab_size * (dataset.vocab_size - 1)) / 2)
-
-    if size == 0:
-        return Dataset(scipy.sparse.csc_matrix((0, 0)), [], [])
-    docwords = scipy.sparse.lil_matrix((size, dataset.num_docs))
-
-    # compares each row in original matrix to the ones that come after
-    row_index = 0
-    for wordi in range(dataset.vocab_size):
-        for wordj in range(wordi + 1, dataset.vocab_size):
-            for doc in range(dataset.num_docs):
-                docwords[row_index, doc] = min(dataset.M[wordi, doc],
-                                               dataset.M[wordj, doc])
-            row_index += 1
-
-    # generates new vocab list for new matrix
-    new_vocab = []
-    for i in range(dataset.vocab_size):
-        for j in range(i + 1, dataset.vocab_size):
-            new_vocab.append(dataset.vocab[i] + '-' + dataset.vocab[j])
-
-    return filter_rarewords(Dataset(docwords, new_vocab, dataset.titles), 1)
