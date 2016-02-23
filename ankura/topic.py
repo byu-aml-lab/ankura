@@ -156,7 +156,7 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
                 converged = False
             counts[z_n] += 1
 
-    return counts.astype('uint')
+    return counts.astype('uint'), z
 
 
 def topic_transform(topics, dataset, alpha=.01, rng=random):
@@ -164,6 +164,21 @@ def topic_transform(topics, dataset, alpha=.01, rng=random):
     T = topics.shape[1]
     Z = numpy.zeros((T, dataset.num_docs), dtype='uint')
     for doc in range(dataset.num_docs):
-        Z[:, doc] = predict_topics(topics, dataset.doc_tokens(doc), alpha, rng)
+        tokens = dataset.doc_tokens(doc)
+        Z[:, doc], _ = predict_topics(topics, tokens, alpha, rng)
     Z = scipy.sparse.csc_matrix(Z)
     return Dataset(Z, [str(i) for i in range(T)], dataset.titles)
+
+
+def topic_combine(topics, dataset, alpha=.01, rng=random):
+    """Transforms a dataset to use token-topic features instead of tokens"""
+    T = topics.shape[1]
+    data = numpy.zeros((T*dataset.vocab_size, dataset.num_docs), dtype='uint')
+    for doc in range(dataset.num_docs):
+        tokens = dataset.doc_tokens(doc)
+        _, assignments = predict_topics(topics, tokens, alpha, rng)
+        for token, topic in zip(tokens, assignments):
+            index = token * T + topic
+            data[index] += 1
+    vocab = ['{}-{}'.format(w, t) for w in dataset.vocab for t in range(T)]
+    return Dataset(data, vocab, dataset.titles)

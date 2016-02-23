@@ -53,7 +53,7 @@ def demo():
     topics = get_topics(dataset, anchors)
     print_summary(dataset, topics)
 
-    trans = ankura.topic_transform(topics, dataset)
+    trans = ankura.topic_combine(topics, dataset)
     labels = [os.path.dirname(title) for title in trans.titles]
     naive = measure.NaiveBayes(trans, labels)
     accuracy = naive.validate(trans, labels)

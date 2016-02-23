@@ -7,6 +7,6 @@ from .pipeline import (read_uci, read_glob, read_file,
                        filter_smalldocs,
                        convert_cooccurences, convert_format,
                        run_pipeline)
-from .topic import recover_topics, topic_transform
+from .topic import recover_topics, topic_transform, topic_combine
 
 from . import measure, tokenize, util
