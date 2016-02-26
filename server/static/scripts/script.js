@@ -203,8 +203,11 @@ var app = angular.module('anchorApp', [])
             //  so we want to get new anchors if needed.
             if ($(".anchorContainer").length !== 0) {
                 $(".anchorContainer").each(function() {
+                    //This parses out just the comma-separated anchors from all the html
                     var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
                     value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\u2716/g, '');
+                    //This prevents errors on the server if there are '<' or '>' symbols in the anchors
+                    value = value.replace(/\&lt;/g, '<').replace(/\&gt;/g, '>');
                     if (value === "") {
                         return true;
                     }
