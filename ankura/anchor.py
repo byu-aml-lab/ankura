@@ -1,5 +1,6 @@
 """Functions for finding anchor words from a docwords matrix"""
 
+import functools
 import numpy
 
 from .util import tuplize
@@ -116,9 +117,14 @@ def constraint_anchors(dataset, constraints):
     return tuplize(anchors)
 
 
-def anchor_vectors(dataset, anchors):
+# pylint: disable=invalid-name
+vector_average = functools.partial(numpy.mean, axis=0)
+vector_max = functools.partial(numpy.max, axis=0)
+vector_min = functools.partial(numpy.min, axis=0)
+
+def anchor_vectors(dataset, anchors, combiner=vector_average):
     """Constructs basis vectors from a list of anchor indices"""
     basis = numpy.zeros((len(anchors), dataset.Q.shape[1]))
     for i, anchor in enumerate(anchors):
-        basis[i] = dataset.Q[anchor, :].sum(axis=0) / len(anchor)
+        basis[i] = combiner(dataset.Q[anchor, :], axis=0)
     return basis
