@@ -20,25 +20,27 @@ def convert_anchor(dataset, anchor):
         return dataset.vocab.index(anchor)
 
 @ankura.util.memoize
-@ankura.util.pickle_cache('frus.pickle')
+@ankura.util.pickle_cache('fcc.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
-    filenames = '/local/cojoco/git/foreign_relations/frus/documents/*.txt'
+    filenames = '/local/cojoco/git/fcc/documents/*.txt'
 #    news_glob = '/local/cojoco/git/jeffData/newsgroups/*/*'
     engl_stop = '/local/cojoco/git/jeffData/stopwords/english.txt'
     news_stop = '/local/cojoco/git/jeffData/stopwords/newsgroups.txt'
-#    name_stop = '/local/cojoco/git/jeffData/stopwords/malenames.txt'
-    pipeline = [(ankura.read_glob, filenames, ankura.tokenize.simple),
+    name_stop = '/local/cojoco/git/fcc/stopwords/names.txt'
+    curse_stop = '/local/cojoco/git/jeffData/stopwords/profanity.txt'
+    pipeline = [(ankura.read_glob, filenames, ankura.tokenize.news),
                 (ankura.filter_stopwords, engl_stop),
                 (ankura.filter_stopwords, news_stop),
-#                (ankura.combine_words, name_stop, '<name>'),
-                (ankura.filter_rarewords, 100),
-                (ankura.filter_commonwords, 1500)]
+                (ankura.combine_words, name_stop, '<name>', ankura.tokenize.simple),
+                (ankura.combine_words, curse_stop, '<profanity>', ankura.tokenize.simple),
+                (ankura.filter_rarewords, 200),
+                (ankura.filter_commonwords, 150000)]
     dataset = ankura.run_pipeline(pipeline)
     return dataset
 
 @ankura.util.memoize
-@ankura.util.pickle_cache('frus-anchors-default.pickle')
+@ankura.util.pickle_cache('fcc-anchors-default.pickle')
 def default_anchors():
     """Retrieves default anchors for newsgroups using Gram-Schmidt"""
     return ankura.gramschmidt_anchors(get_newsgroups(), 20, 500)
@@ -75,6 +77,7 @@ def topic_request():
     if raw_anchors is None:
         anchors = default_anchors()
     else:
+        print(json.loads(raw_anchors))
         anchors = ankura.util.tuplize(json.loads(raw_anchors))
     anchors = reindex_anchors(dataset, anchors)
     topics = get_topics(dataset, anchors)

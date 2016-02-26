@@ -196,7 +196,7 @@ var app = angular.module('anchorApp', [])
         //We actually call the above function here, so we get the original topics
         ctrl.getTopics();
         //This function takes all anchors from the left column and gets their new topic words.
-        //  It then repaints the page to include the new topic words.
+        //  It then updates the page to include the new topic words.
         ctrl.getNewTopics = function() {
             var currentAnchors = [];
             //The server throws an error if there are no anchors,
@@ -205,6 +205,7 @@ var app = angular.module('anchorApp', [])
                 $(".anchorContainer").each(function() {
                     var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
                     value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\u2716/g, '');
+                    value = value.replace(/\&lt;/, '<').replace(/\&gt;/, '>');
                     if (value === "") {
                         return true;
                     }
