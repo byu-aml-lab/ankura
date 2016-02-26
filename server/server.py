@@ -77,7 +77,6 @@ def topic_request():
     if raw_anchors is None:
         anchors = default_anchors()
     else:
-        print(json.loads(raw_anchors))
         anchors = ankura.util.tuplize(json.loads(raw_anchors))
     anchors = reindex_anchors(dataset, anchors)
     topics = get_topics(dataset, anchors)
