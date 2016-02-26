@@ -205,6 +205,7 @@ var app = angular.module('anchorApp', [])
                 $(".anchorContainer").each(function() {
                     var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
                     value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\u2716/g, '');
+                    //This prevents errors on the server if there are '<' or '>' symbols in the anchors
                     value = value.replace(/\&lt;/, '<').replace(/\&gt;/, '>');
                     if (value === "") {
                         return true;
