@@ -278,6 +278,8 @@ def combine_words(dataset, combine_filename, replace, tokenizer=None):
     original data is unchanged.
     """
     words = _get_wordlist(combine_filename, tokenizer)
+    # Added to keep errors from occuring when building index
+    words = (word for word in words if word in dataset.vocab)
     index = sorted([dataset.vocab.index(v) for v in words])
     sums = dataset.docwords[index, :].sum(axis=0)
 

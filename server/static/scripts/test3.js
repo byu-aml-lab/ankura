@@ -3,17 +3,17 @@ var app = angular.module('anchorApp', [])
         var ctrl = this;
         ctrl.loading = true;
         //This holds all of the anchor objects.
-        //  An anchor holds both anchor words for a single anchor and topic words that describe that anchor.
+        //  An anchor object holds both anchor words for a single anchor
+        //  and topic words that describe that anchor.
+        ctrl.anchorObjects = [];
         ctrl.anchors = [];
         ctrl.anchorsHistory = [];
         ctrl.historyIndex = 0;
         ctrl.undo = function() {
             if (ctrl.historyIndex > 0) {
-                ctrl.anchors = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex-1]["anchors"],
-                                               ctrl.anchorsHistory[ctrl.historyIndex-1]["topics"]);
+                ctrl.anchorObjects = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex-1]["anchors"],
+                                ctrl.anchorsHistory[ctrl.historyIndex-1]["topics"]);
                 ctrl.historyIndex -= 1;
-                console.log(ctrl.historyIndex);
-                console.log(ctrl.anchorsHistory);
             }
             else {
                 $("#undoForm").popover({
@@ -29,11 +29,9 @@ var app = angular.module('anchorApp', [])
         }
         ctrl.redo = function() {
             if (ctrl.historyIndex+1 < ctrl.anchorsHistory.length) {
-                ctrl.anchors = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex+1]["anchors"],
-                                               ctrl.anchorsHistory[ctrl.historyIndex+1]["topics"]);
+                ctrl.anchorObjects = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex+1]["anchors"],
+                                ctrl.anchorsHistory[ctrl.historyIndex+1]["topics"]);
                 ctrl.historyIndex += 1;
-                console.log(ctrl.historyIndex);
-                console.log(ctrl.anchorsHistory);
             }
             else {
                 $("#redoForm").popover({
@@ -65,17 +63,20 @@ var app = angular.module('anchorApp', [])
         })
         ctrl.addAnchor = function() {
             var anchorObj = {"anchors":[], "topic":[]};
-            ctrl.anchors.push(anchorObj);
+            ctrl.anchorObjects.push(anchorObj);
             initAutocomplete();
         }
-        // THIS FUNCTION IS NOT USED ANYMORE, but is here to help me remember what I did
-        //This function adds a new anchor (which is a new anchor word on a new line).
+        //THIS FUNCTION IS NOT USED ANYMORE,
+        //  but is here to help me remember what I did
+        //This function adds a new anchor (a new anchor word on a new line).
         //  It checks that the anchor word to be added is in the vocabulary.
-        //  It also prompts the user to update the topics to get new words for the added anchor.
+        //  It also prompts the user to update the topics to get new words
+        //  for the added anchor.
         ctrl.addAnchorWordOther = function() {
-            $scope.$broadcast("autofillfix:update"); //Needed to make autofill and Angular work well together
+            //Needed to make autofill and Angular work well together
+            $scope.$broadcast("autofillfix:update");
             var lowercaseAnchor = $scope.newAnchor.toLowerCase();
-            //We are checking to see if the new anchor word is in the vocabulary.
+            //We are checking to see if the new anchor word is in the vocab.
             //  If it is, we add a new anchor and prompt to update topics.
             //  If it is not, we prompt to add a valid anchor.
             var inVocab = false;
@@ -84,16 +85,18 @@ var app = angular.module('anchorApp', [])
             }
             if (lowercaseAnchor === '') {
                 var anchorObj = {"anchors":[], "topic":[]};
-                ctrl.anchors.push(anchorObj);
+                ctrl.anchorObjects.push(anchorObj);
             }
             else if (inVocab) {
-                //The backend is expecting an array of anchor words, even if there's only one anchor word.
+                //The backend is expecting an array of anchor words,
+                //  even if there's only one anchor word.
                 var newAnchors = lowercaseAnchor.split(',');
                 var anchorObj = {"anchors":newAnchors,"topic":[]};
-                ctrl.anchors.push(anchorObj);
+                ctrl.anchorObjects.push(anchorObj);
                 $scope.newAnchor = '';
-                //This timeout ensures that the added anchor is put in before the popover appears.
-                //  If removed, the popover will appear too high above the "Update Topics" button.
+                //This timeout ensures that the added anchor is put in
+                //  before the popover appears. If removed, the popover
+                //  will appear too high above the "Update Topics" button.
                 $timeout(function() {
                     $(".updateTopicsButtonClean").popover({
                         placement:'top',
@@ -103,7 +106,8 @@ var app = angular.module('anchorApp', [])
                     }).popover('show')
                         .addClass("updateTopicsButtonDirty")
                         .removeClass("updateTopicsButtonClean");
-                    //This timeout indicates how long the popover above will stay visible for.
+                    //This timeout indicates how long the popover above
+                    //  will stay visible for.
                     $timeout(function() {
                         $(".updateTopicsButtonDirty").popover('hide')
                             .addClass("updateTopicsButtonClean")
@@ -112,16 +116,19 @@ var app = angular.module('anchorApp', [])
                 }, 20);
             }
             else {
-                //We want to ensure that the popover is not already visible, or it does wierd things when you
-                //  hit the button rapidly and repeatedly.
+                //We want to ensure that the popover is not already visible,
+                //  or it does weird things when you hit the button
+                //  rapidly and repeatedly.
                 if ($(".addAnchorInputClean").length !== 0) {
                     $(".addAnchorInputClean").popover({
                         placement:'top',
                         trigger:'manual',
                         html:true,
                         content:'Please enter a valid vocabulary word'
-                    }).popover('show').addClass("addAnchorInputDirty").removeClass("addAnchorInputClean");
-                    //This timeout determines how long the message to enter a valid vocab word is visible for.
+                    }).popover('show').addClass("addAnchorInputDirty")
+                        .removeClass("addAnchorInputClean");
+                    //This timeout determines how long the message
+                    //  to enter a valid vocab word is visible for.
                     $timeout(function() {
                         $(".addAnchorInputDirty").popover('hide')
                             .addClass("addAnchorInputClean")
@@ -130,16 +137,20 @@ var app = angular.module('anchorApp', [])
                 }
             }
         }
-         //This function simply removes an anchor from the current list of anchors.
-         //  In essence, it deletes a whole line (both anchor words and their topic words).
+         //This function simply removes an anchor from the current
+         //  list of anchors. In essence, it deletes a whole line,
+         //  both anchor words and their topic words.
         ctrl.removeAnchor = function(index) {
-            ctrl.anchors.splice(index, 1);
+            ctrl.anchorObjects.splice(index, 1);
         }
-        //This function adds an anchor word when entered in via the input in the anchor's left column
+        //This function adds an anchor word when entered in via the input
+        //  in the anchor's left column
         ctrl.addAnchorWord = function(textForm, newAnchor) {
-            $scope.$broadcast("autofillfix:update"); //Needed to make autofill and Angular work well together
-            var lowercaseAnchor = textForm.target.children[0].value.toLowerCase();
-            //We are checking to see if the new anchor word is in the vocabulary.
+            //Needed to make autofill and Angular work well together
+            $scope.$broadcast("autofillfix:update");
+            var lowercaseAnchor = textForm.target.children[0]
+                                        .value.toLowerCase();
+            //We are checking to see if the new anchor word is in the vocab.
             //  If it is, we add a new anchor and prompt to update topics.
             //  If it is not, we prompt to add a valid anchor.
             var inVocab = false;
@@ -148,8 +159,9 @@ var app = angular.module('anchorApp', [])
              }
             if (inVocab) {
                 newAnchor.push(lowercaseAnchor);
-                //This timeout ensures that the added anchor is put in before the popover appears.
-                //  If removed, the popover will appear too high above the "Update Topics" button.
+                //This timeout ensures that the added anchor is put in
+                //  before the popover appears. If removed, the popover
+                //  will appear too high above the "Update Topics" button.
                 $timeout(function() {
                     $(".updateTopicsButtonClean").popover({
                         placement:'top',
@@ -159,7 +171,8 @@ var app = angular.module('anchorApp', [])
                     }).popover('show')
                         .addClass("updateTopicsButtonDirty")
                         .removeClass("updateTopicsButtonClean");
-                    //This timeout indicates how long the popover above will stay visible for.
+                    //This timeout indicates how long the popover above
+                    //  will stay visible for.
                     $timeout(function() {
                         $(".updateTopicsButtonDirty").popover('hide')
                             .addClass("updateTopicsButtonClean")
@@ -181,29 +194,33 @@ var app = angular.module('anchorApp', [])
             }
         }
 
-        //This function deletes an anchor word (when you click on the little 'x' in the bubble)
+        //This function deletes an anchor word
+        //  (when you click on the little 'x' in the bubble)
         ctrl.deleteWord = function(closeButton, array) {
             var toClose = closeButton.target.parentNode.id;
             $("#"+toClose).remove();
-            var index = array.indexOf(closeButton.target.parentNode.textContent.replace(/✖/, "").replace(/\s/g, ''));
+            var index = array.indexOf(closeButton.target.parentNode
+                .textContent.replace(/✖/, "").replace(/\s/g, ''));
             if (index !== -1) {
                 array.splice(index, 1);
             }
         }
         //This function only gets the topics when we have no current anchors.
         ctrl.getBaseTopics = function() {
-            $.get("/topics", function(data) {
+            $.get("/base-anchors", function(data) {
                 //Ensure we can't redo something that's been written over
                 ctrl.anchorsHistory.splice(ctrl.historyIndex, ctrl.anchorsHistory.length-ctrl.historyIndex-1);
                 //Save the data
                 ctrl.anchorsHistory.push(data);
-                ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
+                ctrl.anchors = data["anchors"];
                 $scope.$apply();
             });
         }
-        //We actually call the above function here, so we get the original topics
+        //We actually call the above function here,
+        //  so we get the original topics
         ctrl.getBaseTopics();
-        //This function takes all anchors from the left column and gets their new topic words.
+        //This function takes all anchors from the left column
+        //  and gets their new topic words.
         //  It then repaints the page to include the new topic words.
         ctrl.getNewTopics = function() {
             var currentAnchors = [];
@@ -211,8 +228,15 @@ var app = angular.module('anchorApp', [])
             //  so we want to get new anchors if needed.
             if ($(".anchorContainer").length !== 0) {
                 $(".anchorContainer").each(function() {
-                    var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
-                    value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\u2716/g, '');
+                    var value = $(this).html()
+                        .replace(/\s/g, '')
+                        .replace(/<span[^>]*>/g, '')
+                        .replace(/<\/span><\/span>/g, ',');
+                    value = value
+                        .replace(/<!--[^>]*>/g, '')
+                        .replace(/,$/, '')
+                        .replace(/,$/, '')
+                        .replace(/\u2716/g, '');
                     if (value === "") {
                         return true;
                     }
@@ -225,14 +249,17 @@ var app = angular.module('anchorApp', [])
                     $.get("/topics", {anchors: getParams}, function(data) {
                         var saveState = {anchors: currentAnchors,
                                    topics: data["topics"]};
-                        //This gets rid of the possibility of redoing if another state was saved since the last undo. If nothing has been undone, this should do nothing.
+                        //This gets rid of the possibility of redoing if
+                        //  another state was saved since the last undo.
+                        //  If nothing has been undone, this should do nothing.
                         ctrl.anchorsHistory.splice(ctrl.historyIndex+1, ctrl.anchorsHistory.length-ctrl.historyIndex-1);
                         //Increment historyIndex
                         ctrl.historyIndex += 1;
                         //Save the current state (anchors and topic words)
                         ctrl.anchorsHistory.push(saveState);
                         //Update the anchors in the UI
-                        ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
+                        ctrl.anchorObjects = getAnchorsArray(currentAnchors,
+                                                data["topics"], ctrl.vocab);
                         ctrl.loading = false;
                         $scope.$apply();
                     });
@@ -249,8 +276,8 @@ var app = angular.module('anchorApp', [])
         }
         // Performs a topic request using current anchors
         // cooccMatrix is the cooccurrences matrix, vocab is the vocabulary
-        ctrl.topicRequest = function(cooccMatrix, vocab) {
-            linear.recoverTopics(cooccMatrix, ctrl.anchors);
+        ctrl.topicRequest = function(cooccMatrix, anchors, vocab) {
+            recoverTopics(cooccMatrix, anchors, vocab);
         }
         //This initializes autocompletion for entering new anchor words
         var initAutocomplete = function() {
@@ -260,7 +287,8 @@ var app = angular.module('anchorApp', [])
             });
         };
         $timeout(function() {initAutocomplete();}, 500);
-        $timeout(function() {ctrl.topicRequest(ctrl.cooccurrences, ctrl.vocab);}, 10000);
+        $timeout(function() {ctrl.topicRequest(ctrl.cooccurrences,
+                                    ctrl.anchors, ctrl.vocab);}, 10000);
     }).directive("autofillfix", function() {
         //This is required because of some problem between Angular and autofill
         return {
@@ -273,18 +301,151 @@ var app = angular.module('anchorApp', [])
         }
     });
 
-//This function returns an array of anchor objects from arrays of anchors and topics.
-//Anchor objects hold both anchor words and topic words related to the anchor words.
-var getAnchorsArray = function(anchors, topics) {
+//This function returns an array of anchor objects from arrays
+//  of anchors and topics. Anchor objects hold both anchor words
+//  and topic words related to the anchor words.
+var getAnchorsArray = function(anchorObjects, topics) {
     var tempAnchors = [];
-    for (var i = 0; i < anchors.length; i++) {
-        anchor = anchors[i];
+    for (var i = 0; i < anchorObjects.length; i++) {
+        anchor = anchorObjects[i];
         var topic = topics[i];
         tempAnchors.push({"anchors":anchor, "topic":topic});
     }
     return tempAnchors;
 };
 
+//Solves an exponentiated gradient problem with L2 divergence
+var exponentiatedGradient = function exponentiatedGradient(Y, X, XX, epsilon) {
+    //Generate all the stuff we need for the beginning
+    var XY = numeric.dot(X, Y);
+    var YY = numeric.dot(Y, Y);
+
+    //These two variables were declared globally
+    var _C1 = Math.pow(10, -4);
+    var _C2 = 0.75;
+
+    var alpha = [];
+    alpha[0] = [];
+    for (var i = 0; i < X.length; i++) {
+        alpha[0][i] = 1/X.length;
+    }
+    var oldAlpha = linear.deepCloneMatrix(alpha);
+    var logAlpha = numeric.log(alpha);
+    var oldLogAlpha = linear.deepCloneMatrix(logAlpha);
+
+    var AXX = numeric.dot(alpha[0], XX);
+    var AXY = numeric.dot(alpha[0], XY);
+    var AXXA = numeric.dot(AXX, numeric.transpose(alpha));
+
+    var alphaTranspose = numeric.transpose(alpha);
+
+    var grad = numeric.mul(2, numeric.sub(AXX, XY));
+    grad = grad[0];
+    console.log(grad);
+    var oldGrad = linear.deepCloneMatrix(grad);
+
+    newObj = numeric.add(numeric.sub(AXXA, numeric.mul(2, AXY)), YY);
+
+    //Initialize bookkeeping
+    var stepsize = 1;
+    var decreased = false;
+    var convergence = Infinity;
+
+    while (convergence >= epsilon) {
+        var oldObj = newObj;
+        var oldAlpha = linear.deepCloneMatrix(alpha);
+        var oldLogalpha = linear.deepCloneMatrix(logAlpha);
+        if (newObj === 0 || stepsize === 0) {
+            break;
+        }
+
+        //Add the gradient and renormalize in logspace, then exponentiate
+        logAlpha = numeric.sub(logAlpha, stepsize * grad);
+        logAlpha = numeric.sub(logAlpha, linear.logsumExp(logAlpha));
+        alpha = numeric.exp(logAlpha);
+
+        //Precompute quantities needed for adaptive stepsize
+        AXX = numeric.dot(alpha, XX);
+        AXY = numeric.dot(alpha, XY);
+        AXXA = numeric.dot(AXX, numeric.transpose(alpha));
+
+        //See if stepsize should decrease
+        oldObj = newObj;
+        newObj = numeric.add(numeric.sub(AXXA, numeric.mul(2, AXY)), YY);
+        if (newObj > (oldObj + (_C1 * stepsize * numeric.dot(grad, numeric.sub(alpha, oldAlpha))))) {
+            stepsize = stepsize / 2.0;
+            alpha = oldAlpha;
+            logAlpha = oldLogAlpha;
+            newObj = oldObj;
+            decreased = true;
+            continue;
+        }
+
+        //Compute the new gradient
+        oldGrad = grad;
+        grad = numeric.mul(2, numeric.sub(AXX, XY));
+        
+        //See if stepsize should increase
+        if (numeric.dot(grad, numeric.sub(alpha, oldAlpha)) < (_C2 * numeric.dot(oldGrad, numeric.sub(alpha, oldAlpha))) && !decreased) {
+            stepsize *= 2.0;
+            alpha = oldAlpha;
+            logAlpha = oldLogAlpha;
+            grad = oldGrad;
+            newObj = oldObj;
+            continue;
+        }
+
+        //Update bookkeeping
+        decreased = false;
+        convergence = numeric.dot(alpha, numeric.sub(grad, linear.matrixMin(grad)));
+    }
+    return alpha;
+}
+
+//Recovers topics given a set of anchors (as words) and a cooccurrences matrix
+var recoverTopics = function recoverTopics(cooccMatrix, anchors, vocab) {
+    //We don't want to modify the original cooccurrences matrix
+    var Q = linear.deepCloneMatrix(cooccMatrix);
+
+    var V = cooccMatrix.length;
+    var K = anchors.length;
+    var A = linear.matrixZeroes(V, K);
+
+    //Create a diagonal matrix, where the ith entry of the ith row in
+    //  P_w is the sum of the row in Q.
+    var P_w = numeric.diag(linear.sumMatrixRows(Q));
+    //This check was in the Python code, not sure why.
+    for (var i = 0; i < P_w.length; i++) {
+        if (isNaN(P_w[i][i])) {
+            //Put in a really small number to avoid division by zero?
+            P_w[i][i] = Math.pow(10, -16);
+        }
+    }
+    //Normalize the rows of Q to get Q_prime
+    Q = linear.normalizeMatrixRows(Q);
+
+    //Compute normalized anchors X, and precompute X * X.T
+    anchors = linear.anchorVectors(cooccMatrix, anchors, vocab);
+    var X = linear.computeX(anchors);
+    var X_T = linear.deepCloneMatrix(X);
+    X_T = numeric.transpose(X_T);
+    var XX = numeric.dot(X, X_T);
+
+    //Do exponentiated gradient descent
+    var epsilon = Math.pow(10, -7);
+    for (var i = 0; i < 1; i++) {
+        //Y = cooccMatrix[i];
+        var alpha = exponentiatedGradient(cooccMatrix[i],
+                                                    X, XX, epsilon);
+        //linear.exponentiatedGradient is in progress. See line 114 above.
+        //  This is based on ankura/topic.py, line 20
+        //Need to ask Jeff about: if numpy.isnan(alpha).any()
+        // This is in ankura/topic.py, line 115
+        // I am basically rewriting the recover_topics function right now
+        //Overall, I am trying to translate what happens starting at line 79
+        // in server.py
+    }
+}
 
 //All functions below here enable dragging and dropping
 //They could possibly be in another file and included?
@@ -305,22 +466,28 @@ var drop = function(ev) {
     var data = ev.dataTransfer.getData("text");
     var dataString = JSON.stringify(data);
     //If an anchor or a copy of a topic word, drop
-    if (dataString.indexOf("anchor") !== -1 || dataString.indexOf("copy") !== -1) {
-        //Need to cover all the possible places in the main div it could be dropped
+    if (dataString.indexOf("anchor") !== -1 ||
+        dataString.indexOf("copy") !== -1) {
+        //Need to cover all the possible places in the main div
+        //  that it could be dropped.
         if($(ev.target).hasClass( "droppable" )) {
             ev.target.appendChild(document.getElementById(data));
         }
         else if($(ev.target).hasClass( "draggable" )) {
-            $(ev.target).parent()[0].appendChild(document.getElementById(data));
+            $(ev.target).parent()[0]
+                .appendChild(document.getElementById(data));
         }
         else if($(ev.target).hasClass( "anchorInputContainer" )) {
-            $(ev.target).siblings(".anchorContainer")[0].appendChild(document.getElementById(data));
+            $(ev.target).siblings(".anchorContainer")[0]
+                .appendChild(document.getElementById(data));
         }
         else if ($(ev.target).hasClass( "anchorInput" )) {
-            $(ev.target).parent().parent().siblings(".anchorContainer")[0].appendChild(document.getElementById(data));
+            $(ev.target).parent().parent().siblings(".anchorContainer")[0]
+                .appendChild(document.getElementById(data));
         }
         else if ($(ev.target).hasClass( "anchor" )) {
-            $(ev.target).children(".anchorContainer")[0].appendChild(document.getElementById(data));
+            $(ev.target).children(".anchorContainer")[0]
+                .appendChild(document.getElementById(data));
         }
     }
     //If a topic word, copy it
@@ -329,7 +496,8 @@ var drop = function(ev) {
         nodeCopy.id = data + "copy" + copyId++;
         var closeButton = addDeleteButton(nodeCopy.id + "close");
         nodeCopy.appendChild(closeButton);
-        //Need to cover all the possible places in the main div it could be dropped
+        //Need to cover all the possible places in the main div
+        //  that it could be dropped.
         if($(ev.target).hasClass( "droppable" )) {
             ev.target.appendChild(nodeCopy);
         }
@@ -337,18 +505,22 @@ var drop = function(ev) {
             $(ev.target).parent()[0].appendChild(nodeCopy);
         }
         else if($(ev.target).hasClass( "anchorInputContainer" )) {
-            $(ev.target).siblings(".anchorContainer")[0].appendChild(nodeCopy);
+            $(ev.target).siblings(".anchorContainer")[0]
+                .appendChild(nodeCopy);
         }
         else if ($(ev.target).hasClass( "anchorInput" )) {
-            $(ev.target).parent().parent().siblings(".anchorContainer")[0].appendChild(nodeCopy);
+            $(ev.target).parent().parent().siblings(".anchorContainer")[0]
+                .appendChild(nodeCopy);
         }
         else if ($(ev.target).hasClass( "anchor" )) {
-            $(ev.target).children(".anchorContainer")[0].appendChild(nodeCopy);
+            $(ev.target).children(".anchorContainer")[0]
+                .appendChild(nodeCopy);
         }
     }
 };
 
-//used to delete words that are copies (because they can't access the function in the Angular scope)
+//used to delete words that are copies because they can't
+//  access the function in the Angular scope.
 var deleteWord = function(ev) {
     $("#"+ev.target.id).parent()[0].remove();
 }
