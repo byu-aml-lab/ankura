@@ -302,7 +302,8 @@ def combine_regex(dataset, regex, replace):
     unchanged.
     """
     pattern = re.compile(regex)
-    stopwords = {token for token in dataset.vocab if pattern.fullmatch(token)}
+    combine_words = {token for token in dataset.vocab if pattern.fullmatch(token)}
+    return _combine_words(dataset, combine_words, replace)
 
 
 def filter_rarewords(dataset, doc_threshold):

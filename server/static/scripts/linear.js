@@ -5,17 +5,29 @@ if(typeof global !== "undefined") { global.linear = linear; }
 
 //Returns an array with the sums of each row of a matrix
 linear.sumMatrixRows = function sumMatrixRows(matrix) {
-    var colLength = matrix.length;
     var sumOfRows = [];
-    for (var i = 0; i < colLength; i++) {
-        var rowLength = matrix[i].length;
+    for (var i = 0; i < matrix.length; i++) {
         var sum = 0;
-        for (var j = 0; j < rowLength; j++) {
+        for (var j = 0; j < matrix[i].length; j++) {
             sum += matrix[i][j];
         }
         sumOfRows.push(sum);
     }
     return sumOfRows;
+}
+
+//Returns an array with the sums of each column of a matrix
+linear.sumMatrixCols = function sumMatrixCols(matrix) {
+    var sumOfCols = [];
+    for (var i = 0; i < matrix[i].length; i++) {
+        sumOfCols[i] = 0;
+    }
+    for (var i = 0; i < matrix.length; i++) {
+        for (var j = 0; j < matrix[i].length; j++) {
+            sumOfCols[j] += matrix[i][j];
+        }
+    }
+    return sumOfCols;
 }
 
 //Creates a matrix of the specified number of rows and columns full of zeroes
@@ -64,50 +76,99 @@ linear.normalizeMatrixRows = function normalizeMatrixRows(matrix) {
     return normalizedMatrix;
 }
 
+//Sums an array of numbers
 linear.sumRow = function sumRow(row) {
-    var rowLen = row.length;
     var sum = 0;
-    for (var i = 0; i < rowLen; i++) {
+    for (var i = 0; i < row.length; i++) {
         sum += row[i];
     }
     return sum;
 }
 
+//Sums a row of a matrix
+linear.sumCol = function sumCol(colNum, matrix) {
+    var sum = 0;
+    for (var i = 0; i < matrix.length; i++) {
+        sum += matrix[i][colNum];
+    }
+    return sum;
+}
+
+//Creates a single basis vector given the cooccurrences matrix and an anchor
+linear.createBasisVector = function createBasisVector(cooccMatrix, anchor) {
+    var basisVector = [];
+    for (var i = 0; i < cooccMatrix.length; i++) {
+        var sum = 0;
+        for (var j = 0; j < anchor.length; j++) {
+            sum += cooccMatrix[anchor[j]][i];
+        }
+        basisVector[i] = sum / anchor.length;
+    }
+    return basisVector;
+}
+
 //Constructs basis vectors from a list of anchor indices
-linear.anchorVectors = function anchorVectors(cooccMatrix, anchors) {
-    var basis = linear.matrixZeroes(anchors.length, cooccMatrix[0].length);
-    var cooccLength = cooccMatrix.length;
-    for (var i = 0; i < cooccLength; i++) {
-        basis[i] = (linear.sumRow(cooccMatrix[i])/cooccMatrix[i].length);
+linear.anchorVectors = function anchorVectors(cooccMatrix, anchors, vocab) {
+    var basis = [];
+    for (var i = 0; i < anchors.length; i++) {
+        var anchor = [];
+        for (var j = 0; j < anchors[i].length; j++) {
+            anchor.push(vocab.indexOf(anchors[i][j]));
+        }
+        basis[i] = linear.createBasisVector(cooccMatrix, anchor, vocab);
     }
     return basis;
 }
 
-//Recovers topics given a set of anchors and cooccurrences matrix
-linear.recoverTopics = function recoverTopics(cooccMatrix, anchors) {
-    //We don't want to modify the original cooccurrences matrix
-    var Q = linear.deepCloneMatrix(cooccMatrix);
-
-    var V = cooccMatrix.length;
-    var K = anchors.length;
-    var A = linear.matrixZeroes(V, K);
-
-    //Create a diagonal matrix, where the ith entry of the ith row in
-    //  P_w is the sum of the row in Q.
-    var P_w = numeric.diag(linear.sumMatrixRows(Q));
-    var P_wLength = P_w.length;
-    //This check was in the Python code, not sure why.
-    for (var i = 0; i < P_wLength; i++) {
-        if (isNaN(P_w[i][i])) {
-            P_w[i][i] = Math.pow(1, -16);
+//Computes the X matrix, which is just a row-normalized basis
+linear.computeX = function computeX(anchors) {
+    var X = linear.deepCloneMatrix(anchors);
+    for (var i = 0; i < X.length; i++) {
+        var rowSum = linear.sumRow(X[i]);
+        for (var j = 0; j < X[i].length; j++) {
+            X[i][j] = (X[i][j]/rowSum);
         }
     }
-    //Normalize the rows of Q to get Q_prime
-    Q = linear.normalizeMatrixRows(Q);
+    return X;
+}
 
-    var anchorCopy = linear.deepCloneMatrix(anchors);
-    console.log(anchorCopy);
-    //Compute normalized anchors X, and precompute X * X.T
-    anchors = linear.anchorVectors(cooccMatrix, anchors);
-    console.log(anchors);
+linear.matrixLog = function matrixLog(matrix) {
+    for (var i = 0; i < matrix.length; i++) {
+        for (var j = 0; j < matrix[i].length; j++) {
+            matrix[i][j] = Math.log(matrix[i][j]);
+        }
+    }
+    return matrix;
+}
+
+//Computes the sum of a matrix in log space
+linear.logsumExp = function logsumExp(matrix) {
+    max = linear.matrixMax(matrix);
+    return max + Math.log(numeric.sum(numeric.exp(numeric.sub(matrix, max))));
+}
+
+//Finds the minimum value in a 2D matrix
+linear.matrixMin = function matrixMin(matrix) {
+    var min = matrix[0][0];
+    for (var i = 0; i < matrix.length; i++) {
+        for (var j = 0; j < matrix[i].length; j++) {
+            if (matrix[i][j] < min) {
+                min = matrix[i][j];
+            }
+        }
+    }
+    return min;
+}
+
+//Finds the maximum value in a 2D matrix
+linear.matrixMax = function matrixMax(matrix) {
+    var max = matrix[0][0];
+    for (var i = 0; i < matrix.length; i++) {
+        for (var j = 0; j < matrix[i].length; j++) {
+            if (matrix[i][j] > max) {
+                max = matrix[i][j];
+            }
+        }
+    }
+    return max;
 }

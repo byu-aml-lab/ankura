@@ -61,6 +61,11 @@ def tokenify_anchors(dataset, anchors):
     """Converts token indexes in a list of anchors to tokens"""
     return [[dataset.vocab[token] for token in anchor] for anchor in anchors]
 
+@app.route('/base-anchors')
+def get_base_anchors():
+    """Gets the base set of anchors to send to the client"""
+    base_anchors = default_anchors()
+    return flask.jsonify(anchors=tokenify_anchors(get_newsgroups(), base_anchors))
 
 @app.route('/topics')
 def topic_request():
@@ -143,6 +148,12 @@ def get_vocab():
     """Returns all valid vocabulary words in the dataset"""
     dataset = get_newsgroups()
     return flask.jsonify(vocab=dataset.vocab)
+
+@app.route('/vocabsize')
+def get_vocab_size():
+    """Gets the size of the vocabulary"""
+    dataset = get_newsgroups()
+    return "Vocabulary size: " + str(dataset.vocab_size)
 
 @app.route('/cooccurrences')
 def get_cooccurrences():
