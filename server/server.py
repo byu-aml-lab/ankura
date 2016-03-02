@@ -21,6 +21,7 @@ def convert_anchor(dataset, anchor):
     else:
         return dataset.vocab.index(anchor)
 
+
 @ankura.util.memoize
 @ankura.util.pickle_cache('newsgroups.pickle')
 def get_newsgroups():
@@ -38,16 +39,19 @@ def get_newsgroups():
     dataset = ankura.run_pipeline(pipeline)
     return dataset
 
+
 @ankura.util.memoize
 @ankura.util.pickle_cache('anchors-default.pickle')
 def default_anchors():
     """Retrieves default anchors for newsgroups using Gram-Schmidt"""
     return ankura.gramschmidt_anchors(get_newsgroups(), 20, 500)
 
+
 @ankura.util.memoize
 def get_topics(dataset, anchors):
     """Gets the topics for 20 newsgroups given a set of anchors"""
     return ankura.recover_topics(dataset, anchors)
+
 
 @ankura.util.memoize
 def reindex_anchors(dataset, anchors):
@@ -61,11 +65,13 @@ def tokenify_anchors(dataset, anchors):
     """Converts token indexes in a list of anchors to tokens"""
     return [[dataset.vocab[token] for token in anchor] for anchor in anchors]
 
+
 @app.route('/base-anchors')
 def get_base_anchors():
     """Gets the base set of anchors to send to the client"""
     base_anchors = default_anchors()
     return flask.jsonify(anchors=tokenify_anchors(get_newsgroups(), base_anchors))
+
 
 @app.route('/topics')
 def topic_request():
@@ -99,17 +105,8 @@ def topic_request():
 @app.route('/')
 def serve_itm():
     """Serves the Interactive Topic Modeling UI"""
-    return flask.send_from_directory('static', 'index.html')
+    return app.send_static_file('index.html')
 
-@app.route('/style/stylesheet.css')
-def serve_itm_css():
-    """Serves the CSS for the ITM UI"""
-    return flask.send_from_directory('static/style', 'stylesheet.css')
-
-@app.route('/scripts/script.js')
-def serve_itm_js():
-    """Serves the Javascript for the ITM UI"""
-    return flask.send_from_directory('static/scripts', 'script.js')
 
 @app.route('/finished', methods=['GET', 'POST'])
 def get_user_data():
@@ -123,25 +120,6 @@ def get_user_data():
         json.dump(input_json, dataFile, sort_keys=True, indent=2, ensure_ascii=False)
     return 'OK'
 
-@app.route('/test3')
-def serve_test3():
-    """Serves the test for the anchor words algorithm done in Javascript"""
-    return flask.send_from_directory('static', 'test3.html')
-
-@app.route('/style/test3.css')
-def serve_test3_css():
-    """Serves the CSS for the test anchor words in Javascript"""
-    return flask.send_from_directory('static/style', 'test3.css')
-
-@app.route('/scripts/test3.js')
-def serve_test3_js():
-    """Serves the Javascript for the test anchor words in Javascript"""
-    return flask.send_from_directory('static/scripts', 'test3.js')
-
-@app.route('/scripts/linear.js')
-def serve_linear_js():
-    """Serves the Javascript methods for the anchor word algorithm"""
-    return flask.send_from_directory('static/scripts', 'linear.js')
 
 @app.route('/vocab')
 def get_vocab():
@@ -149,11 +127,13 @@ def get_vocab():
     dataset = get_newsgroups()
     return flask.jsonify(vocab=dataset.vocab)
 
+
 @app.route('/vocabsize')
 def get_vocab_size():
     """Gets the size of the vocabulary"""
     dataset = get_newsgroups()
     return "Vocabulary size: " + str(dataset.vocab_size)
+
 
 @app.route('/cooccurrences')
 def get_cooccurrences():
@@ -161,10 +141,6 @@ def get_cooccurrences():
     dataset = get_newsgroups()
     return flask.jsonify(cooccurrences=dataset.Q.tolist())
 
-@app.route('/images/spinner.gif')
-def get_spinner():
-    """Serves the spinning wheel gif"""
-    return flask.send_from_directory('static/images', 'spinner.gif')
 
 if __name__ == '__main__':
     default_anchors()
