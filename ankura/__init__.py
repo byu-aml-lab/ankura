@@ -3,7 +3,7 @@
 from .anchor import gramschmidt_anchors, constraint_anchors
 from .pipeline import (read_uci, read_glob, read_file,
                        filter_stopwords, filter_rarewords, filter_commonwords,
-                       combine_words,
+                       combine_words, combine_regex,
                        filter_smalldocs,
                        convert_cooccurences, convert_format,
                        run_pipeline)

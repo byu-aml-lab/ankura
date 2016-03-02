@@ -17,10 +17,10 @@ import io
 import glob
 import numpy
 import random
+import re
 import scipy.sparse
 
 from . import tokenize
-# from ankura import tokenize
 
 
 class Dataset(object):
@@ -264,21 +264,17 @@ def filter_stopwords(dataset, stopword_filename, tokenizer=None):
     """Filters out a set of stopwords from a dataset
 
     The stopwords file is expected to contain a single stopword token per line.
-    The original data is unchanged.
+    The original dataset is unchanged.
     """
     stopwords = _get_wordlist(stopword_filename, tokenizer)
     keep = lambda i, v: v not in stopwords
     return _filter_vocab(dataset, keep)
 
 
-def combine_words(dataset, combine_filename, replace, tokenizer=None):
-    """Combines a set of words into a single token
-
-    The combine file is expected to contain a single token per line. The
-    original data is unchanged.
-    """
-    words = _get_wordlist(combine_filename, tokenizer)
-    index = sorted([dataset.vocab.index(v) for v in words])
+def _combine_words(dataset, combine_words, replace):
+    """Combines a set of words into a single token type"""
+    reverse = {v: i for i, v in enumerate(dataset.vocab)}
+    index = sorted([reverse[v] for v in words if v in reverse])
     sums = dataset.docwords[index, :].sum(axis=0)
 
     keep = lambda i, v: i not in index[1:]
@@ -288,10 +284,36 @@ def combine_words(dataset, combine_filename, replace, tokenizer=None):
     return combined
 
 
+def combine_words(dataset, combine_filename, replace, tokenizer=None):
+    """Combines a set of words into a single token
+
+    The combine file is expected to contain a single token per line. The
+    original dataset is unchanged.
+    """
+    combine_words = _get_wordlist(combine_filename, tokenizer)
+    return _combine_words(dataset, combine_words, replace)
+
+
+def combine_regex(dataset, regex, replace):
+    """Combines a set of words which match a regex
+
+    The regex must match an entire token to be considered a match. Each
+    matching token is combined into the replace token. The original dataset is
+    unchanged.
+    """
+    pattern = re.compile(regex)
+    stopwords = {token for token in dataset.vocab if pattern.fullmatch(token)}
+
+
 def filter_rarewords(dataset, doc_threshold):
     """Filters rare words which do not appear in enough documents"""
     keep = lambda i, v: dataset.docwords[i, :].nnz >= doc_threshold
     return _filter_vocab(dataset, keep)
+
+
+def filter_empty_words(dataset):
+    """Filters words which do not appear in any documents"""
+    return filter_rarewords(dataset, 1)
 
 
 def filter_commonwords(dataset, doc_threshold):
@@ -462,5 +484,3 @@ def run_pipeline(pipeline, append_pregenerate=True):
         dataset = pregenerate_Q(dataset)
 
     return dataset
-
-
