@@ -112,7 +112,7 @@ def serve_itm_js():
     """Serves the Javascript for the ITM UI"""
     return flask.send_from_directory('static/scripts', 'script.js')
 
-@app.route('/finished', methods=['GET', 'POST'])
+@app.route('/finished', methods=['POST'])
 def get_user_data():
     """Receives and saves user data when done button is clicked in the ITM UI"""
     flask.request.get_data()
