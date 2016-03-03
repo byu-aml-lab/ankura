@@ -3,6 +3,7 @@
 import collections
 import os
 import pickle
+import random
 
 def pickle_cache(pickle_path):
     """Decorator to cache a parameterless function call to disk"""
@@ -43,3 +44,14 @@ def tuplize(data, conversion=None):
         return conversion(data)
     else:
         return data
+
+
+def sample_categorical(counts):
+    """Sample a categorical distribution parameterized by unnormalized counts"""
+    sample = random.uniform(0, sum(counts))
+    for key, count in enumerate(counts):
+        if sample < count:
+            return key
+        sample -= count
+
+    raise ValueError(counts)
