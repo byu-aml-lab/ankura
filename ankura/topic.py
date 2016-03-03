@@ -4,7 +4,6 @@ import scipy.sparse
 import numpy
 import random
 
-from .anchor import anchor_vectors
 from .pipeline import Dataset, filter_empty_words
 from .util import sample_categorical
 
@@ -107,7 +106,6 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
         Q[word, :] = Q[word, :] / Q[word, :].sum()
 
     # compute normalized anchors X, and precompute X * X.T
-    anchors = anchor_vectors(dataset, anchors)
     X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
     XX = numpy.dot(X, X.transpose())
 

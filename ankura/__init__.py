@@ -1,6 +1,7 @@
 """Ankura provides the ability to experiment with anchor-based topic modeling"""
 
-from .anchor import gramschmidt_anchors, constraint_anchors
+from .anchor import (gramschmidt_anchors, multiword_anchors,
+                     vector_average, vector_max, vector_min)
 from .pipeline import (read_uci, read_glob, read_file,
                        filter_stopwords, filter_rarewords, filter_commonwords,
                        combine_words, combine_regex,

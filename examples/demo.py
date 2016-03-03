@@ -1,11 +1,8 @@
 """A demo of ankura functionality"""
 
 import numpy
-import os
-import numbers
 
 import ankura
-from ankura import measure
 
 
 @ankura.util.memoize
@@ -33,22 +30,9 @@ def get_gramschmidt_anchors():
     return ankura.gramschmidt_anchors(get_dataset(), 20, 500)
 
 
-def convert_anchor(dataset, anchor):
-    """Converts an anchor it its integer index"""
-    if isinstance(anchor, numbers.Integral):
-        return anchor
-    else:
-        return dataset.vocab.index(anchor)
-
-
-def reindex_anchors(dataset, anchors):
-    """Converts any tokens in a set of anchors to the index of token"""
-    conversion = lambda t: convert_anchor(dataset, t)
-    return ankura.util.tuplize(anchors, conversion)
-
-
 def get_title_anchors(dataset):
-    anchors = [
+    """Retrieves anchors constructed from the newsgroup titles"""
+    anchor_tokens = [
         ['computer', 'graphics'],
         ['computer', 'microsoft', 'windows'],
         ['computer', 'ibm', 'pc', 'hardware'],
@@ -69,11 +53,12 @@ def get_title_anchors(dataset):
         ['alternative', 'religion', 'atheism'],
         ['social', 'religion', 'christian'],
     ]
-    return reindex_anchors(dataset, anchors)
+    return ankura.multiword_anchors(dataset, anchor_tokens)
 
 
 def get_oracular_anchors(dataset):
-    anchors = [
+    """Retrieves anchors created by an expert user"""
+    anchor_tokens = [
         ['graphics', 'card', 'video'],
         ['windows', 'microsoft', 'nt'],
         ['ibm', 'hardware'],
@@ -96,12 +81,7 @@ def get_oracular_anchors(dataset):
         ['christian', 'god', 'jesus'],
         ['sale', 'price', 'sell', 'condition', 'shipping'],
     ]
-    return reindex_anchors(dataset, anchors)
-
-
-def get_topics(dataset, anchors):
-    """Wraps recover topics with memoize"""
-    return ankura.recover_topics(dataset, anchors)
+    return ankura.multiword_anchors(dataset, anchor_tokens)
 
 
 def print_summary(dataset, topics, n=10):
@@ -119,15 +99,8 @@ def demo():
     # anchors = get_gramschmidt_anchors():
     # anchors = get_title_anchors(dataset)
     anchors = get_oracular_anchors(dataset)
-    topics = get_topics(dataset, anchors)
+    topics = ankura.recover_topics(dataset, anchors)
     print_summary(dataset, topics, 20)
-
-    # trans = ankura.topic_combine(topics, dataset)
-    trans = ankura.topic_transform(topics, dataset)
-    labels = [os.path.dirname(title) for title in trans.titles]
-    naive = measure.NaiveBayes(trans, labels)
-    accuracy = naive.validate(trans, labels)
-    print('Accuracy:', accuracy)
 
 if __name__ == '__main__':
     demo()

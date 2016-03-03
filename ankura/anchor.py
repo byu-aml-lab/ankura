@@ -95,26 +95,9 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
                 anchors[j + 1] = i
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
-    return tuplize([anchor] for anchor in anchors)
+    return Q[anchors, :]
+    # return tuplize([anchor] for anchor in anchors)
 
-
-def constraint_anchors(dataset, constraints):
-    """Constructs anchors based on a set of user constraints
-
-    The constraints are given in the form of the string token. Any token which
-    is not present in the dataset vocabulary is ignored. The anchors are
-    returned as a list of indices for each anchor.
-    """
-    anchors = []
-    for constraint in constraints:
-        anchor = []
-        for word in constraint:
-            try:
-                anchor.append(dataset.vocab.index(word))
-            except ValueError:
-                pass
-        anchors.append(anchor)
-    return tuplize(anchors)
 
 
 # pylint: disable=invalid-name
@@ -122,9 +105,30 @@ vector_average = functools.partial(numpy.mean, axis=0)
 vector_max = functools.partial(numpy.max, axis=0)
 vector_min = functools.partial(numpy.min, axis=0)
 
-def anchor_vectors(dataset, anchors, combiner=vector_average):
-    """Constructs basis vectors from a list of anchor indices"""
-    basis = numpy.zeros((len(anchors), dataset.Q.shape[1]))
-    for i, anchor in enumerate(anchors):
+
+def multiword_anchors(dataset, anchor_tokens, combiner=vector_average):
+    """Constructs anchors based on a set of user specified multiword anchors
+
+    The anchors are given in the form of the string tokens. Any token which
+    is not present in the dataset vocabulary is ignored. The multiword anchors
+    are combined into single anchor vectors using the specified combiner (which
+    defaults to vector average).
+    """
+    anchor_indices = []
+    for anchor in anchor_tokens:
+        anchor_index = []
+        for word in anchor:
+            try:
+                anchor_index.append(dataset.vocab.index(word))
+            except ValueError:
+                pass
+        anchor_indices.append(anchor_index)
+    return vectorize_anchors(dataset, anchor_indices, combiner)
+
+
+def vectorize_anchors(dataset, anchor_indices, combiner=vector_average):
+    """Converts multiword anchors given as indices to anchor vectors"""
+    basis = numpy.zeros((len(anchor_indices), dataset.Q.shape[1]))
+    for i, anchor in enumerate(anchor_indices):
         basis[i] = combiner(dataset.Q[anchor, :], axis=0)
     return basis
