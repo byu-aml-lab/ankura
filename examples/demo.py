@@ -1,8 +1,10 @@
 """A demo of ankura functionality"""
 
 import numpy
+import os
 
 import ankura
+from ankura import measure
 
 
 @ankura.util.memoize
@@ -94,12 +96,20 @@ def print_summary(dataset, topics, n=10):
 def demo():
     """Runs the demo"""
     dataset = get_dataset()
-    anchors = get_gramschmidt_anchors()
+    # anchors = get_gramschmidt_anchors()
     # anchors = get_title_anchors(dataset)
-    # anchors = get_oracular_anchors(dataset, combiner=ankura.vector_max)
-    print(type(anchors), anchors.shape)
+    anchors = get_oracular_anchors(dataset, combiner=ankura.vector_min)
     topics = ankura.recover_topics(dataset, anchors)
     print_summary(dataset, topics, 20)
+
+    # trans = ankura.topic_transform(topics, dataset)
+    trans = ankura.topic_combine(topics, dataset)
+    labels = [os.path.dirname(title) for title in trans.titles]
+    naive = measure.NaiveBayes(trans, labels)
+    accuracy = naive.validate(trans, labels)
+    print('Accuracy:', accuracy)
+
+
 
 if __name__ == '__main__':
     demo()

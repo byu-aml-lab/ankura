@@ -274,7 +274,7 @@ def filter_stopwords(dataset, stopword_filename, tokenizer=None):
 def _combine_words(dataset, combine_words, replace):
     """Combines a set of words into a single token type"""
     reverse = {v: i for i, v in enumerate(dataset.vocab)}
-    index = sorted([reverse[v] for v in words if v in reverse])
+    index = sorted([reverse[v] for v in combine_words if v in reverse])
     sums = dataset.docwords[index, :].sum(axis=0)
 
     keep = lambda i, v: i not in index[1:]

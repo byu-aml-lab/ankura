@@ -130,7 +130,7 @@ def predict_topics(topics, tokens, alpha=.01, rng=random, num_iters=10):
     the document topic distribution is used in the computation.
     """
     T = topics.shape[1]
-    z = numpy.zeros(len(tokens))
+    z = numpy.zeros(len(tokens), dtype='uint')
     counts = numpy.zeros(T)
 
     # init topics and topic counts
@@ -171,7 +171,7 @@ def topic_combine(topics, dataset, alpha=.01, rng=random):
         _, assignments = predict_topics(topics, tokens, alpha, rng)
         for token, topic in zip(tokens, assignments):
             index = token * T + topic
-            data[index] += 1
+            data[index, doc] += 1
     vocab = ['{}-{}'.format(w, t) for w in dataset.vocab for t in range(T)]
 
     dataset = Dataset(scipy.sparse.csc_matrix(data), vocab, dataset.titles)
