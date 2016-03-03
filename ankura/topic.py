@@ -5,7 +5,8 @@ import numpy
 import random
 
 from .anchor import anchor_vectors
-from .pipeline import Dataset
+from .pipeline import Dataset, filter_empty_words
+from .util import sample_categorical
 
 
 def logsum_exp(y):
@@ -124,12 +125,11 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
     return numpy.array(A)
 
 
-def predict_topics(topics, tokens, alpha=.01, rng=random):
+def predict_topics(topics, tokens, alpha=.01, rng=random, num_iters=10):
     """Produces topic assignments for a sequence tokens given a set of topics
 
-    Inference is performed using iterated conditional modes. A uniform
-    Dirichlet prior over the document topic distribution is used in the
-    computation.
+    Inference is performed using Gibbs sampling. A uniform Dirichlet prior over
+    the document topic distribution is used in the computation.
     """
     T = topics.shape[1]
     z = numpy.zeros(len(tokens))
@@ -144,17 +144,11 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
     def _prob(w_n, t):
         return (alpha + counts[t]) * topics[w_n, t]
 
-    # iterate until no further changes
-    converged = False
-    while not converged:
-        converged = True
+    for _ in range(num_iters):
         for n, w_n in enumerate(tokens):
             counts[z[n]] -= 1
-            z_n = numpy.argmax([_prob(w_n, t) for t in range(T)])
-            if z_n != z[n]:
-                z[n] = z_n
-                converged = False
-            counts[z_n] += 1
+            z[n] = sample_categorical([_prob(w_n, t) for t in range(T)])
+            counts[z[n]] += 1
 
     return counts.astype('uint'), z
 
@@ -181,4 +175,7 @@ def topic_combine(topics, dataset, alpha=.01, rng=random):
             index = token * T + topic
             data[index] += 1
     vocab = ['{}-{}'.format(w, t) for w in dataset.vocab for t in range(T)]
-    return Dataset(data, vocab, dataset.titles)
+
+    dataset = Dataset(scipy.sparse.csc_matrix(data), vocab, dataset.titles)
+    dataset = filter_empty_words(dataset)
+    return dataset
