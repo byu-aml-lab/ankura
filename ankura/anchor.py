@@ -95,15 +95,23 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
                 anchors[j + 1] = i
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
-    return Q[anchors, :]
-    # return tuplize([anchor] for anchor in anchors)
+    # use the original Q to extract anchor vectors using the anchor indices
+    return dataset.Q[anchors, :]
 
 
+def vector_average(anchor):
+    """Combines a multiword anchor (as vectors) using vector average"""
+    return numpy.mean(anchor, axis=0)
 
-# pylint: disable=invalid-name
-vector_average = functools.partial(numpy.mean, axis=0)
-vector_max = functools.partial(numpy.max, axis=0)
-vector_min = functools.partial(numpy.min, axis=0)
+
+def vector_max(anchor):
+    """Combines a multiword anchor (as vectors) using elementwise max"""
+    return numpy.max(anchor, axis=0)
+
+
+def vector_min(anchor):
+    """Combines a multiword anchor (as vectors) using elementwise max"""
+    return numpy.min(anchor, axis=0)
 
 
 def multiword_anchors(dataset, anchor_tokens, combiner=vector_average):
@@ -130,5 +138,5 @@ def vectorize_anchors(dataset, anchor_indices, combiner=vector_average):
     """Converts multiword anchors given as indices to anchor vectors"""
     basis = numpy.zeros((len(anchor_indices), dataset.Q.shape[1]))
     for i, anchor in enumerate(anchor_indices):
-        basis[i] = combiner(dataset.Q[anchor, :], axis=0)
+        basis[i] = combiner(dataset.Q[anchor, :])
     return basis

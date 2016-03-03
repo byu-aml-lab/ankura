@@ -23,8 +23,6 @@ def get_dataset():
     return dataset
 
 
-@ankura.util.memoize
-@ankura.util.pickle_cache('anchors-default.pickle')
 def get_gramschmidt_anchors():
     """Retrieves default anchors for newsgroups using Gram-Schmidt"""
     return ankura.gramschmidt_anchors(get_dataset(), 20, 500)
@@ -56,7 +54,7 @@ def get_title_anchors(dataset):
     return ankura.multiword_anchors(dataset, anchor_tokens)
 
 
-def get_oracular_anchors(dataset):
+def get_oracular_anchors(dataset, combiner=ankura.vector_average):
     """Retrieves anchors created by an expert user"""
     anchor_tokens = [
         ['graphics', 'card', 'video'],
@@ -81,7 +79,7 @@ def get_oracular_anchors(dataset):
         ['christian', 'god', 'jesus'],
         ['sale', 'price', 'sell', 'condition', 'shipping'],
     ]
-    return ankura.multiword_anchors(dataset, anchor_tokens)
+    return ankura.multiword_anchors(dataset, anchor_tokens, combiner)
 
 
 def print_summary(dataset, topics, n=10):
@@ -96,9 +94,10 @@ def print_summary(dataset, topics, n=10):
 def demo():
     """Runs the demo"""
     dataset = get_dataset()
-    # anchors = get_gramschmidt_anchors():
+    anchors = get_gramschmidt_anchors()
     # anchors = get_title_anchors(dataset)
-    anchors = get_oracular_anchors(dataset)
+    # anchors = get_oracular_anchors(dataset, combiner=ankura.vector_max)
+    print(type(anchors), anchors.shape)
     topics = ankura.recover_topics(dataset, anchors)
     print_summary(dataset, topics, 20)
 
