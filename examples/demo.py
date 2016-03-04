@@ -1,6 +1,5 @@
 """A demo of ankura functionality"""
 
-import numpy
 import os
 
 import ankura
@@ -97,7 +96,7 @@ def demo():
     # anchors = get_title_anchors(dataset)
     anchors = get_oracular_anchors(dataset, combiner=ankura.vector_min)
     topics = ankura.recover_topics(dataset, anchors)
-    print_summary(dataset, topics, 20)
+    print_summary(topics, dataset, 20)
 
     # trans = ankura.topic_transform(topics, dataset)
     trans = ankura.topic_combine(topics, dataset)
