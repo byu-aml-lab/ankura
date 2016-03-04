@@ -126,10 +126,9 @@ var app = angular.module('anchorApp', [])
         }
 
         //This function deletes an anchor word (when you click on the little 'x' in the bubble)
-        ctrl.deleteWord = function(closeButton, index) {
+        ctrl.deleteWord = function(closeButton, array) {
             var toClose = closeButton.target.parentNode.id;
             $("#"+toClose).remove();
-            var array = ctrl.anchors[index]['anchors'];
             console.log(array);
             var wordIndex = array.indexOf(closeButton.target.parentNode.textContent.replace(/✖/, "").replace(/\s/g, ''));
             if (wordIndex !== -1) {
