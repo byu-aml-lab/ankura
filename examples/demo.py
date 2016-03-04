@@ -84,13 +84,10 @@ def get_oracular_anchors(dataset, combiner=ankura.vector_average):
     return ankura.multiword_anchors(dataset, anchor_tokens, combiner)
 
 
-def print_summary(dataset, topics, n=10):
+def print_summary(topics, dataset, n):
     """Prints a summary of the given topics"""
-    for k in range(topics.shape[1]):
-        summary = []
-        for word in numpy.argsort(topics[:, k])[-n:][::-1]:
-            summary.append(dataset.vocab[word])
-        print(' '.join(summary))
+    for topic in ankura.topic.topic_summary(topics, dataset, n):
+        print(' '.join(topic))
 
 
 def demo():

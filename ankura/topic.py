@@ -177,3 +177,14 @@ def topic_combine(topics, dataset, alpha=.01, rng=random):
     dataset = Dataset(scipy.sparse.csc_matrix(data), vocab, dataset.titles)
     dataset = filter_empty_words(dataset)
     return dataset
+
+
+def topic_summary(topics, dataset, n=10):
+    """Returns a list of top n tokens per topic"""
+    summaries = []
+    for k in range(topics.shape[1]):
+        summary = []
+        for word in numpy.argsort(topics[:, k])[-n:][::-1]:
+            summary.append(dataset.vocab[word])
+        summaries.append(summary)
+    return summaries
