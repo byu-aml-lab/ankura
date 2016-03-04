@@ -15,7 +15,7 @@ var app = angular.module('anchorApp', [])
                 ctrl.anchors = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex-1]["anchors"],
                                                ctrl.anchorsHistory[ctrl.historyIndex-1]["topics"]);
                 ctrl.historyIndex -= 1;
-                ctrl.noChangesYet = true;
+                ctrl.startChanging();
             }
             else {
                 $("#undoForm").popover({
@@ -36,7 +36,7 @@ var app = angular.module('anchorApp', [])
                 ctrl.anchors = getAnchorsArray(ctrl.anchorsHistory[ctrl.historyIndex+1]["anchors"],
                                                ctrl.anchorsHistory[ctrl.historyIndex+1]["topics"]);
                 ctrl.historyIndex += 1;
-                ctrl.noChangesYet = true;
+                ctrl.startChanging;
             }
             else {
                 $("#redoForm").popover({
@@ -70,13 +70,13 @@ var app = angular.module('anchorApp', [])
           var anchorObj = {"anchors":[], "topic":[]};
           ctrl.anchors.push(anchorObj);
           initAutocomplete(ctrl.vocab);
-          ctrl.noChangesYet = false;
+          ctrl.stopChanging();
         }
          //This function removes an anchor from the current list of anchors.
          //  it deletes a whole line (both anchor words and their topic words).
         ctrl.removeAnchor = function(index) {
           ctrl.anchors.splice(index, 1);
-          ctrl.noChangesYet = false;
+          ctrl.stopChanging();
         }
         //This function adds an anchor word when entered in via an input in the left column
         ctrl.addAnchorWord = function(textForm, newAnchor) {
@@ -110,7 +110,7 @@ var app = angular.module('anchorApp', [])
                     }, 5000);
                 }, 20);
                 textForm.target.children[0].value = "";
-                ctrl.noChangesYet = false;
+                ctrl.stopChanging();
             }
             else {
                 angular.element(textForm.target).popover({
@@ -126,14 +126,16 @@ var app = angular.module('anchorApp', [])
         }
 
         //This function deletes an anchor word (when you click on the little 'x' in the bubble)
-        ctrl.deleteWord = function(closeButton, array) {
+        ctrl.deleteWord = function(closeButton, index) {
             var toClose = closeButton.target.parentNode.id;
             $("#"+toClose).remove();
-            var index = array.indexOf(closeButton.target.parentNode.textContent.replace(/✖/, "").replace(/\s/g, ''));
-            if (index !== -1) {
-                array.splice(index, 1);
+            var array = ctrl.anchors[index]['anchors'];
+            console.log(array);
+            var wordIndex = array.indexOf(closeButton.target.parentNode.textContent.replace(/✖/, "").replace(/\s/g, ''));
+            if (wordIndex !== -1) {
+                array.splice(wordIndex, 1);
             }
-            ctrl.noChangesYet = false;
+            ctrl.stopChanging();
         }
         //This function only gets the topics when we have no current anchors.
         ctrl.getTopics = function() {
@@ -145,7 +147,7 @@ var app = angular.module('anchorApp', [])
                 ctrl.anchorsHistory.push(data);
                 ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
                 ctrl.loading = false;
-                ctrl.noChangesYet = true;
+                ctrl.startChanging();
                 $scope.$apply();
                 initAutocomplete();
             });
@@ -160,10 +162,11 @@ var app = angular.module('anchorApp', [])
             //  so we want to get new anchors if needed.
             if ($(".anchorContainer").length !== 0) {
                 $(".anchorContainer").each(function() {
+                    //This parses out just the comma-separated anchors from all the html
                     var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
                     value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\u2716/g, '');
                     //This prevents errors on the server if there are '<' or '>' symbols in the anchors
-                    value = value.replace(/\&lt;/, '<').replace(/\&gt;/, '>');
+                    value = value.replace(/\&lt;/g, '<').replace(/\&gt;/g, '>');
                     if (value === "") {
                         return true;
                     }
@@ -185,7 +188,7 @@ var app = angular.module('anchorApp', [])
                         //Update the anchors in the UI
                         ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
                         ctrl.loading = false;
-                        ctrl.noChangesYet = true;
+                        ctrl.startChanging();
                         $scope.$apply();
                         initAutocomplete();
                         // Sets the height of the document container
@@ -206,7 +209,19 @@ var app = angular.module('anchorApp', [])
         var initAutocomplete = function initAutocomplete() {
             $(".anchorInput" ).autocomplete({
                 minLength: 3,
-                source: ctrl.vocab
+                source: ctrl.vocab,
+                // This function is called whenever a list choice is selected
+                select: function(event, ui) {
+                  // This sets a listener to prevent the page from reloading
+                  $(this).parents("form").on('submit', function() {
+                    return false;
+                  });
+                  // This triggers the submit event, which turns the selected
+                  //   word into a proper anchor word (with the border)
+                  $(this).parents("form").submit();
+                  // This prevents the value from being duplicated
+                  return false;
+                }
             });
         };
         // This sets the height of the document container on load
@@ -239,6 +254,14 @@ var app = angular.module('anchorApp', [])
               else { ctrl.topicToDocList[ctrl.docToTopicList[i][j]].push(i); }
             }
           }
+        }
+        ctrl.stopChanging = function stopChanging() {
+          ctrl.noChangesYet = false;
+          $('.document').css('background-color', '#FFFFFF');
+          $('.anchor-and-topic').css('border', 'solid 2px #FFFFFF');
+        }
+        ctrl.startChanging = function startChanging() {
+          ctrl.noChangesYet = true;
         }
         ctrl.addHighlightsDoc = function addHighlightsDoc(event, index) {
           if (ctrl.noChangesYet) {
@@ -291,11 +314,6 @@ var app = angular.module('anchorApp', [])
                 });
             }
         }
-    }).directive('drag-and-drop', function() {
-      //This stops highlights from showing up once something changes
-      return {
-        
-      }
     });
 
 
@@ -350,7 +368,7 @@ var drop = function(ev) {
         }
         var $scope = angular.element('body').scope();
         $scope.$apply(function() {
-          $scope.ctrl.noChangesYet = false;
+          $scope.ctrl.stopChanging();
         });
     }
     //If a topic word, copy it
@@ -377,7 +395,7 @@ var drop = function(ev) {
         }
         var $scope = angular.element('body').scope();
         $scope.$apply(function() {
-          $scope.ctrl.noChangesYet = false;
+          $scope.ctrl.stopChanging();
         });
     }
 };

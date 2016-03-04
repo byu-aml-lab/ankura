@@ -2,6 +2,7 @@
 <html lang="en" class="no-js" ng-app="anchorApp">
   <head>
     <title>Interactive Topic Modeling</title>
+    <link href='/favicon.ico' rel='shortcut icon' type='image/x-icon'>
     <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
     <link href="style/stylesheet.css" rel="stylesheet">
@@ -26,7 +27,7 @@
               <span class="anchorContainer droppable">
                 <span class="btn btn-default btn-sm anchorWord draggable" ng-repeat="anchorWord in anchorObj.anchors track by $index" draggable="true" ondragstart="drag(event)" id="anchor{{$parent.$index}}word{{this.$index}}">
                   {{anchorWord}}
-                  <span class="close" id="anchor{{$parent.$index}}word{{this.$index}}close" ng-click="ctrl.deleteWord($event, anchorObj.anchors)">&#10006;</span>
+                  <span class="close" id="anchor{{$parent.$index}}word{{this.$index}}close" ng-click="ctrl.deleteWord($event, $parent.$index)">&#10006;</span>
                 </span>
               </span>
               <span class="anchorInputContainer">
