@@ -2,24 +2,15 @@
 
 """Runs a user interface for the interactive anchor words algorithm"""
 
-import flask
 import json
-import numpy
-import numbers
-import tempfile
 import os
+import tempfile
+
+import flask
 
 import ankura
 
 app = flask.Flask(__name__, static_url_path='')
-
-
-def convert_anchor(dataset, anchor):
-    """Converts an anchor it its integer index"""
-    if isinstance(anchor, numbers.Integral):
-        return anchor
-    else:
-        return dataset.vocab.index(anchor)
 
 
 @ankura.util.memoize
@@ -47,33 +38,19 @@ def get_newsgroups():
 @ankura.util.pickle_cache('fcc-anchors-default.pickle')
 def default_anchors():
     """Retrieves default anchors for newsgroups using Gram-Schmidt"""
-    return ankura.gramschmidt_anchors(get_newsgroups(), 20, 500)
+    dataset = get_newsgroups()
+    anchors, anchor_indices = ankura.gramschmidt_anchors(dataset,
+                                                         20,
+                                                         500,
+                                                         return_indices=True)
+    anchor_tokens = [[dataset.vocab[index]] for index in anchor_indices]
+    return anchor_tokens, anchors
 
 
 @ankura.util.memoize
-def get_topics(dataset, anchors):
-    """Gets the topics for 20 newsgroups given a set of anchors"""
-    return ankura.recover_topics(dataset, anchors)
-
-
-@ankura.util.memoize
-def reindex_anchors(dataset, anchors):
-    """Converts any tokens in a set of anchors to the index of token"""
-    conversion = lambda t: convert_anchor(dataset, t)
-    return ankura.util.tuplize(anchors, conversion)
-
-
-@ankura.util.memoize
-def tokenify_anchors(dataset, anchors):
-    """Converts token indexes in a list of anchors to tokens"""
-    return [[dataset.vocab[token] for token in anchor] for anchor in anchors]
-
-
-@app.route('/base-anchors')
-def get_base_anchors():
-    """Gets the base set of anchors to send to the client"""
-    base_anchors = default_anchors()
-    return flask.jsonify(anchors=tokenify_anchors(get_newsgroups(), base_anchors))
+def user_anchors(anchor_tokens):
+    """Computes multiword anchors from user specified anchor tokens"""
+    return ankura.multiword_anchors(get_newsgroups(), anchor_tokens)
 
 
 @app.route('/topics')
@@ -83,26 +60,15 @@ def topic_request():
     raw_anchors = flask.request.args.get('anchors')
 
     if raw_anchors is None:
-        anchors = default_anchors()
+        anchor_tokens, anchors = default_anchors()
     else:
-        anchors = ankura.util.tuplize(json.loads(raw_anchors))
-    anchors = reindex_anchors(dataset, anchors)
-    topics = get_topics(dataset, anchors)
+        anchor_tokens = ankura.util.tuplize(json.loads(raw_anchors))
+        anchors = user_anchors(anchor_tokens)
 
-    topic_summary = []
-    for k in range(topics.shape[1]):
-        summary = []
-        for word in numpy.argsort(topics[:, k])[-10:][::-1]:
-            summary.append(dataset.vocab[word])
-        topic_summary.append(summary)
+    topics = ankura.recover_topics(dataset, anchors)
+    topic_summary = ankura.topic.topic_summary(topics, dataset, n=15)
 
-    if raw_anchors is None:
-        return flask.jsonify(
-            topics=topic_summary,
-            anchors=tokenify_anchors(dataset, anchors)
-        )
-    else:
-        return flask.jsonify(topics=topic_summary)
+    return flask.jsonify(topics=topic_summary, anchors=anchor_tokens)
 
 
 @app.route('/')
@@ -127,15 +93,7 @@ def get_user_data():
 @app.route('/vocab')
 def get_vocab():
     """Returns all valid vocabulary words in the dataset"""
-    dataset = get_newsgroups()
-    return flask.jsonify(vocab=dataset.vocab)
-
-
-@app.route('/vocabsize')
-def get_vocab_size():
-    """Gets the size of the vocabulary"""
-    dataset = get_newsgroups()
-    return "Vocabulary size: " + str(dataset.vocab_size)
+    return flask.jsonify(vocab=get_newsgroups().vocab)
 
 
 @app.route('/cooccurrences')
@@ -147,5 +105,4 @@ def get_cooccurrences():
 
 if __name__ == '__main__':
     default_anchors()
-    app.run(debug=True,
-            host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0')

@@ -1,6 +1,5 @@
 """A demo of ankura functionality"""
 
-import numpy
 import os
 
 import ankura
@@ -84,13 +83,10 @@ def get_oracular_anchors(dataset, combiner=ankura.vector_average):
     return ankura.multiword_anchors(dataset, anchor_tokens, combiner)
 
 
-def print_summary(dataset, topics, n=10):
+def print_summary(topics, dataset, n):
     """Prints a summary of the given topics"""
-    for k in range(topics.shape[1]):
-        summary = []
-        for word in numpy.argsort(topics[:, k])[-n:][::-1]:
-            summary.append(dataset.vocab[word])
-        print(' '.join(summary))
+    for topic in ankura.topic.topic_summary(topics, dataset, n):
+        print(' '.join(topic))
 
 
 def demo():
@@ -100,7 +96,7 @@ def demo():
     # anchors = get_title_anchors(dataset)
     anchors = get_oracular_anchors(dataset, combiner=ankura.vector_min)
     topics = ankura.recover_topics(dataset, anchors)
-    print_summary(dataset, topics, 20)
+    print_summary(topics, dataset, 20)
 
     # trans = ankura.topic_transform(topics, dataset)
     trans = ankura.topic_combine(topics, dataset)

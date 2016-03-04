@@ -32,13 +32,13 @@ class Dataset(object):
     titles will both be lists of str. The cooccurrences matrix will be a numpy
     array of float.
     """
-    def __init__(self, docwords, vocab, titles):
+    def __init__(self, docwords, vocab, titles, labels=None):
         self._docwords = docwords
         self._vocab = vocab
         self._titles = titles
+        self._labels = labels
         self._cooccurrences = None
         self._tokens = {}
-        # TODO add ability to add document metadata or labels
 
     @property
     def M(self):
@@ -59,6 +59,11 @@ class Dataset(object):
     def titles(self):
         """Gets the titles of each document"""
         return self._titles
+
+    @property
+    def labels(self):
+        """Gets the labels of each document"""
+        return self._labels
 
     @property
     def Q(self):
@@ -128,6 +133,13 @@ class Dataset(object):
 
         self._tokens[doc_id] = tokens
         return tokens
+
+    def doc_label(self, doc_id):
+        """Gets the label for a document, if there is one"""
+        try:
+            return self._labels[doc_id]
+        except IndexError:
+            return
 
 
 def read_uci(docwords_filename, vocab_filename):
@@ -236,6 +248,13 @@ def read_file(filename, tokenizer=tokenize.simple):
     return _build_dataset(docdata, tokenizer)
 
 
+# TODO add read_file variant which gives one document per paragraph
+# Add segmenter, which allows customization of the way files are broken up into
+# documents (e.g. line, paragraph, html <p> tags).
+# Then pass the segmented documents to the tokenizer, which is unaware of the
+# segmentation.
+
+
 def _filter_vocab(dataset, filter_func):
     """Filters out a set of stopwords based on a filter function"""
     # track which vocab indices should be discarded and which should be kept
@@ -250,7 +269,7 @@ def _filter_vocab(dataset, filter_func):
     # construct dataset with filtered docwords and vocab
     docwords = dataset.docwords[keep_index, :]
     vocab = scipy.delete(dataset.vocab, stop_index)
-    return Dataset(docwords, vocab.tolist(), dataset.titles)
+    return Dataset(docwords, vocab.tolist(), dataset.titles, dataset.labels)
 
 
 def _get_wordlist(filename, tokenizer):
@@ -271,10 +290,10 @@ def filter_stopwords(dataset, stopword_filename, tokenizer=None):
     return _filter_vocab(dataset, keep)
 
 
-def _combine_words(dataset, combine_words, replace):
+def _combine_words(dataset, words, replace):
     """Combines a set of words into a single token type"""
     reverse = {v: i for i, v in enumerate(dataset.vocab)}
-    index = sorted([reverse[v] for v in combine_words if v in reverse])
+    index = sorted([reverse[v] for v in words if v in reverse])
     sums = dataset.docwords[index, :].sum(axis=0)
 
     keep = lambda i, v: i not in index[1:]
@@ -290,8 +309,8 @@ def combine_words(dataset, combine_filename, replace, tokenizer=None):
     The combine file is expected to contain a single token per line. The
     original dataset is unchanged.
     """
-    combine_words = _get_wordlist(combine_filename, tokenizer)
-    return _combine_words(dataset, combine_words, replace)
+    words = _get_wordlist(combine_filename, tokenizer)
+    return _combine_words(dataset, words, replace)
 
 
 def combine_regex(dataset, regex, replace):
@@ -302,8 +321,8 @@ def combine_regex(dataset, regex, replace):
     unchanged.
     """
     pattern = re.compile(regex)
-    combine_words = {token for token in dataset.vocab if pattern.fullmatch(token)}
-    return _combine_words(dataset, combine_words, replace)
+    words = {token for token in dataset.vocab if pattern.fullmatch(token)}
+    return _combine_words(dataset, words, replace)
 
 
 def filter_rarewords(dataset, doc_threshold):
@@ -341,7 +360,11 @@ def filter_smalldocs(dataset, token_threshold, prune_vocab=True):
 
     docwords = dataset.docwords[:, keep_index]
     titles = scipy.delete(dataset.titles, stop_index)
-    dataset = Dataset(docwords, dataset.vocab, titles)
+    if dataset.labels:
+        labels = scipy.delete(dataset.lables, stop_index)
+    else:
+        labels = None
+    dataset = Dataset(docwords, dataset.vocab, titles, labels)
 
     if prune_vocab:
         return filter_rarewords(dataset, 1)
@@ -383,12 +406,14 @@ def convert_cooccurences(dataset):
             row_index += 1
 
     # generates new vocab list for new matrix
-    new_vocab = []
+    vocab = []
     for i in range(dataset.vocab_size):
         for j in range(i + 1, dataset.vocab_size):
-            new_vocab.append(dataset.vocab[i] + '-' + dataset.vocab[j])
+            vocab.append(dataset.vocab[i] + '-' + dataset.vocab[j])
 
-    return filter_rarewords(Dataset(docwords, new_vocab, dataset.titles), 1)
+    dataset = Dataset(docwords, vocab, dataset.titles, dataset.labels)
+    dataset = filter_empty_words(dataset)
+    return dataset
 
 
 def convert_format(dataset, conversion):
@@ -399,7 +424,8 @@ def convert_format(dataset, conversion):
     lil matrix to a csc matrix with:
     dataset = convert_docwords(dataset, scipy.sparse.csc_matrix)
     """
-    return Dataset(conversion(dataset.docwords), dataset.vocab, dataset.titles)
+    docwords = conversion(dataset.docwords)
+    return Dataset(docwords, dataset.vocab, dataset.titles, dataset.labels)
 
 
 def pregenerate_doc_tokens(dataset):
@@ -427,7 +453,11 @@ def pregenerate_Q(dataset):
 def _prepare_split(dataset, indices):
     split_docwords = dataset.docwords[:, indices]
     split_titles = [dataset.titles[i] for i in indices]
-    return Dataset(split_docwords, dataset.vocab, split_titles)
+    if dataset.labels:
+        split_labels = [dataset.doc_label(i) for i in indices]
+    else:
+        split_labels = None
+    return Dataset(split_docwords, dataset.vocab, split_titles, split_labels)
 
 
 def train_test_split(dataset, train_percent=.75, rng=random):
@@ -438,8 +468,6 @@ def train_test_split(dataset, train_percent=.75, rng=random):
     same vocab after the split, but the vocabulary is pruned so that words
     which only appear in test are discarded.
     """
-    # TODO make split preserve any lazily computed things like doc tokens
-
     # find the indices of the docs for both train and test
     shuffled_docs = range(dataset.num_docs)
     rng.shuffle(shuffled_docs)
@@ -481,6 +509,7 @@ def run_pipeline(pipeline, append_pregenerate=True):
             dataset = transform(dataset)
 
     if append_pregenerate:
+        # TODO handle pregenerate even if a split is in the pipeline
         dataset = pregenerate_doc_tokens(dataset)
         dataset = pregenerate_Q(dataset)
 

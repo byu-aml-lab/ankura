@@ -38,12 +38,20 @@ def identify_candidates(M, doc_threshold):
     return candidate_anchors
 
 
-def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
+def gramschmidt_anchors(dataset, k, candidate_threshold, **kwargs):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors
 
     The original Q will not be modified. The anchors are returned in the form
     of a list of k indicies into the original Q. The candidate threshold is
     used to determine which words are eligible to become an anchor.
+
+    If the project_dim keyword argument is non-zero, then the cooccurrence
+    matrix is randomly projected to the given number of dimensions. By default,
+    we project to 1000 dimensions.
+
+    If the return_indicies keyword argument is True, then the anchor indicies
+    are returned with the anchor vectors. By default the indices are not
+    returned.
     """
     # Find candidate words which appear in enough documents to be anchor words
     candidates = identify_candidates(dataset.M, candidate_threshold)
@@ -55,11 +63,12 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
     row_sums = Q.sum(1)
     for i in range(len(Q[:, 0])):
         Q[i, :] = Q[i, :] / float(row_sums[i])
+    project_dim = kwargs.get('project_dim', 1000)
     if project_dim:
         Q = random_projection(Q, project_dim)
 
     # setup book keeping for gram-schmidt
-    anchors = numpy.zeros(k, dtype=numpy.int)
+    anchor_indices = numpy.zeros(k, dtype=numpy.int)
     basis = numpy.zeros((k-1, Q.shape[1]))
 
     # find the farthest point p1 from the origin
@@ -68,11 +77,11 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
         dist = numpy.dot(Q[i], Q[i])
         if dist > max_dist:
             max_dist = dist
-            anchors[0] = i
+            anchor_indices[0] = i
 
     # let p1 be the origin of our coordinate system
     for i in candidates:
-        Q[i] = Q[i] - Q[anchors[0]]
+        Q[i] = Q[i] - Q[anchor_indices[0]]
 
     # find the farthest point from p1
     max_dist = 0
@@ -80,7 +89,7 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
         dist = numpy.dot(Q[i], Q[i])
         if dist > max_dist:
             max_dist = dist
-            anchors[1] = i
+            anchor_indices[1] = i
             basis[0] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
     # stabilized gram-schmidt to finds new anchor words to expand our subspace
@@ -92,11 +101,15 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
             dist = numpy.dot(Q[i], Q[i])
             if dist > max_dist:
                 max_dist = dist
-                anchors[j + 1] = i
+                anchor_indices[j + 1] = i
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
     # use the original Q to extract anchor vectors using the anchor indices
-    return dataset.Q[anchors, :]
+    anchor_vectors = dataset.Q[anchor_indices, :]
+
+    if kwargs.get('return_indices'):
+        return anchor_vectors, anchor_indices
+    return anchor_vectors
 
 
 def vector_average(anchor):
