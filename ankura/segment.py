@@ -1,5 +1,10 @@
 """A collection of segmenters for use with ankura import pipelines"""
 
+import re
+import os
+
+import bs4
+
 # Note: Each segmenter takes in a file object and should return an iterable of
 # tuples containing title and text as strings.
 
@@ -21,4 +26,34 @@ def lines(docfile):
     """
     return (line.split(None, 1) for line in docfile)
 
-# TODO(wilson) Add segmenter to read M&A contracts
+
+SECTION_RE = re.compile(r'^((([Ss]ection)|(SECTION))\s+)?\d+(\.\d+){1,2}')
+
+def _sort_sections(section_names):
+    return sorted(section_names, key=lambda n: int(re.sub(r'[^\d]', '', n)))
+
+
+def section(docfile):
+    soup = bs4.BeautifulSoup(docfile, 'html.parser')
+
+    sections = {}
+
+    section = []
+    for p in soup.find_all('p'):
+        text = p.get_text().strip()
+
+        if SECTION_RE.match(text):
+            section_text = '\n'.join(section)
+            section_num = SECTION_RE.match(section_text)
+            if section_num:
+                sections[section_num.group()] = section_text
+            section = []
+
+        if text:
+            section.append(text)
+
+    for section_num in _sort_sections(sections):
+        title = os.path.join(docfile.name, section_num)
+        yield title, sections[section_num]
+
+    # TODO(jlund) Misses non-labeled section in Article I
