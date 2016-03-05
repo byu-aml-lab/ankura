@@ -34,6 +34,12 @@ def _sort_sections(section_names):
 
 
 def section(docfile):
+    """Segments a legal contract into sections
+
+    Assumes that all sections start with something like 'Section 2.03' or
+    '3.2'. If this assumption is false, then the segmenter will incorrectly
+    break up the contract.
+    """
     soup = bs4.BeautifulSoup(docfile, 'html.parser')
 
     sections = {}
