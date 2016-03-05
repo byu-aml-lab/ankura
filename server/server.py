@@ -9,6 +9,7 @@ import tempfile
 import flask
 
 import ankura
+from ankura import label
 
 app = flask.Flask(__name__, static_url_path='')
 
@@ -21,13 +22,16 @@ def get_newsgroups():
     engl_stop = '/local/jlund3/data/stopwords/english.txt'
     news_stop = '/local/jlund3/data/stopwords/newsgroups.txt'
     name_stop = '/local/jlund3/data/stopwords/malenames.txt'
-    pipeline = [(ankura.read_glob, news_glob, ankura.tokenize.news),
-                (ankura.filter_stopwords, engl_stop),
-                (ankura.filter_stopwords, news_stop),
-                (ankura.combine_words, name_stop, '<name>'),
-                (ankura.filter_rarewords, 100),
-                (ankura.filter_commonwords, 1500)]
-    dataset = ankura.run_pipeline(pipeline)
+    labeler = label.aggregate(label.text, label.title_dirname)
+
+    dataset = ankura.read_glob(news_glob, tokenizer=ankura.tokenize.news,
+                                          labeler=labeler)
+    dataset = ankura.filter_stopwords(dataset, engl_stop)
+    dataset = ankura.filter_stopwords(dataset, news_stop)
+    dataset = ankura.combine_words(dataset, name_stop, '<name>')
+    dataset = ankura.filter_rarewords(dataset, 100)
+    dataset = ankura.filter_commonwords(dataset, 1500)
+
     return dataset
 
 
