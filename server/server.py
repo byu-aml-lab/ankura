@@ -4,7 +4,6 @@
 
 import json
 import os
-import tempfile
 
 import flask
 
@@ -79,15 +78,12 @@ def serve_itm():
 
 
 @app.route('/finished', methods=['GET', 'POST'])
-def get_user_data():
+def save_user_data():
     """Receives and saves user data when done button is clicked in the ITM UI"""
     flask.request.get_data()
     input_json = flask.request.get_json(force=True)
-    user_data_dir = os.path.dirname(os.path.realpath(__file__)) + "/userData"
-    if not os.path.exists(user_data_dir):
-        os.makedirs(user_data_dir)
-    with tempfile.NamedTemporaryFile(mode='w', prefix="itmUserData", dir=os.path.dirname(os.path.realpath(__file__)) + "/userData", delete=False) as dataFile:
-        json.dump(input_json, dataFile, sort_keys=True, indent=2, ensure_ascii=False)
+    with ankura.util.open_unique(dirname='user_data') as data_file:
+        json.dump(input_json, data_file)
     return 'OK'
 
 
@@ -102,7 +98,6 @@ def get_cooccurrences():
     """Returns the cooccurrences matrix from the dataset"""
     dataset = get_newsgroups()
     return flask.jsonify(cooccurrences=dataset.Q.tolist())
-
 
 if __name__ == '__main__':
     default_anchors()
