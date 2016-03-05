@@ -5,7 +5,7 @@ from __future__ import division
 import numpy
 import scipy.sparse
 
-# TODO Use dataset labels instead of separate label values
+# TODO(jeff) Use dataset labels instead of separate label values
 
 class NaiveBayes(object):
     """A simple Multinomial Naive Bayes classifier"""
@@ -57,4 +57,4 @@ class NaiveBayes(object):
                 correct += 1
         return correct / len(labels)
 
-# TODO add Newman topic coherence metric
+# TODO(connor) add topic coherence metric

@@ -20,3 +20,5 @@ def lines(docfile):
     yields the lines of the file) will work, as will any iterator over str.
     """
     return (line.split(None, 1) for line in docfile)
+
+# TODO(wilson) Add segmenter to read M&A contracts

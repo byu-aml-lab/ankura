@@ -5,13 +5,6 @@ For example, a typical import could look like:
     dataset = read_glob('newsgroups/*/*', tokenizer=tokenize.news)
     dataset = filter_stopwords(dataset, 'stopwords/english.txt')
     dataset = filter_rarewords(dataset, 20)
-
-Alternatively, a pipeline can be created programatically and then run in the
-following way:
-    pipeline = [(read_glob, 'newsgroups/*/*', tokenize.news),
-                (filter_stopwords, 'stopwords/english.txt'),
-                (filter_rarewords, 20)]
-    dataset = run_pipeline(pipeline)
 """
 import glob
 import numpy
@@ -69,7 +62,7 @@ class Dataset(object):
     @property
     def Q(self):
         """Gets the word cooccurrence matrix"""
-        # TODO add ways to augment Q with additional labeled data
+        # TODO(nozomu) add ways to augment Q with additional labeled data
         if self._cooccurrences is None:
             self.compute_cooccurrences()
         return self._cooccurrences
@@ -415,6 +408,8 @@ def filter_smalldocs(dataset, token_threshold, prune_vocab=True):
     else:
         return dataset
 
+    # TODO(jeff) fix inefficiency with changing sparsity
+
 
 def convert_cooccurences(dataset):
     """Transforms a Dataset to use word cooccurrence features instead words
@@ -526,35 +521,4 @@ def train_test_split(dataset, train_percent=.75, rng=random):
     keep = lambda i, v: train_data.docwords[i, :].nnz > 0
     return _filter_vocab(train_data, keep), _filter_vocab(test_data, keep)
 
-
-def run_pipeline(pipeline, append_pregenerate=True):
-    """Runs an import pipeline consisting of a sequence of instructions
-
-    Each instruction in the sequence should consist of another sequence giving
-    a callable along with any applicable arguments. Each instruction should
-    return a Dataset giving the docwords matrix and the vocab. Each instruction
-    after the first takes the Dataset from the previous stage as the first
-    argument.
-
-    For example, one could construct an import pipeline in the following way:
-    pipeline = [(read_glob, 'newsgroups/*/*', tokenize.news),
-                (filter_stopwords, 'stopwords/english.txt'),
-                (filter_rarewords, 20)]
-    dataset = run_pipeline(pipeline)
-    """
-    read, transformations = pipeline[0], pipeline[1:]
-    dataset = read[0](*read[1:])
-    for transform in transformations:
-        try:
-            dataset = transform[0](dataset, *transform[1:])
-        except TypeError:
-            if not callable(transform):
-                raise
-            dataset = transform(dataset)
-
-    if append_pregenerate:
-        # FIXME handle pregenerate even if a split is in the pipeline
-        dataset = pregenerate_doc_tokens(dataset)
-        dataset = pregenerate_Q(dataset)
-
-    return dataset
+# FIXME(jeff) Recreate run_pipeline with reads having kwargs

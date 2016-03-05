@@ -115,8 +115,9 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
             alpha = numpy.ones(K) / K
         A[word, :] = alpha
 
-    # Use Bayes rule to compute topic matrix
-    A = numpy.matrix(P_w) * numpy.matrix(A) # TODO is matrix conversion needed?
+    # Use Bayes rule to compute topic matri
+    # TODO(jeff) is this matrix conversion needed?
+    A = numpy.matrix(P_w) * numpy.matrix(A)
     for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()
 
