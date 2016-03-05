@@ -20,7 +20,7 @@ import random
 import re
 import scipy.sparse
 
-from . import tokenize
+from . import tokenize, segment
 
 
 class Dataset(object):
@@ -223,7 +223,13 @@ def _build_dataset(docdata, tokenizer):
     return Dataset(docwords.tocsc(), vocab, titles)
 
 
-def read_glob(glob_pattern, tokenizer=tokenize.simple):
+def _build_docdata(filenames, segmenter):
+    for filename in filenames:
+        for title, data in segmenter(open(filename, errors='replace')):
+            yield title, io.StringIO(data)
+
+
+def read_glob(glob_pattern, tokenizer=tokenize.simple, segmenter=None):
     """Read a Dataset from a set of files found by a glob pattern
 
     Each file found by the glob pattern corresponds to a single document in the
@@ -231,28 +237,25 @@ def read_glob(glob_pattern, tokenizer=tokenize.simple):
     function. The document titles are given by the corresponding filenames.
     """
     filenames = glob.glob(glob_pattern)
-    docdata = ((name, open(name, errors='replace')) for name in filenames)
+    if segmenter:
+        docdata = _build_docdata(filenames, segmenter)
+    else:
+        docdata = ((name, open(name, errors='replace')) for name in filenames)
     return _build_dataset(docdata, tokenizer)
 
 
-def read_file(filename, tokenizer=tokenize.simple):
-    """Read a Dataset from one file containing one document per line
+def read_file(filename, tokenizer=tokenize.simple, segmenter=segment.lines):
+    """Read a Dataset from a single file
 
-    For each line of the file, the first sequence of letters unbroken by
-    whitespace will be considered the title of the document.  All of the words
-    after the first non-newline whitespace sequence will be considered words of
-    the document
+    The file is segmented into individual documents by the segmenter. The
+    default segmenter splits on lines. The resulting document data is then
+    split into tokens by the given tokenizer.
     """
-    lines = (line.split(None, 1) for line in open(filename))
-    docdata = ((title, io.StringIO(doc)) for title, doc in lines)
+    docdata = segmenter(open(filename, errors='replace'))
+    docdata = ((title, io.StringIO(doc)) for title, doc in docdata)
     return _build_dataset(docdata, tokenizer)
 
-
-# TODO add read_file variant which gives one document per paragraph
-# Add segmenter, which allows customization of the way files are broken up into
-# documents (e.g. line, paragraph, html <p> tags).
-# Then pass the segmented documents to the tokenizer, which is unaware of the
-# segmentation.
+# TODO optionally, preserve the original text of the documents
 
 
 def _filter_vocab(dataset, filter_func):
