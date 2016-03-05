@@ -10,4 +10,4 @@ from .pipeline import (read_uci, read_glob, read_file,
                        run_pipeline)
 from .topic import recover_topics, topic_transform, topic_combine
 
-from . import measure, tokenize, segment, util
+from . import tokenize, segment, label, measure, util

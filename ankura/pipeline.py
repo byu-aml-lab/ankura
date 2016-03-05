@@ -39,6 +39,8 @@ class Dataset(object):
         self._cooccurrences = None
         self._tokens = {}
 
+        # TODO Why are titles special? Should they just be stored in metadata?
+
     @property
     def M(self):
         """Gets the sparse docwords matrix"""
@@ -228,7 +230,8 @@ def _build_dataset(docdata, tokenizer, labeler):
             doc[token_id] = doc.get(token_id, 0) + 1
         docs.append(doc)
         titles.append(title)
-        # TODO use the bloody labeler to add to metadata!
+        if labeler:
+            metadata.append(labeler(title, data))
 
     # construct the docword matrix using the vocab map
     docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)), dtype='uint')
