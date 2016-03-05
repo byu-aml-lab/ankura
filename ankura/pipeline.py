@@ -13,7 +13,6 @@ following way:
                 (filter_rarewords, 20)]
     dataset = run_pipeline(pipeline)
 """
-import io
 import glob
 import numpy
 import random
@@ -32,11 +31,11 @@ class Dataset(object):
     titles will both be lists of str. The cooccurrences matrix will be a numpy
     array of float.
     """
-    def __init__(self, docwords, vocab, titles, labels=None):
+    def __init__(self, docwords, vocab, titles, metadata=None):
         self._docwords = docwords
         self._vocab = vocab
         self._titles = titles
-        self._labels = labels
+        self._metadata = metadata
         self._cooccurrences = None
         self._tokens = {}
 
@@ -61,9 +60,9 @@ class Dataset(object):
         return self._titles
 
     @property
-    def labels(self):
-        """Gets the labels of each document"""
-        return self._labels
+    def metadata(self):
+        """Gets the metadata of each document, if there is any"""
+        return self._metadata
 
     @property
     def Q(self):
@@ -134,12 +133,29 @@ class Dataset(object):
         self._tokens[doc_id] = tokens
         return tokens
 
-    def doc_label(self, doc_id):
-        """Gets the label for a document, if there is one"""
+    def doc_metadata(self, doc_id, key=None):
+        """Gets the metadata for a document, if there is any.
+
+        If a key is specified, the metadata value for that document is
+        returned (assuming there is such a value). If no key specified, then
+        all the metadata associated with the document is returned.
+        """
         try:
-            return self._labels[doc_id]
-        except IndexError:
+            metadata = self._metadata[doc_id]
+            if key:
+                return metadata[key]
+            else:
+                return metadata
+        except (IndexError, TypeError):
             return
+
+    def get_metadata(self, key):
+        """Gets the metadata value of each document for a given metadata key"""
+        return [self.get_metadata(d, key) for d in range(self.num_docs)]
+
+    def metadata_query(self, key, value):
+        """Gets the index of the documents with a particular metadata value"""
+        return [d for d, v in enumerate(self.get_metadata(key)) if v == value]
 
 
 def read_uci(docwords_filename, vocab_filename):
@@ -194,11 +210,15 @@ def read_uci(docwords_filename, vocab_filename):
     return Dataset(docwords.tocsc(), vocab, titles)
 
 
-def _build_dataset(docdata, tokenizer):
+def _build_dataset(docdata, tokenizer, labeler):
     # read each file, tracking vocab and word counts
     docs = []
     vocab = {}
     titles = []
+    if labeler:
+        metadata = []
+    else:
+        metadata = None
     for title, data in docdata:
         doc = {}
         for token in tokenizer(data):
@@ -208,6 +228,7 @@ def _build_dataset(docdata, tokenizer):
             doc[token_id] = doc.get(token_id, 0) + 1
         docs.append(doc)
         titles.append(title)
+        # TODO use the bloody labeler to add to metadata!
 
     # construct the docword matrix using the vocab map
     docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)), dtype='uint')
@@ -220,42 +241,59 @@ def _build_dataset(docdata, tokenizer):
     vocab = [vocab[index] for index in range(len(vocab))]
 
     # construct and return the Dataset
-    return Dataset(docwords.tocsc(), vocab, titles)
+    return Dataset(docwords.tocsc(), vocab, titles, metadata)
 
 
 def _build_docdata(filenames, segmenter):
     for filename in filenames:
         for title, data in segmenter(open(filename, errors='replace')):
-            yield title, io.StringIO(data)
+            yield title, data
 
 
-def read_glob(glob_pattern, tokenizer=tokenize.simple, segmenter=None):
+def read_glob(glob_pattern, **kwargs):
     """Read a Dataset from a set of files found by a glob pattern
 
-    Each file found by the glob pattern corresponds to a single document in the
-    dataset. Each file object is then tokenized by the provided tokenizer
-    function. The document titles are given by the corresponding filenames.
+    Each file found by the glob pattern is read and used to construct the
+    documents of the resulting Dataset. The read can be customized through the
+    use of three key word arguments:
+
+    * tokenizer - customizes how each document should be split into tokens
+    * segmenter - customizes how each file should be split into documents
+    * labeler - customizes how each document metadata should be generated
+
+    By default, the each filename corresponds to a single document, which is
+    given the the filename as a title. The default tokenizer is a simple string
+    split, and by default no metadata is generated.
     """
-    filenames = glob.glob(glob_pattern)
-    if segmenter:
-        docdata = _build_docdata(filenames, segmenter)
-    else:
-        docdata = ((name, open(name, errors='replace')) for name in filenames)
-    return _build_dataset(docdata, tokenizer)
+    tokenizer = kwargs.get('tokenizer', tokenize.simple)
+    segmenter = kwargs.get('segmenter', segment.simple)
+    labeler = kwargs.get('labeler', None)
+
+    docdata = _build_docdata(glob.glob(glob_pattern), segmenter)
+    return _build_dataset(docdata, tokenizer, labeler)
 
 
-def read_file(filename, tokenizer=tokenize.simple, segmenter=segment.lines):
+def read_file(filename, **kwargs):
     """Read a Dataset from a single file
 
-    The file is segmented into individual documents by the segmenter. The
-    default segmenter splits on lines. The resulting document data is then
-    split into tokens by the given tokenizer.
-    """
-    docdata = segmenter(open(filename, errors='replace'))
-    docdata = ((title, io.StringIO(doc)) for title, doc in docdata)
-    return _build_dataset(docdata, tokenizer)
+    The file read can be customized through the use of three key word
+    arguments:
 
-# TODO optionally, preserve the original text of the documents
+    * tokenizer - customizes how each document should be split into tokens
+    * segmenter - customizes how each file should be split into documents
+    * labeler - customizes how each document metadata should be generated
+
+    By default, each line is considered to be a single document, with the title
+    being the first sequence of characters unbroken by whitespace and the data
+    being the remainder of the line. The default tokenizer is a simple string
+    split, and by default no metadata is generated.
+    """
+    tokenizer = kwargs.get('tokenizer', tokenize.simple)
+    segmenter = kwargs.get('segmenter', segment.lines)
+    labeler = kwargs.get('labeler', None)
+
+    docdata = segmenter(open(filename, errors='replace'))
+    return _build_dataset(docdata, tokenizer, labeler)
 
 
 def _filter_vocab(dataset, filter_func):
@@ -272,7 +310,7 @@ def _filter_vocab(dataset, filter_func):
     # construct dataset with filtered docwords and vocab
     docwords = dataset.docwords[keep_index, :]
     vocab = scipy.delete(dataset.vocab, stop_index)
-    return Dataset(docwords, vocab.tolist(), dataset.titles, dataset.labels)
+    return Dataset(docwords, vocab.tolist(), dataset.titles, dataset.metadata)
 
 
 def _get_wordlist(filename, tokenizer):
@@ -363,11 +401,11 @@ def filter_smalldocs(dataset, token_threshold, prune_vocab=True):
 
     docwords = dataset.docwords[:, keep_index]
     titles = scipy.delete(dataset.titles, stop_index)
-    if dataset.labels:
-        labels = scipy.delete(dataset.lables, stop_index)
+    if dataset.metadata:
+        metadata = scipy.delete(dataset.metadata, stop_index)
     else:
-        labels = None
-    dataset = Dataset(docwords, dataset.vocab, titles, labels)
+        metadata = None
+    dataset = Dataset(docwords, dataset.vocab, titles, metadata)
 
     if prune_vocab:
         return filter_rarewords(dataset, 1)
@@ -414,7 +452,7 @@ def convert_cooccurences(dataset):
         for j in range(i + 1, dataset.vocab_size):
             vocab.append(dataset.vocab[i] + '-' + dataset.vocab[j])
 
-    dataset = Dataset(docwords, vocab, dataset.titles, dataset.labels)
+    dataset = Dataset(docwords, vocab, dataset.titles, dataset.metadata)
     dataset = filter_empty_words(dataset)
     return dataset
 
@@ -428,7 +466,7 @@ def convert_format(dataset, conversion):
     dataset = convert_docwords(dataset, scipy.sparse.csc_matrix)
     """
     docwords = conversion(dataset.docwords)
-    return Dataset(docwords, dataset.vocab, dataset.titles, dataset.labels)
+    return Dataset(docwords, dataset.vocab, dataset.titles, dataset.metadata)
 
 
 def pregenerate_doc_tokens(dataset):
@@ -456,11 +494,11 @@ def pregenerate_Q(dataset):
 def _prepare_split(dataset, indices):
     split_docwords = dataset.docwords[:, indices]
     split_titles = [dataset.titles[i] for i in indices]
-    if dataset.labels:
-        split_labels = [dataset.doc_label(i) for i in indices]
+    if dataset.metadata:
+        split_metadata = [dataset.doc_metadata(i) for i in indices]
     else:
-        split_labels = None
-    return Dataset(split_docwords, dataset.vocab, split_titles, split_labels)
+        split_metadata = None
+    return Dataset(split_docwords, dataset.vocab, split_titles, split_metadata)
 
 
 def train_test_split(dataset, train_percent=.75, rng=random):
@@ -512,7 +550,7 @@ def run_pipeline(pipeline, append_pregenerate=True):
             dataset = transform(dataset)
 
     if append_pregenerate:
-        # TODO handle pregenerate even if a split is in the pipeline
+        # FIXME handle pregenerate even if a split is in the pipeline
         dataset = pregenerate_doc_tokens(dataset)
         dataset = pregenerate_Q(dataset)
 
