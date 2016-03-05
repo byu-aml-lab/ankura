@@ -4,6 +4,7 @@
 
 import json
 import os
+import random
 
 import flask
 
@@ -51,24 +52,6 @@ def user_anchors(anchor_tokens):
     return ankura.multiword_anchors(get_newsgroups(), anchor_tokens)
 
 
-@app.route('/topics')
-def topic_request():
-    """Performs a topic request using anchors from the query string"""
-    dataset = get_newsgroups()
-    raw_anchors = flask.request.args.get('anchors')
-
-    if raw_anchors is None:
-        anchor_tokens, anchors = default_anchors()
-    else:
-        anchor_tokens = ankura.util.tuplize(json.loads(raw_anchors))
-        anchors = user_anchors(anchor_tokens)
-
-    topics = ankura.recover_topics(dataset, anchors)
-    topic_summary = ankura.topic.topic_summary(topics, dataset, n=15)
-
-    return flask.jsonify(topics=topic_summary, anchors=anchor_tokens)
-
-
 @app.route('/')
 def serve_itm():
     """Serves the Interactive Topic Modeling UI"""
@@ -91,12 +74,51 @@ def get_vocab():
     return flask.jsonify(vocab=get_newsgroups().vocab)
 
 
-@app.route('/cooccurrences')
-def get_cooccurrences():
-    """Returns the cooccurrences matrix from the dataset"""
+@app.route('/topics')
+def topic_request():
+    """Performs a topic request using anchors from the query string"""
     dataset = get_newsgroups()
-    return flask.jsonify(cooccurrences=dataset.Q.tolist())
+
+    # get the anchors (both tokens and vector) from the request
+    raw_anchors = flask.request.args.get('anchors')
+    if raw_anchors is None:
+        anchor_tokens, anchors = default_anchors()
+    else:
+        anchor_tokens = ankura.util.tuplize(json.loads(raw_anchors))
+        anchors = user_anchors(anchor_tokens)
+
+    # infer the topics from the anchors
+    topics = ankura.recover_topics(dataset, anchors)
+    topic_summary = ankura.topic.topic_summary(topics, dataset, n=15)
+
+    # optionally produce an example of the resulting topics
+    example = flask.request.args.get('example')
+    if example is None:
+        # no examples were request
+        docdata = None
+    else:
+        if not example:
+            # an example was requested, by no dirname given - pick one
+            sample_doc = random.randrange(dataset.num_docs)
+            example = dataset.doc_metadata(sample_doc, 'dirname')
+
+        # perform topic inference on each of the requested documents
+        docdata = []
+        for doc in dataset.metadata_query('dirname', example):
+            doc_tokens = dataset.doc_tokens(doc)
+            _, doc_topics = ankura.topic.predict_topics(topics, doc_tokens)
+            docdata.append({'text': dataset.doc_metadata(doc, 'text'),
+                            'topics': sorted({int(x) for x in doc_topics})})
+
+    return flask.jsonify(anchors=anchor_tokens,
+                         topics=topic_summary,
+                         example=docdata)
+
 
 if __name__ == '__main__':
+    # call these to trigger pickle_cache
+    get_newsgroups()
     default_anchors()
+
+    # start the server, with the data already cached
     app.run(debug=True, host='0.0.0.0')
