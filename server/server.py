@@ -41,7 +41,7 @@ def default_anchors():
     dataset = get_newsgroups()
     anchors, indices = ankura.gramschmidt_anchors(dataset, 20, 500,
                                                   return_indices=True)
-    anchor_tokens = [[dataset.vocab[index]] for index in anchor_indices]
+    anchor_tokens = [[dataset.vocab[index]] for index in indices]
     return anchor_tokens, anchors
 
 
