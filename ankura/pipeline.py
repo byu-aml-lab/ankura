@@ -146,7 +146,7 @@ class Dataset(object):
 
     def get_metadata(self, key):
         """Gets the metadata value of each document for a given metadata key"""
-        return [self.get_metadata(d, key) for d in range(self.num_docs)]
+        return [self.doc_metadata(d, key) for d in range(self.num_docs)]
 
     def metadata_query(self, key, value):
         """Gets the index of the documents with a particular metadata value"""
