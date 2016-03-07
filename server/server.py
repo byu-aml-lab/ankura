@@ -2,8 +2,8 @@
 
 """Runs a user interface for the interactive anchor words algorithm"""
 
+import functools
 import json
-import os
 import random
 
 import flask
@@ -23,10 +23,11 @@ def get_newsgroups():
     news_stop = '/local/cojoco/git/jeffData/stopwords/newsgroups.txt'
     name_stop = '/local/cojoco/git/jeffData/stopwords/malenames.txt'
     curse_stop = '/local/cojoco/git/jeffData/stopwords/profanity.txt'
-    labeler = label.aggregate(label.text, label.title_dirname)
+    news_text = functools.partial(label.text, formatter=label.news_formatter)
+    labeler = label.aggregate(news_text, label.title_dirname)
 
     dataset = ankura.read_glob(news_glob, tokenizer=ankura.tokenize.news,
-                                          labeler=labeler)
+                               labeler=labeler)
     dataset = ankura.filter_stopwords(dataset, engl_stop)
     dataset = ankura.filter_stopwords(dataset, news_stop)
     dataset = ankura.combine_words(dataset, name_stop, '<name>')
@@ -114,7 +115,8 @@ def topic_request():
 
     return flask.jsonify(anchors=anchor_tokens,
                          topics=topic_summary,
-                         example=docdata)
+                         example=docdata,
+                         example_name=example)
 
 
 if __name__ == '__main__':
