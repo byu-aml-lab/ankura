@@ -139,16 +139,19 @@ var app = angular.module('anchorApp', [])
         //This function only gets the topics when we have no current anchors.
         ctrl.getTopics = function() {
             ctrl.loading = true;
-            $.get("/topics", function(data) {
+            $.get("/topics", {example:''}, function(data) {
                 //Ensure we can't redo something that's been written over
                 ctrl.anchorsHistory.splice(ctrl.historyIndex, ctrl.anchorsHistory.length-ctrl.historyIndex-1);
                 //Save the data
+                console.log(data);
                 ctrl.anchorsHistory.push(data);
                 ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
+                ctrl.getExampleDocuments(data['example']);
                 ctrl.loading = false;
                 ctrl.startChanging();
                 $scope.$apply();
                 initAutocomplete();
+                $(".top-to-bottom").css("height", $(".anchors-and-topics").height());
             });
         }
         //We actually call the above function here, so we get the original topics
@@ -175,7 +178,7 @@ var app = angular.module('anchorApp', [])
                 if (currentAnchors.length !== 0) {
                     var getParams = JSON.stringify(currentAnchors);
                     ctrl.loading = true;
-                    $.get("/topics", {anchors: getParams}, function(data) {
+                    $.get("/topics", {anchors: getParams, example:''}, function(data) {
                         var saveState = {anchors: currentAnchors,
                                    topics: data["topics"]};
                         //This gets rid of the possibility of redoing if another state was saved since the last undo. If nothing has been undone, this should do nothing.
@@ -186,6 +189,7 @@ var app = angular.module('anchorApp', [])
                         ctrl.anchorsHistory.push(saveState);
                         //Update the anchors in the UI
                         ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
+                        ctrl.getExampleDocuments(data['example']);
                         ctrl.loading = false;
                         ctrl.startChanging();
                         $scope.$apply();
@@ -234,7 +238,9 @@ var app = angular.module('anchorApp', [])
         // Holds a map from topic to documents that include it
         ctrl.topicToDocList;
         // Will get documents and docToTopicList from an endpoint, currently just test data
-        ctrl.getDocuments = function getDocuments() {
+        ctrl.getDocumentsTest = function getDocumentsTest() {
+          // We don't get data in this format anymore, we get a list of
+          //   document/topic listing pairs
           var data = {documents: ['Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla et lobortis risus. Aliquam risus ex, elementum non odio sit amet, euismod faucibus ligula. Fusce ut tortor diam. Integer finibus varius velit. Nullam ultricies, sem nec dictum fermentum, nunc lacus posuere nunc, non porttitor enim ipsum id nulla. Aliquam dictum cursus felis, id lobortis urna ornare at. Suspendisse laoreet, augue a commodo semper, tellus quam finibus leo, nec dapibus nibh est feugiat ligula. Proin non mauris dui.',
             'Cras sodales orci diam, a mattis lacus sagittis id. Nullam pellentesque urna congue turpis lobortis, sed consectetur enim euismod. Vivamus efficitur iaculis felis a tristique. Praesent suscipit porttitor orci in porttitor. Duis vel pellentesque ligula. Aenean cursus volutpat lectus et porta. Nulla tempor metus et interdum pellentesque. Integer dui tellus, iaculis eu lectus vestibulum, hendrerit porta arcu. Cras interdum odio tortor, quis finibus diam scelerisque quis.',
             'Sed convallis mollis metus, nec suscipit est porta nec. Mauris vitae efficitur odio, vel semper lacus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Quisque rhoncus consectetur tortor eget aliquam. Duis non pretium tellus, vitae porttitor urna. Mauris et venenatis odio. Sed imperdiet gravida urna, ac vestibulum nunc condimentum ac. Aenean semper sollicitudin felis in venenatis. Etiam aliquam aliquam eros in ultricies. Sed ut eros ac augue molestie dignissim. Ut fringilla molestie risus id tristique. Suspendisse eget scelerisque nibh, ut volutpat neque. Donec rhoncus mauris nec orci facilisis luctus. Donec finibus efficitur fringilla.',
@@ -254,6 +260,22 @@ var app = angular.module('anchorApp', [])
             }
           }
         }
+        // Gets example documents to display on the right-hand side
+        ctrl.getExampleDocuments = function getExampleDocuments(exampleDocs) {
+          // Only get the first 5 docs for now, might change later
+          ctrl.documents = exampleDocs.slice(0, 5);
+          ctrl.topicToDocList = [];
+          for (var i = 0; i < ctrl.documents.length; i++) {
+            for (var j = 0; j < ctrl.documents[i]['topics'].length; j++) {
+              console.log(ctrl.documents[i]['topics'][j]);
+              if (ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] === undefined) {
+                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] = [];
+                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i);
+              }
+              else { ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i); }
+            }
+          }
+        }
         ctrl.stopChanging = function stopChanging() {
           ctrl.noChangesYet = false;
           $('.document').css('background-color', '#FFFFFF');
@@ -265,7 +287,7 @@ var app = angular.module('anchorApp', [])
         ctrl.addHighlightsDoc = function addHighlightsDoc(event, index) {
           if (ctrl.noChangesYet) {
             angular.element(event.target).css('background-color', '#FFFF55');
-            var list = ctrl.docToTopicList[index];
+            var list = ctrl.documents[index]['topics'];
             for (var i = 0; i < list.length; i++) {
               $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #F0F055');
             }
@@ -274,7 +296,7 @@ var app = angular.module('anchorApp', [])
         ctrl.removeHighlightsDoc = function removeHighlightsDoc(event, index) {
           if (ctrl.noChangesYet) {
             angular.element(event.target).css('background-color', '#FFFFFF');
-            var list = ctrl.docToTopicList[index];
+            var list = ctrl.documents[index]['topics'];
             for (var i = 0; i < list.length; i++) {
               $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #FFFFFF');
             }
@@ -302,7 +324,6 @@ var app = angular.module('anchorApp', [])
             }
           }
         }
-        ctrl.getDocuments();
     }).directive("autofillfix", function() {
         //This is required because of some problem between Angular and autofill
         return {
