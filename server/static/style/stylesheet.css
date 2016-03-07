@@ -148,7 +148,7 @@ h4 {
 }
 
 #doneForm {
-    margin-left: 100px;
+    margin-left: 200px;
     margin-top: 40px;
     float: left;
     margin-bottom: 20px;
@@ -156,4 +156,9 @@ h4 {
 
 #updateForm {
     float: right;
+    margin-left: 5px;
+}
+
+#newDocForm {
+  float: right;
 }

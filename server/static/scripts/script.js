@@ -1,13 +1,22 @@
 var app = angular.module('anchorApp', [])
-    .controller('anchorController', function($scope, $timeout, $http) {
+  .controller('anchorController', function($scope, $timeout, $http) {
+        
         var ctrl = this;
+        
+        
         //This holds all of the anchor objects.
         //  An anchor holds both anchor words for a single anchor and topic words that describe that anchor.
         ctrl.anchors = [];
+        
+        
         // This hold previous states, so we can undo/redo
         ctrl.anchorsHistory = [];
+        
+        
         // This tells us where we are in anchorsHistory
         ctrl.historyIndex = 0;
+        
+        
         // This sets the UI state back one place in anchorsHistory
         //   if there is a state to go back to
         ctrl.undo = function() {
@@ -29,6 +38,8 @@ var app = angular.module('anchorApp', [])
                 }, 1000);
             }
         }
+        
+        
         // This sets the UI state forward one place in anchorsHistory
         //   if there is a state to go forward to
         ctrl.redo = function() {
@@ -50,8 +61,12 @@ var app = angular.module('anchorApp', [])
                 }, 1000);
             }
         }
+        
+        
         // When finished is set to true, it brings us to the "thank you" page
         ctrl.finished = false;
+        
+        
         // This function sends the anchorsHistory array to the server
         //   and send the user to the "thank you" page
         ctrl.done = function() {
@@ -60,11 +75,15 @@ var app = angular.module('anchorApp', [])
               ctrl.finished = true;
           });
         }
+        
+        
         // Vocab holds the vocabulary of valid words
         ctrl.vocab;
         $.get("/vocab", function(data) {
           ctrl.vocab = data.vocab;
         });
+        
+        
         // This function adds a blank anchor to the page
         ctrl.addAnchor = function() {
           var anchorObj = {"anchors":[], "topic":[]};
@@ -72,23 +91,33 @@ var app = angular.module('anchorApp', [])
           initAutocomplete(ctrl.vocab);
           ctrl.stopChanging();
         }
-         //This function removes an anchor from the current list of anchors.
-         //  it deletes a whole line (both anchor words and their topic words).
+        
+        
+        //This function removes an anchor from the current list of anchors.
+        //  it deletes a whole line (both anchor words and their topic words).
         ctrl.removeAnchor = function(index) {
           ctrl.anchors.splice(index, 1);
           ctrl.stopChanging();
         }
+        
+        
         //This function adds an anchor word when entered in via an input in the left column
         ctrl.addAnchorWord = function(textForm, newAnchor) {
+            
             $scope.$broadcast("autofillfix:update"); //Needed to make autofill and Angular work well together
+            
             var lowercaseAnchor = textForm.target.children[0].value.toLowerCase();
+            
             //We are checking to see if the new anchor word is in the vocabulary.
             //  If it is, we add a new anchor and prompt to update topics.
             //  If it is not, we prompt to add a valid anchor.
+            
             var inVocab = false;
+            
             for (var i = 0; i < ctrl.vocab.length; i++) {
                 if (ctrl.vocab[i] === lowercaseAnchor) inVocab = true;
              }
+            
             if (inVocab) {
                 newAnchor.push(lowercaseAnchor);
                 //This timeout ensures that the added anchor is put in before the popover appears.
@@ -112,6 +141,7 @@ var app = angular.module('anchorApp', [])
                 textForm.target.children[0].value = "";
                 ctrl.stopChanging();
             }
+            
             else {
                 angular.element(textForm.target).popover({
                     placement:'bottom',
@@ -124,29 +154,36 @@ var app = angular.module('anchorApp', [])
                 }, 2000);
             }
         }
+        
 
         //This function deletes an anchor word (when you click on the little 'x' in the bubble)
         ctrl.deleteWord = function(closeButton, array) {
             var toClose = closeButton.target.parentNode.id;
             $("#"+toClose).remove();
-            console.log(array);
             var wordIndex = array.indexOf(closeButton.target.parentNode.textContent.replace(/✖/, "").replace(/\s/g, ''));
             if (wordIndex !== -1) {
                 array.splice(wordIndex, 1);
             }
             ctrl.stopChanging();
         }
+        
+        
         //This function only gets the topics when we have no current anchors.
-        ctrl.getTopics = function() {
+        ctrl.getTopics = function(getNewExampleDoc) {
+            
             ctrl.loading = true;
-            $.get("/topics", {example:''}, function(data) {
+            
+            var exampleDocName = ctrl.exampleDoc;
+            if (getNewExampleDoc) { exampleDocName = ''; }
+            
+            $.get("/topics", {example: exampleDocName}, function(data) {
                 //Ensure we can't redo something that's been written over
                 ctrl.anchorsHistory.splice(ctrl.historyIndex, ctrl.anchorsHistory.length-ctrl.historyIndex-1);
                 //Save the data
-                console.log(data);
                 ctrl.anchorsHistory.push(data);
                 ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
                 ctrl.getExampleDocuments(data['example']);
+                ctrl.exampleDoc = data['example_name'];
                 ctrl.loading = false;
                 ctrl.startChanging();
                 $scope.$apply();
@@ -154,12 +191,19 @@ var app = angular.module('anchorApp', [])
                 $(".top-to-bottom").css("height", $(".anchors-and-topics").height());
             });
         }
+        
+        
         //We actually call the above function here, so we get the original topics
-        ctrl.getTopics();
+        ctrl.getTopics(true);
+        
+        
         //This function takes all anchors from the left column and gets their new topic words.
         //  It then updates the page to include the new topic words.
-        ctrl.getNewTopics = function() {
+        //  getNewExampleDoc should be a bool
+        ctrl.getNewTopics = function(getNewExampleDoc) {
+            
             var currentAnchors = [];
+            
             //The server throws an error if there are no anchors,
             //  so we want to get new anchors if needed.
             if ($(".anchorContainer").length !== 0) {
@@ -175,10 +219,17 @@ var app = angular.module('anchorApp', [])
                     var tempArray = value.split(",");
                     currentAnchors.push(tempArray);
                 });
+                
                 if (currentAnchors.length !== 0) {
+                    
                     var getParams = JSON.stringify(currentAnchors);
+                    
                     ctrl.loading = true;
-                    $.get("/topics", {anchors: getParams, example:''}, function(data) {
+                    
+                    var exampleParam = ctrl.exampleDoc;
+                    if (getNewExampleDoc) {exampleParam = '';}
+                    
+                    $.get("/topics", {anchors: getParams, example: exampleParam}, function(data) {
                         var saveState = {anchors: currentAnchors,
                                    topics: data["topics"]};
                         //This gets rid of the possibility of redoing if another state was saved since the last undo. If nothing has been undone, this should do nothing.
@@ -190,6 +241,7 @@ var app = angular.module('anchorApp', [])
                         //Update the anchors in the UI
                         ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
                         ctrl.getExampleDocuments(data['example']);
+                        ctrl.exampleDoc = data['example_name'];
                         ctrl.loading = false;
                         ctrl.startChanging();
                         $scope.$apply();
@@ -198,16 +250,21 @@ var app = angular.module('anchorApp', [])
                         $(".top-to-bottom").css("height", $(".anchors-and-topics").height());
                     });
                 }
+                
                 else {
-                    ctrl.getTopics();
+                    ctrl.getTopics(getNewExampleDoc);
                 }
             }
+            
             //This gets new anchors if we need them.
             else {
-                ctrl.getTopics();
+                ctrl.getTopics(getNewExampleDoc);
             }
+            
             initAutocomplete();
         }
+        
+        
         //This initializes autocompletion for entering new anchor words
         var initAutocomplete = function initAutocomplete() {
             $(".anchorInput" ).autocomplete({
@@ -227,16 +284,30 @@ var app = angular.module('anchorApp', [])
                 }
             });
         };
+        
+        
         // This sets the height of the document container on load
         $timeout(function() {
           $(".top-to-bottom").css("height", $(".anchors-and-topics").height());
         }, 50);
+        
+        
         // Holds all of the sample documents we were given
         ctrl.documents;
+        
+        
         // Holds a map from document to topics it includes
         ctrl.docToTopicList;
+        
+        
+        // Holds the directory for the current example document
+        ctrl.exampleDoc;
+        
+        
         // Holds a map from topic to documents that include it
         ctrl.topicToDocList;
+        
+        
         // Will get documents and docToTopicList from an endpoint, currently just test data
         ctrl.getDocumentsTest = function getDocumentsTest() {
           // We don't get data in this format anymore, we get a list of
@@ -260,14 +331,15 @@ var app = angular.module('anchorApp', [])
             }
           }
         }
+
+
         // Gets example documents to display on the right-hand side
         ctrl.getExampleDocuments = function getExampleDocuments(exampleDocs) {
           // Only get the first 5 docs for now, might change later
-          ctrl.documents = exampleDocs.slice(0, 5);
+          ctrl.documents = exampleDocs;
           ctrl.topicToDocList = [];
           for (var i = 0; i < ctrl.documents.length; i++) {
             for (var j = 0; j < ctrl.documents[i]['topics'].length; j++) {
-              console.log(ctrl.documents[i]['topics'][j]);
               if (ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] === undefined) {
                 ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] = [];
                 ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i);
@@ -276,14 +348,26 @@ var app = angular.module('anchorApp', [])
             }
           }
         }
+        
+
+        // Called when an anchor words is added or deleted, since the topics
+        //   no longer reflect the current anchor words
         ctrl.stopChanging = function stopChanging() {
           ctrl.noChangesYet = false;
           $('.document').css('background-color', '#FFFFFF');
           $('.anchor-and-topic').css('border', 'solid 2px #FFFFFF');
         }
+
+        
+        // Called when an update or undo/redo occurs, since the topics
+        //   now reflect the current anchor words
         ctrl.startChanging = function startChanging() {
           ctrl.noChangesYet = true;
         }
+
+        
+        // This allows documents and corresponding topics to highlight when
+        //   you mouse over a document (paragraph)
         ctrl.addHighlightsDoc = function addHighlightsDoc(event, index) {
           if (ctrl.noChangesYet) {
             angular.element(event.target).css('background-color', '#FFFF55');
@@ -293,6 +377,10 @@ var app = angular.module('anchorApp', [])
             }
           }
         }
+
+
+        // This removes the highlights on documents and corresponding
+        //   topics when you take your mouse off a document (paragraph)
         ctrl.removeHighlightsDoc = function removeHighlightsDoc(event, index) {
           if (ctrl.noChangesYet) {
             angular.element(event.target).css('background-color', '#FFFFFF');
@@ -302,6 +390,10 @@ var app = angular.module('anchorApp', [])
             }
           }
         }
+
+
+        // This allows topics and documents they are found in to highlight
+        //   when you mouse over a topic/anchor row
         ctrl.addHighlightsTopic = function addHighlightsTopic(event, index) {
           if (ctrl.noChangesYet) {
             var list = ctrl.topicToDocList[index];
@@ -313,6 +405,10 @@ var app = angular.module('anchorApp', [])
             }
           }
         }
+
+
+        // This removes the highlights on topics and documents they are found
+        //   in when you take your mouse off a topic/anchor row
         ctrl.removeHighlightsTopic = function removeHighlightsTopic(event, index) {
           if (ctrl.noChangesYet) {
             var list = ctrl.topicToDocList[index];
@@ -324,6 +420,7 @@ var app = angular.module('anchorApp', [])
             }
           }
         }
+
     }).directive("autofillfix", function() {
         //This is required because of some problem between Angular and autofill
         return {
@@ -353,16 +450,20 @@ var getAnchorsArray = function(anchors, topics) {
 //All functions below here enable dragging and dropping
 //They could possibly be in another file and included?
 
+
 var allowDrop = function(ev) {
     ev.preventDefault();
 };
+
 
 var drag = function(ev) {
     ev.dataTransfer.setData("text", ev.target.id);
 };
 
+
 //Holds next id for when we copy nodes
 var copyId = 0;
+
 
 var drop = function(ev) {
     ev.preventDefault();
@@ -420,10 +521,12 @@ var drop = function(ev) {
     }
 };
 
+
 //used to delete words that are copies (because they can't access the function in the Angular scope)
 var deleteWord = function(ev) {
     $("#"+ev.target.id).parent()[0].remove();
 }
+
 
 //Adds a delete button (little 'x' on the right side) of an anchor word
 var addDeleteButton = function(id) {

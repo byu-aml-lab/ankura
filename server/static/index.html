@@ -62,8 +62,11 @@
         <form id="doneForm" ng-submit="ctrl.done()">
           <button type="submit" class="btn btn-danger btn-sm">I'm Finished!</button>
         </form>
-        <form id="updateForm" ng-submit="ctrl.getNewTopics()">
+        <form id="updateForm" ng-submit="ctrl.getNewTopics(false)">
           <button type="submit" class="btn btn-primary btn-sm updateTopicsButtonClean">Update Topics</button>
+        </form>
+        <form id="newDocForm" ng-submit="ctrl.getNewTopics(true)" ng-show="ctrl.noChangesYet">
+          <button type="submit" class="btn btn-sm">New Document</button>
         </form>
       </div>
     </div>
