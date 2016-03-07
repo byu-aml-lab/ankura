@@ -1,7 +1,6 @@
 """A collection of tokenizers for use with ankura import pipelines"""
 
 import re
-import io
 
 import bs4
 
@@ -42,3 +41,8 @@ def news(data, tokenizer=simple):
 def html(data, tokenizer=simple):
     """Tokenizes by extracting text from an HTML file"""
     return tokenizer(bs4.BeautifulSoup(data, 'html.parser').get_text())
+
+
+def noop(data):
+    """A noop tokenizer"""
+    return data
