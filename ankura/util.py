@@ -4,6 +4,7 @@ import collections
 import os
 import pickle
 import random
+import tempfile
 
 def pickle_cache(pickle_path):
     """Decorator to cache a parameterless function call to disk"""
@@ -55,3 +56,21 @@ def sample_categorical(counts):
         sample -= count
 
     raise ValueError(counts)
+
+def open_unique(prefix='', dirname=os.path.curdir):
+    """Opens a uniquely named file
+
+    A prefix can optionally be given to the newly created file. By default, the
+    file will be created in the current directory, but this can be overriden by
+    specifying a dirname. If the specified directory does not exist, it will be
+    created.
+    """
+    try:
+        os.makedirs(dirname)
+    except FileExistsError:
+        pass
+
+    return tempfile.NamedTemporaryFile(mode='w',
+                                       delete=False,
+                                       prefix=prefix,
+                                       dir=dirname)

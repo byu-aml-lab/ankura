@@ -5,7 +5,7 @@ from __future__ import division
 import numpy
 import scipy.sparse
 
-# TODO Use dataset labels instead of separate label values
+# TODO(jeff) Use dataset labels instead of separate label values
 
 class NaiveBayes(object):
     """A simple Multinomial Naive Bayes classifier"""
@@ -58,8 +58,8 @@ class NaiveBayes(object):
         return correct / len(labels)
 
 
-# TODO add Newman topic coherence metric
 def topic_coherence(word_indices, dataset, epsilon=0.01):
+    """Measures the coherence of a single topic"""
     coherence = 0
     for i in word_indices:
         for j in word_indices:
