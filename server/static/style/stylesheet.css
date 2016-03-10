@@ -33,10 +33,35 @@ h4 {
     vertical-align: middle;
     list-style-type: none;
     border: 1px solid gray;
-    margin: 2.5px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
     padding: 2px;
     width: 100%;
     min-height: 28px;
+}
+
+.anchor-and-topic {
+  border: solid 2px white;
+}
+
+.document-container {
+  border: 1px solid gray;
+  overflow-y: auto;
+  margin-top: 2.5px;
+  margin-bottom: 2.5px;
+  margin-left: 0px;
+  margin-right: 0px;
+  height: 99%;
+}
+
+.document {
+  margin-bottom: 1em;
+}
+
+.top-to-bottom {
+  //Height is changed in script.js
 }
 
 .anchor {
@@ -46,7 +71,7 @@ h4 {
     padding: 2px;
     width: 80%;
     min-height: 28px;
-    margin: 2.5px;
+    margin: 0px;
 }
 
 .anchorWord {
@@ -103,6 +128,11 @@ h4 {
     z-index: 1;
 }
 
+.forms-container {
+  margin-top: 5px;
+  margin-left: 0px;
+}
+
 #addAnchorForm {
     float: left;
 }
@@ -118,11 +148,17 @@ h4 {
 }
 
 #doneForm {
-    margin-left: 100px;
+    margin-left: 200px;
     margin-top: 40px;
     float: left;
+    margin-bottom: 20px;
 }
 
 #updateForm {
     float: right;
+    margin-left: 5px;
+}
+
+#newDocForm {
+  float: right;
 }

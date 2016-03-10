@@ -87,7 +87,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
     return alpha
 
 
-def recover_topics(dataset, anchors, epsilon=1e-7):
+def recover_topics(dataset, anchors, epsilon=2e-7):
     """Recovers topics given a cooccurence matrix and a set of anchor vectors"""
     # dont modify original Q
     Q = dataset.Q.copy()
@@ -180,12 +180,23 @@ def topic_combine(topics, dataset, alpha=.01, rng=random):
     return dataset
 
 
-def topic_summary(topics, dataset, n=10):
+def topic_summary_indices(topics, dataset, n=10):
+    """Returns a list of the indices of the top n tokens per topic"""
+    indices = []
+    for k in range(topics.shape[1]):
+        index = []
+        for word in numpy.argsort(topics[:, k])[-n:][::-1]:
+            index.append(word)
+        indices.append(index)
+    return indices
+
+
+def topic_summary_tokens(topics, dataset, n=10):
     """Returns a list of top n tokens per topic"""
     summaries = []
-    for k in range(topics.shape[1]):
+    for index in topic_summary_indices(topics, dataset):
         summary = []
-        for word in numpy.argsort(topics[:, k])[-n:][::-1]:
+        for word in index:
             summary.append(dataset.vocab[word])
         summaries.append(summary)
     return summaries

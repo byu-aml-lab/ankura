@@ -18,11 +18,11 @@ app = flask.Flask(__name__, static_url_path='')
 @ankura.util.pickle_cache('newsgroups.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
-    news_glob = '/local/jlund3/data/newsgroups/*/*'
-    engl_stop = '/local/jlund3/data/stopwords/english.txt'
-    news_stop = '/local/jlund3/data/stopwords/newsgroups.txt'
-    name_stop = '/local/jlund3/data/stopwords/malenames.txt'
-
+    news_glob = '/local/cojoco/git/jeffData/newsgroups/*/*'
+    engl_stop = '/local/cojoco/git/jeffData/stopwords/english.txt'
+    news_stop = '/local/cojoco/git/jeffData/stopwords/newsgroups.txt'
+    name_stop = '/local/cojoco/git/jeffData/stopwords/malenames.txt'
+    curse_stop = '/local/cojoco/git/jeffData/stopwords/profanity.txt'
     news_text = functools.partial(label.text, formatter=label.news_formatter)
     labeler = label.aggregate(news_text, label.title_dirname)
 
@@ -31,6 +31,7 @@ def get_newsgroups():
     dataset = ankura.filter_stopwords(dataset, engl_stop)
     dataset = ankura.filter_stopwords(dataset, news_stop)
     dataset = ankura.combine_words(dataset, name_stop, '<name>')
+    dataset = ankura.combine_words(dataset, curse_stop, '<profanity>')
     dataset = ankura.filter_rarewords(dataset, 100)
     dataset = ankura.filter_commonwords(dataset, 1500)
 
@@ -38,7 +39,7 @@ def get_newsgroups():
 
 
 @ankura.util.memoize
-@ankura.util.pickle_cache('anchors-default.pickle')
+@ankura.util.pickle_cache('newsgroups-anchors-default.pickle')
 def default_anchors():
     """Retrieves default anchors for newsgroups using Gram-Schmidt"""
     dataset = get_newsgroups()
@@ -91,7 +92,7 @@ def topic_request():
 
     # infer the topics from the anchors
     topics = ankura.recover_topics(dataset, anchors)
-    topic_summary = ankura.topic.topic_summary(topics, dataset, n=15)
+    topic_summary = ankura.topic.topic_summary_tokens(topics, dataset, n=15)
 
     # optionally produce an example of the resulting topics
     example = flask.request.args.get('example')
