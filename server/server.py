@@ -4,7 +4,9 @@
 
 import functools
 import json
+import os
 import random
+import sys
 
 import flask
 
@@ -13,16 +15,22 @@ from ankura import label
 
 app = flask.Flask(__name__, static_url_path='')
 
+if len(sys.argv) > 1:
+    data_prefix = sys.argv[1]
+else:
+    data_prefix = '/local/jlund3/data'
+
 
 @ankura.util.memoize
 @ankura.util.pickle_cache('newsgroups.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
-    news_glob = '/local/cojoco/git/jeffData/newsgroups/*/*'
-    engl_stop = '/local/cojoco/git/jeffData/stopwords/english.txt'
-    news_stop = '/local/cojoco/git/jeffData/stopwords/newsgroups.txt'
-    name_stop = '/local/cojoco/git/jeffData/stopwords/malenames.txt'
-    curse_stop = '/local/cojoco/git/jeffData/stopwords/profanity.txt'
+    news_glob =  os.path.join(data_prefix, 'newsgroups/*/*')
+    engl_stop =  os.path.join(data_prefix, 'stopwords/english.txt')
+    news_stop =  os.path.join(data_prefix, 'stopwords/newsgroups.txt')
+    name_stop =  os.path.join(data_prefix, 'stopwords/malenames.txt')
+    curse_stop = os.path.join(data_prefix, 'stopwords/profanity.txt')
+
     news_text = functools.partial(label.text, formatter=label.news_formatter)
     labeler = label.aggregate(news_text, label.title_dirname)
 
