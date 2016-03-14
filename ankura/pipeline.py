@@ -229,12 +229,12 @@ def _build_dataset(docdata, tokenizer, labeler):
     # construct the docword matrix using the vocab map
     docwords = scipy.sparse.lil_matrix((len(vocab), len(docs)), dtype='uint')
     for doc, counts in enumerate(docs):
-        for word, count in counts.items():
-            docwords[word, doc] = count
+        for token_id, count in counts.items():
+            docwords[token_id, doc] = count
 
     # convert vocab from a token to index map into a list of tokens
-    vocab = {index: token for token, index in vocab.items()}
-    vocab = [vocab[index] for index in range(len(vocab))]
+    vocab = {token_id: token for token, token_id in vocab.items()}
+    vocab = [vocab[token_id] for token_id in range(len(vocab))]
 
     # construct and return the Dataset
     return Dataset(docwords.tocsc(), vocab, titles, metadata)
