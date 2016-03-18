@@ -2,29 +2,34 @@
 
 """Runs a user interface for the interactive anchor words algorithm"""
 
+import flask
 import functools
 import json
+import numpy
 import os
 import random
+import re
 import sys
-
-import flask
 
 import ankura
 from ankura import label
 
 app = flask.Flask(__name__, static_url_path='')
 
-if len(sys.argv) > 1:
-    data_prefix = sys.argv[1]
-else:
-    data_prefix = '/local/jlund3/data'
+
+def get_data_prefix():
+    """Returns the data prefix that should be used give sys.argv[1]"""
+    if len(sys.argv) > 1:
+        return sys.argv[1]
+    else:
+        return '/local/jlund3/data'
 
 
 @ankura.util.memoize
-@ankura.util.pickle_cache('newsgroups.pickle')
+@ankura.util.pickle_cache('newsgroups-dataset.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
+    data_prefix = get_data_prefix()
     news_glob =  os.path.join(data_prefix, 'newsgroups/*/*')
     engl_stop =  os.path.join(data_prefix, 'stopwords/english.txt')
     news_stop =  os.path.join(data_prefix, 'stopwords/newsgroups.txt')
@@ -43,11 +48,26 @@ def get_newsgroups():
     dataset = ankura.filter_rarewords(dataset, 100)
     dataset = ankura.filter_commonwords(dataset, 1500)
 
+    # get display candidates
+    candidates = filter(lambda d: len(dataset.metadata[d]['text']) < 3000,
+                        range(dataset.num_docs))
+    candidates = list(candidates)
+    dataset.display_candidates = candidates
+
+    # clean up display candidates text metadata for our byu audience
+    for curse in open(curse_stop):
+        regex = re.compile(r'\b({})\b'.format(curse), re.M | re.I)
+        replace = '*' * len(curse)
+        for doc in candidates:
+            text = dataset.doc_metadata(doc, 'text')
+            text = regex.sub(replace, text)
+            dataset.metadata[doc]['text'] = text
+
     return dataset
 
 
 @ankura.util.memoize
-@ankura.util.pickle_cache('newsgroups-anchors-default.pickle')
+@ankura.util.pickle_cache('newsgroups-anchors.pickle')
 def default_anchors():
     """Retrieves default anchors for newsgroups using Gram-Schmidt"""
     dataset = get_newsgroups()
@@ -103,19 +123,21 @@ def topic_request():
     topic_summary = ankura.topic.topic_summary_tokens(topics, dataset, n=15)
 
     # optionally produce an example of the resulting topics
-    example = flask.request.args.get('example')
-    if example is None:
+    example_seed = flask.request.args.get('example')
+    if example_seed is None:
         # no examples were request
         docdata = None
     else:
-        if not example:
-            # an example was requested, by no dirname given - pick one
-            sample_doc = random.randrange(dataset.num_docs)
-            example = dataset.doc_metadata(sample_doc, 'dirname')
+        if not example_seed:
+            # an example was requested, by no seed given - pick one
+            example_seed = random.randrange(numpy.iinfo('uint32').max)
+        else:
+            example_seed = int(example_seed)
 
         # perform topic inference on each of the requested documents
         docdata = []
-        for doc in dataset.metadata_query('dirname', example):
+        rng = numpy.random.RandomState(example_seed)
+        for doc in rng.choice(dataset.display_candidates, 5, replace=False):
             doc_tokens = dataset.doc_tokens(doc)
             _, doc_topics = ankura.topic.predict_topics(topics, doc_tokens)
             docdata.append({'text': dataset.doc_metadata(doc, 'text'),
@@ -124,7 +146,7 @@ def topic_request():
     return flask.jsonify(anchors=anchor_tokens,
                          topics=topic_summary,
                          example=docdata,
-                         example_name=example)
+                         example_name=example_seed)
 
 
 if __name__ == '__main__':
