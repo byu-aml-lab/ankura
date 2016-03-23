@@ -17,6 +17,7 @@ var app = angular.module('anchorApp', [])
         ctrl.historyIndex = 0;
         
         
+        // NO LONGER IN USE (we got rid of undo/redo)
         // This sets the UI state back one place in anchorsHistory
         //   if there is a state to go back to
         ctrl.undo = function() {
@@ -40,6 +41,7 @@ var app = angular.module('anchorApp', [])
         }
         
         
+        // NO LONGER IN USE (we got rid of undo/redo)
         // This sets the UI state forward one place in anchorsHistory
         //   if there is a state to go forward to
         ctrl.redo = function() {
@@ -168,6 +170,32 @@ var app = angular.module('anchorApp', [])
         }
         
         
+        //Tells us whether we are in single-anchor mode or not
+        ctrl.singleAnchors = false;
+
+
+        //Creates a popup if the user tries to submit multi-word anchors
+        //  when in single-anchor mode
+        ctrl.singleAnchorPopup = function singleAnchorPopup() {
+          $("#updateForm").popover({
+              placement:'top',
+              trigger:'manual',
+              html:true,
+              content:'Only one anchor word is allowed on each line.<br>Please remove any extra anchor words.'
+            }).popover('show');
+            $timeout(function() {
+              $("#updateForm").popover('hide');
+            }, 2000);
+        }
+
+
+        //Gets what the title should be
+        ctrl.title = function title() {
+          if (ctrl.singleAnchors) {return "Ankura ITM (Single-Word Anchors)";}
+          else {return "Ankura ITM";}
+        }
+
+
         //This function only gets the topics when we have no current anchors.
         ctrl.getTopics = function(getNewExampleDoc) {
             
@@ -184,6 +212,7 @@ var app = angular.module('anchorApp', [])
                 ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"]);
                 ctrl.getExampleDocuments(data['example']);
                 ctrl.exampleDoc = data['example_name'];
+                ctrl.singleAnchors = data['single_anchors'];
                 ctrl.loading = false;
                 ctrl.startChanging();
                 $scope.$apply();
@@ -202,11 +231,32 @@ var app = angular.module('anchorApp', [])
         //  getNewExampleDoc should be a bool
         ctrl.getNewTopics = function(getNewExampleDoc) {
             
+            // Set to false if we are in singleAnchors mode and don't have
+            //   only single anchors.
+            var onlySingleAnchors = true
             var currentAnchors = [];
-            
             //The server throws an error if there are no anchors,
             //  so we want to get new anchors if needed.
             if ($(".anchorContainer").length !== 0) {
+                //If needed, this checks if the anchors all only have 1 word
+                if (ctrl.singleAnchors) {
+                  $(".anchorContainer").each(function() {
+                    var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
+                    value = value.replace(/<!--[^>]*>/g, '').replace(/,$/, '').replace(/,$/, '').replace(/\u2716/g, '');
+                    //This prevents errors on the server if there are '<' or '>' symbols in the anchors
+                    value = value.replace(/\&lt;/g, '<').replace(/\&gt;/g, '>');
+                    if (value === "") {
+                      return true;
+                    }
+                    var tempArray = value.split(",");
+                    if (tempArray.length !== 1) {
+                      ctrl.singleAnchorPopup();
+                      onlySingleAnchors = false;
+                      return false;
+                    }
+                  });
+                }
+                if (!onlySingleAnchors) {return false;}
                 $(".anchorContainer").each(function() {
                     //This parses out just the comma-separated anchors from all the html
                     var value = $(this).html().replace(/\s/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span><\/span>/g, ',');
@@ -242,6 +292,7 @@ var app = angular.module('anchorApp', [])
                         ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"]);
                         ctrl.getExampleDocuments(data['example']);
                         ctrl.exampleDoc = data['example_name'];
+                        ctrl.singleAnchors = data['single_anchors'];
                         ctrl.loading = false;
                         ctrl.startChanging();
                         $scope.$apply();
@@ -306,31 +357,6 @@ var app = angular.module('anchorApp', [])
         
         // Holds a map from topic to documents that include it
         ctrl.topicToDocList;
-        
-        
-        // Will get documents and docToTopicList from an endpoint, currently just test data
-        ctrl.getDocumentsTest = function getDocumentsTest() {
-          // We don't get data in this format anymore, we get a list of
-          //   document/topic listing pairs
-          var data = {documents: ['Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla et lobortis risus. Aliquam risus ex, elementum non odio sit amet, euismod faucibus ligula. Fusce ut tortor diam. Integer finibus varius velit. Nullam ultricies, sem nec dictum fermentum, nunc lacus posuere nunc, non porttitor enim ipsum id nulla. Aliquam dictum cursus felis, id lobortis urna ornare at. Suspendisse laoreet, augue a commodo semper, tellus quam finibus leo, nec dapibus nibh est feugiat ligula. Proin non mauris dui.',
-            'Cras sodales orci diam, a mattis lacus sagittis id. Nullam pellentesque urna congue turpis lobortis, sed consectetur enim euismod. Vivamus efficitur iaculis felis a tristique. Praesent suscipit porttitor orci in porttitor. Duis vel pellentesque ligula. Aenean cursus volutpat lectus et porta. Nulla tempor metus et interdum pellentesque. Integer dui tellus, iaculis eu lectus vestibulum, hendrerit porta arcu. Cras interdum odio tortor, quis finibus diam scelerisque quis.',
-            'Sed convallis mollis metus, nec suscipit est porta nec. Mauris vitae efficitur odio, vel semper lacus. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Quisque rhoncus consectetur tortor eget aliquam. Duis non pretium tellus, vitae porttitor urna. Mauris et venenatis odio. Sed imperdiet gravida urna, ac vestibulum nunc condimentum ac. Aenean semper sollicitudin felis in venenatis. Etiam aliquam aliquam eros in ultricies. Sed ut eros ac augue molestie dignissim. Ut fringilla molestie risus id tristique. Suspendisse eget scelerisque nibh, ut volutpat neque. Donec rhoncus mauris nec orci facilisis luctus. Donec finibus efficitur fringilla.',
-            'Aenean in orci nibh. Curabitur non enim et justo accumsan eleifend. Mauris sit amet dolor mattis dolor lobortis tincidunt vitae eu velit. In ut magna porttitor, laoreet purus et, sagittis ipsum. Cras fringilla libero eget lectus vehicula consequat. Sed hendrerit convallis blandit. Etiam posuere dapibus metus, eu iaculis nisl scelerisque ut. Donec posuere tellus felis, at feugiat magna facilisis eu. Nulla facilisi. Cras varius consequat est, quis luctus magna hendrerit sed.',
-            'Sed vestibulum diam leo. Pellentesque luctus enim justo, quis fermentum lorem tristique nec. Proin sed ultrices arcu. Maecenas ut nibh tellus. Aenean mollis risus vitae mi ornare, eu venenatis eros vestibulum. Nunc lectus massa, accumsan in molestie vitae, cursus vitae justo. Mauris vel ex velit. Ut aliquam nisi nec ipsum condimentum gravida.'],
-            topics: [[3, 6], [10, 12], [1, 8, 14], [1, 2, 3], [8, 10, 16]]};
-          ctrl.documents = data['documents'];
-          ctrl.docToTopicList = data['topics'];
-          ctrl.topicToDocList = [];
-          for (var i = 0; i < ctrl.docToTopicList.length; i++) {
-            for (var j = 0; j < ctrl.docToTopicList[i].length; j++) {
-              if (ctrl.topicToDocList[ctrl.docToTopicList[i][j]] === undefined) {
-                ctrl.topicToDocList[ctrl.docToTopicList[i][j]] = [];
-                ctrl.topicToDocList[ctrl.docToTopicList[i][j]].push(i);
-              }
-              else { ctrl.topicToDocList[ctrl.docToTopicList[i][j]].push(i); }
-            }
-          }
-        }
 
 
         // Gets example documents to display on the right-hand side

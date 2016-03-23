@@ -10,6 +10,7 @@ import os
 import random
 import re
 import sys
+import argparse
 
 import ankura
 from ankura import label
@@ -17,12 +18,25 @@ from ankura import label
 app = flask.Flask(__name__, static_url_path='')
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("-d", "--data_prefix",
+                    help="The directory where newsgroups lives")
+parser.add_argument("-s", "--single_anchors", help="Enables single-anchors mode",
+                    action="store_true")
+args = parser.parse_args()
+print(args)
+
+
 def get_data_prefix():
-    """Returns the data prefix that should be used give sys.argv[1]"""
-    if len(sys.argv) > 1:
-        return sys.argv[1]
+    """Returns the data prefix that should be used"""
+    if args.data_prefix:
+        return args.data_prefix
     else:
         return '/local/jlund3/data'
+
+def get_single_anchors():
+    """Returns true if using single_anchors mode, false otherwise"""
+    return args.single_anchors
 
 
 @ankura.util.memoize
@@ -146,7 +160,8 @@ def topic_request():
     return flask.jsonify(anchors=anchor_tokens,
                          topics=topic_summary,
                          example=docdata,
-                         example_name=example_seed)
+                         example_name=example_seed,
+                         single_anchors=get_single_anchors())
 
 
 if __name__ == '__main__':

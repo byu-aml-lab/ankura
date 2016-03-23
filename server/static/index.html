@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html lang="en" class="no-js" ng-app="anchorApp">
+<html lang="en" class="no-js" ng-app="anchorApp" ng-controller="anchorController as ctrl">
   <head>
-    <title>Interactive Topic Modeling</title>
+    <title ng-bind="ctrl.title()">Ankura ITM</title>
     <link href='/favicon.ico' rel='shortcut icon' type='image/x-icon'>
     <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
@@ -11,7 +11,7 @@
     <script type="text/javascript" src="http://www.numericjs.com/lib/numeric-1.2.6.min.js"></script>
     <script type="text/javascript" src="scripts/script.js"></script>
   </head>
-  <body ng-controller="anchorController as ctrl">
+  <body>
     <div class="loading" ng-show="ctrl.loading"><img class="loadingImage" src="images/spinner.gif"/></div>
     <div class="container" ng-hide="ctrl.finished">
       <div class="row">
@@ -52,12 +52,6 @@
       <div class="row col-sm-12 col-md-12 col-lg-12 col-xs-12 forms-container">
         <form id="addAnchorForm" ng-submit="ctrl.addAnchor()">
           <button type="submit" class="btn btn-success btn-sm">Add Anchor</button>
-        </form>
-        <form id="undoForm" ng-submit="ctrl.undo()">
-          <button type="submit" class="btn btn-sm">Undo</button>
-        </form>
-        <form id="redoForm" ng-submit="ctrl.redo()">
-          <button type="submit" class="btn btn-sm">Redo</button>
         </form>
         <form id="doneForm" ng-submit="ctrl.done()">
           <button type="submit" class="btn btn-danger btn-sm">I'm Finished!</button>
