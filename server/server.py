@@ -11,6 +11,7 @@ import random
 import re
 import sys
 import argparse
+from datetime import datetime
 
 import ankura
 from ankura import label
@@ -24,7 +25,6 @@ parser.add_argument("-d", "--data_prefix",
 parser.add_argument("-s", "--single_anchors", help="Enables single-anchors mode",
                     action="store_true")
 args = parser.parse_args()
-print(args)
 
 
 def get_data_prefix():
@@ -133,9 +133,9 @@ def topic_request():
         anchors = user_anchors(anchor_tokens)
 
     # infer the topics from the anchors
-    topics = ankura.recover_topics(dataset, anchors)
+    topics = ankura.recover_topics(dataset, anchors, epsilon=1e-6)
     topic_summary = ankura.topic.topic_summary_tokens(topics, dataset, n=15)
-
+    
     # optionally produce an example of the resulting topics
     example_seed = flask.request.args.get('example')
     if example_seed is None:
@@ -156,7 +156,6 @@ def topic_request():
             _, doc_topics = ankura.topic.predict_topics(topics, doc_tokens)
             docdata.append({'text': dataset.doc_metadata(doc, 'text'),
                             'topics': sorted({int(x) for x in doc_topics})})
-
     return flask.jsonify(anchors=anchor_tokens,
                          topics=topic_summary,
                          example=docdata,

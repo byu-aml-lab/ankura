@@ -216,7 +216,7 @@ var app = angular.module('anchorApp', [])
                 ctrl.loading = false;
                 ctrl.startChanging();
                 $scope.$apply();
-                initAutocomplete();
+                initAutocomplete(ctrl.vocab);
                 $(".top-to-bottom").css("height", $(".anchors-and-topics").height());
             });
         }
@@ -296,7 +296,7 @@ var app = angular.module('anchorApp', [])
                         ctrl.loading = false;
                         ctrl.startChanging();
                         $scope.$apply();
-                        initAutocomplete();
+                        initAutocomplete(ctrl.vocab);
                         // Sets the height of the document container
                         $(".top-to-bottom").css("height", $(".anchors-and-topics").height());
                     });
@@ -312,7 +312,7 @@ var app = angular.module('anchorApp', [])
                 ctrl.getTopics(getNewExampleDoc);
             }
             
-            initAutocomplete();
+            initAutocomplete(ctrl.vocab);
         }
         
         
@@ -327,12 +327,29 @@ var app = angular.module('anchorApp', [])
                   $(this).parents("form").on('submit', function() {
                     return false;
                   });
+                  // This moves the selected value into the input before the
+                  //   input is submitted
+                  $(this).val(ui.item.value)
                   // This triggers the submit event, which turns the selected
                   //   word into a proper anchor word (with the border)
                   $(this).parents("form").submit();
                   // This prevents the value from being duplicated
                   return false;
                 }
+            }).keypress(function(e) {
+              // This closes the menu when the enter key is pressed
+              if (!e) e = window.event
+              if (e.keyCode == '13') {
+                $(".anchorInput" ).autocomplete('close')
+                // This sets a listener to prevent the page from reloading
+                $(this).parents("form").on('submit', function() {
+                  return false;
+                });
+                // This triggers the submit event, which turns the selected
+                //   word into a proper anchor word (with the border)
+                $(this).parents("form").submit()
+                return false
+              }
             });
         };
         
