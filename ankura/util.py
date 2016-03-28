@@ -6,6 +6,7 @@ import pickle
 import random
 import tempfile
 
+
 def pickle_cache(pickle_path):
     """Decorator to cache a parameterless function call to disk"""
     def _cache(data_func):
@@ -56,6 +57,7 @@ def sample_categorical(counts):
         sample -= count
 
     raise ValueError(counts)
+
 
 def open_unique(prefix='', dirname=os.path.curdir):
     """Opens a uniquely named file

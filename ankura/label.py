@@ -7,6 +7,7 @@ from . import tokenize
 # Note: Each labeler takes in title and data and should return a map of
 # metadata key/value pairs.
 
+
 def aggregate(*labelers):
     """Aggregates multiple labelers into a single labeler"""
     def aggregated(title, data):

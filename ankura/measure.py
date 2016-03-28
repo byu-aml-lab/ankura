@@ -7,6 +7,7 @@ import functools
 import numpy
 import scipy.sparse
 
+
 class NaiveBayes(object):
     """A simple Multinomial Naive Bayes classifier"""
 
