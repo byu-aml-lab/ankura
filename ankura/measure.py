@@ -2,6 +2,8 @@
 
 from __future__ import division
 
+import collections
+import functools
 import numpy
 import scipy.sparse
 
@@ -72,7 +74,7 @@ class NaiveBayes(object):
             pred_label = self.classify(dataset.docwords[:, doc])
             data.append((gold_label, pred_label))
 
-        return ContingencyTable(data, label_name)
+        return ContingencyTable(data, set(gold_labels))
 
 
 def topic_coherence(word_indices, dataset, epsilon=0.01):
@@ -102,32 +104,37 @@ def lim_xlogy(x, y):
     return x * numpy.log(y)
 
 
+counter = functools.partial(collections.defaultdict, int)
+
 class ContingencyTable(object):
 
-    def __init__(self, labels, data):
-        self.labels = list(labels)
-        self.table = [[0 for _ in self.labels] for _ in self.labels]
+    def __init__(self, data):
+        self.table = collections.defaultdict(counter)
+        self.gold_labels = set()
+        self.pred_labels = set()
         for gold, pred in data:
+            self.gold_labels.add(gold)
+            self.pred_labels.add(pred)
             self.table[gold][pred] += 1
 
     def fmeasure(self):
         gold_sums, pred_sums, total = self._sums()
-        fmeasures = [0 for _ in self.labels]
-        for gold_label in self.labels:
-            for pred_label in self.labels:
-                count = self.table[gold_label][pred_label]
-                gold_count = gold_sums[gold_label]
-                pred_count = pred_sums[pred_label]
-                if count == 0 or gold_count == 0 or pred_count == 0:
+        fmeasures = counter()
+        for gold in self.gold_labels:
+            for pred in self.pred_labels:
+                count = self.table[gold][pred]
+                gold_sum = gold_sums[gold]
+                pred_sum = pred_sums[pred]
+                if count == 0 or gold_sum == 0 or pred_sum == 0:
                     continue
-                recall = count / gold_count
-                precision = count / pred_count
+                recall = count / gold_sum
+                precision = count / pred_sum
                 fmeasure = recall * precision / (recall + precision)
-                fmeasures[gold_label] = max(fmeasures[gold_label], fmeasure)
+                fmeasures[gold] = max(fmeasures[gold], fmeasure)
 
         result = 0
-        for gold_label in self.labels:
-            fmeasures[gold_label] * gold_sums[gold_label] / total
+        for gold, gold_sum in gold_sums.items():
+            result += fmeasures[gold] * gold_sum / total
         return 2 * result
 
     def ari(self):
@@ -152,34 +159,41 @@ class ContingencyTable(object):
             pred_entropy -= lim_plogp(count / total)
 
         mutual_info = 0
-        for gold_label in self.labels:
-            for pred_label in self.labels:
-                count = self.table[gold_label][pred_label]
+        for gold in self.gold_labels:
+            for pred in self.pred_labels:
+                count = self.table[gold][pred]
                 joint_prob = count / total
-                gold_prob = gold_sums[gold_label] / total
-                pred_prob = pred_sums[pred_label] / total
+                gold_prob = gold_sums[gold] / total
+                pred_prob = pred_sums[pred] / total
                 if gold_prob and pred_prob:
                     mutal = joint_prob / (gold_prob * pred_prob)
-                    mutual_info += l
+                    mutual_info += lim_xlogy(joint_prob, mutal)
 
         return gold_entropy + pred_entropy - 2 * mutual_info
 
     def _sums(self):
-        gold_sums = [0 for _ in self.labels]
-        pred_sums = [0 for _ in self.labels]
+        gold_sums = {gold: 0 for gold in self.gold_labels}
+        pred_sums = {pred: 0 for pred in self.pred_labels}
         total = 0
-        for gold_label in self.labels:
-            for pred_label in self.labels:
-                count = self.table[gold_label][pred_label]
-                gold_sums[gold_label] += count
-                pred_sums[pred_label] += count
+        for gold in self.gold_labels:
+            for pred in self.pred_labels:
+                count = self.table[gold][pred]
+                gold_sums[gold] += count
+                pred_sums[pred] += count
                 total += count
         return gold_sums, pred_sums, total
 
     def _rand_sums(self):
         gold_sums, pred_sums, total = self._sums()
-        gold_sum = sum(n_choose_2(n) for n in gold_sums)
-        pred_sum = sum(n_choose_2(n) for n in pred_sums)
-        ind_sum = sum(n_choose_2(count) for row in self.table for count in row)
+
+        gold_sum = sum(n_choose_2(n) for n in gold_sums.values())
+        pred_sum = sum(n_choose_2(n) for n in pred_sums.values())
+
+        ind_sum = 0
+        for row in self.table.values():
+            for count in row.values():
+                ind_sum += n_choose_2(count)
+
         all_sum = n_choose_2(total)
+
         return gold_sum, pred_sum, ind_sum, all_sum
