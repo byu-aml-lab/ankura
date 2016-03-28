@@ -74,7 +74,7 @@ class NaiveBayes(object):
             pred_label = self.classify(dataset.docwords[:, doc])
             data.append((gold_label, pred_label))
 
-        return ContingencyTable(data, set(gold_labels))
+        return ContingencyTable(data)
 
 
 def topic_coherence(word_indices, dataset, epsilon=0.01):
@@ -88,25 +88,8 @@ def topic_coherence(word_indices, dataset, epsilon=0.01):
     return coherence
 
 
-def n_choose_2(n):
-    return (n * (n - 1)) / 2
-
-
-def lim_plogp(p):
-    if not p:
-        return 0
-    return p * numpy.log(p)
-
-
-def lim_xlogy(x, y):
-    if not x and not y:
-        return 0
-    return x * numpy.log(y)
-
-
-counter = functools.partial(collections.defaultdict, int)
-
 class ContingencyTable(object):
+    """Computes various external clustering metrics on a contingency table"""
 
     def __init__(self, data):
         self.table = collections.defaultdict(counter)
@@ -118,6 +101,7 @@ class ContingencyTable(object):
             self.table[gold][pred] += 1
 
     def fmeasure(self):
+        """Computes the harmonic mean of precision and recall"""
         gold_sums, pred_sums, total = self._sums()
         fmeasures = counter()
         for gold in self.gold_labels:
@@ -138,16 +122,19 @@ class ContingencyTable(object):
         return 2 * result
 
     def ari(self):
+        """Computes the chance ajdusted version of the rand index"""
         gold_sum, pred_sum, ind_sum, all_sum = self._rand_sums()
         expected = gold_sum * pred_sum / all_sum
         maximum = (gold_sum+pred_sum) / 2
         return (ind_sum - expected) / (maximum - expected)
 
     def rand(self):
+        """Computes the rand index, which is essentially pair-wise accuracy"""
         gold_sum, pred_sum, ind_sum, all_sum = self._rand_sums()
         return (all_sum + 2 * ind_sum - gold_sum - pred_sum) / all_sum
 
     def vi(self):
+        """Computes variation of information"""
         gold_sums, pred_sums, total = self._sums()
 
         gold_entropy = 0
@@ -197,3 +184,25 @@ class ContingencyTable(object):
         all_sum = n_choose_2(total)
 
         return gold_sum, pred_sum, ind_sum, all_sum
+
+
+def n_choose_2(n):
+    """Computes the binomial coefficient with k=2."""
+    return (n * (n - 1)) / 2
+
+
+def lim_plogp(p):
+    """Computes p log p if p != 0, otherwise returns 0."""
+    if not p:
+        return 0
+    return p * numpy.log(p)
+
+
+def lim_xlogy(x, y):
+    """Computes x log y of both x != 0 and y != 0, otherwise returns 0."""
+    if not x and not y:
+        return 0
+    return x * numpy.log(y)
+
+
+counter = functools.partial(collections.defaultdict, int)
