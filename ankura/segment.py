@@ -8,6 +8,7 @@ import bs4
 # Note: Each segmenter takes in a file object and should return an iterable of
 # tuples containing title and text as strings.
 
+
 def simple(docfile):
     """Considers the file to be a single document"""
     return [(docfile.name, docfile.read())]

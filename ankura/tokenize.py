@@ -6,6 +6,7 @@ import bs4
 
 # Note: Each tokenizer takes in a string, and returns a list of tokens
 
+
 def split(data):
     """A tokenizer which does nothing but splitting"""
     return data.split()
