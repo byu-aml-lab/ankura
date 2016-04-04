@@ -13,7 +13,9 @@ def get_newsgroups():
     news_stop = '/local/jlund3/data/stopwords/newsgroups.txt'
     name_stop = '/local/jlund3/data/stopwords/malenames.txt'
 
-    dataset = ankura.read_glob(news_glob, tokenizer=ankura.tokenize.news)
+    dataset = ankura.read_glob(news_glob,
+                               tokenizer=ankura.tokenize.news,
+                               labeler=ankura.label.title_dirname)
     dataset = ankura.filter_stopwords(dataset, engl_stop)
     dataset = ankura.filter_stopwords(dataset, news_stop)
     dataset = ankura.combine_words(dataset, name_stop, '<name>')
@@ -23,14 +25,50 @@ def get_newsgroups():
     return dataset
 
 
+def get_title_anchors(dataset):
+    """Retrieves anchors constructed from the newsgroup titles"""
+    anchor_tokens = [
+        ['computer', 'graphics'],
+        ['computer', 'operating', 'system', 'microsoft', 'windows'],
+        ['computer', 'ibm', 'pc', 'hardware'],
+        ['computer', 'mac', 'hardware'],
+        ['computer', 'windows'],
+        ['auto'],
+        ['recreation', 'motorcycle'],
+        ['recreation', 'sport', 'baseball'],
+        ['recreation', 'sport', 'hockey'],
+        ['talk', 'politics'],
+        ['talk', 'politics', 'guns'],
+        ['talk', 'politics', 'middle', 'east'],
+        ['science', 'cryptography'],
+        ['science', 'electronics'],
+        ['science', 'medicine'],
+        ['science', 'space'],
+        ['talk', 'religion'],
+        ['alternative', 'atheism'],
+        ['social', 'religion', 'christian'],
+    ]
+    return ankura.multiword_anchors(dataset, anchor_tokens)
+
+
 def demo():
     """Runs the demo"""
     dataset = get_newsgroups()
-    anchors = ankura.gramschmidt_anchors(get_newsgroups(), 20, 500)
-    topics = ankura.recover_topics(dataset, anchors)
-    for topic in ankura.topic.topic_summary(topics, dataset, n):
-        print(' '.join(topic))
 
+    def run(name, anchors):
+        print(name)
+        topics = ankura.recover_topics(dataset, anchors)
+        for topic in ankura.topic.topic_summary_tokens(topics, dataset, 15):
+            print(' '.join(topic))
+
+        transform = ankura.topic_transform(topics, dataset)
+        train, test = ankura.pipeline.train_test_split(transform, .9)
+        naive = ankura.measure.NaiveBayes(train, dirname)
+        accuracy = naive.validate(test)
+        print('accuracy:', accuracy)
+
+    run('default', ankura.gramschmidt_anchors(get_newsgroups(), 20, 500))
+    run('title', get_title_anchors(dataset))
 
 
 if __name__ == '__main__':
