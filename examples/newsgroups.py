@@ -1,5 +1,7 @@
 """A demo of ankura functionality"""
 
+from __future__ import print_function
+
 import os
 
 import ankura
@@ -8,10 +10,12 @@ import ankura
 @ankura.util.pickle_cache('newsgroups.pickle')
 def get_newsgroups():
     """Retrieves the 20 newsgroups dataset"""
-    news_glob = '/local/jlund3/data/newsgroups/*/*'
-    engl_stop = '/local/jlund3/data/stopwords/english.txt'
-    news_stop = '/local/jlund3/data/stopwords/newsgroups.txt'
-    name_stop = '/local/jlund3/data/stopwords/malenames.txt'
+    datadir = '/local/jlund3/data/'
+
+    news_glob = datadir + 'newsgroups-dedup/*/*'
+    engl_stop = datadir + 'stopwords/english.txt'
+    news_stop = datadir + 'stopwords/newsgroups.txt'
+    name_stop = datadir + 'stopwords/malenames.txt'
 
     dataset = ankura.read_glob(news_glob,
                                tokenizer=ankura.tokenize.news,
@@ -21,6 +25,19 @@ def get_newsgroups():
     dataset = ankura.combine_words(dataset, name_stop, '<name>')
     dataset = ankura.filter_rarewords(dataset, 100)
     dataset = ankura.filter_commonwords(dataset, 1500)
+
+    for doc, title in enumerate(dataset.titles):
+        title = title[len(datadir + 'newsgroups-dedup/'):]
+        dataset.titles[doc] = title
+        outpath = os.path.join(datadir, 'newsgroups-processed', title)
+        try:
+            os.makedirs(os.path.dirname(outpath))
+        except FileExistsError:
+            pass
+
+        with open(outpath, 'w') as outfile:
+            tokens = [dataset.vocab[v] for v in dataset.doc_tokens(doc)]
+            print(' '.join(tokens), file=outfile)
 
     return dataset
 
@@ -61,11 +78,23 @@ def demo():
         for topic in ankura.topic.topic_summary_tokens(topics, dataset, 15):
             print(' '.join(topic))
 
-        transform = ankura.topic_transform(topics, dataset)
-        train, test = ankura.pipeline.train_test_split(transform, .9)
-        naive = ankura.measure.NaiveBayes(train, dirname)
-        accuracy = naive.validate(test)
-        print('accuracy:', accuracy)
+        features = ankura.topic_combine(topics, dataset)
+        train, test = ankura.pipeline.train_test_split(features, .9)
+
+        naive = ankura.measure.NaiveBayes(train, 'dirname')
+        nb_contingency = naive.contingency(test)
+        print('NB Accuracy:', naive.validate(test))
+        print('NB F-Measure:', nb_contingency.fmeasure())
+        print('NB ARI:', nb_contingency.ari())
+        print('NB Rand:', nb_contingency.rand())
+        print('NB VI:', nb_contingency.vi())
+
+        vw_contingency = ankura.measure.vowpal_contingency(train, test, 'dirname')
+        print('VW Accuracy:', ankura.measure.vowpal_accuracy(train, test, 'dirname'))
+        print('VW F-Measure:', vw_contingency.fmeasure())
+        print('VW ARI:', vw_contingency.ari())
+        print('VW Rand:', vw_contingency.rand())
+        print('VW VI:', vw_contingency.vi())
 
     run('default', ankura.gramschmidt_anchors(get_newsgroups(), 20, 500))
     run('title', get_title_anchors(dataset))

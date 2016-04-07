@@ -2,6 +2,8 @@
 
 from __future__ import division
 
+import subprocess
+import threading
 import collections
 import functools
 import numpy
@@ -139,11 +141,11 @@ class ContingencyTable(object):
         gold_sums, pred_sums, total = self._sums()
 
         gold_entropy = 0
-        for count in gold_sums:
+        for count in gold_sums.values():
             gold_entropy -= lim_plogp(count / total)
 
         pred_entropy = 0
-        for count in pred_sums:
+        for count in pred_sums.values():
             pred_entropy -= lim_plogp(count / total)
 
         mutual_info = 0
@@ -207,3 +209,86 @@ def lim_xlogy(x, y):
 
 
 counter = functools.partial(collections.defaultdict, int)
+
+
+def vowpal_accuracy(train, test, train_label, test_label=None):
+    if test_label is None:
+        test_label = train_label
+    labels = list(set(train.get_metadata(train_label)))
+    cmd = ['vw',
+           '--quiet',
+           '--loss_function', 'hinge',
+           '--oaa', str(len(labels)),
+           '/dev/stdin',
+           '-p', '/dev/stdout']
+    vw = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    def write():
+        for doc in range(train.num_docs):
+            label = labels.index(train.doc_metadata(doc, train_label)) + 1
+            data = ' '.join(train.vocab[t] for t in train.doc_tokens(doc))
+            vw.stdin.write('{} 1 | {}\n'.format(label, data).encode())
+        for doc in range(test.num_docs):
+            label = labels.index(test.doc_metadata(doc, test_label)) + 1
+            data = ' '.join(test.vocab[t] for t in test.doc_tokens(doc))
+            vw.stdin.write('{} 0 | {}\n'.format(label, data).encode())
+        vw.stdin.close()
+    writer = threading.Thread(target=write)
+    writer.start()
+
+    correct = [0.0]
+    def read():
+        for doc in range(train.num_docs):
+            vw.stdout.readline()
+        for doc in range(test.num_docs):
+            predicted = int(float(vw.stdout.readline())) - 1
+            actual = labels.index(test.doc_metadata(doc, test_label))
+            if predicted == actual:
+                correct[0] += 1
+    reader = threading.Thread(target=read)
+    reader.start()
+
+    writer.join()
+    reader.join()
+    return correct[0] / test.num_docs
+
+
+def vowpal_contingency(train, test, train_label, test_label=None):
+    if test_label is None:
+        test_label = train_label
+    labels = list(set(train.get_metadata(train_label)))
+    cmd = ['vw',
+           '--quiet',
+           '--loss_function', 'hinge',
+           '--oaa', str(len(labels)),
+           '/dev/stdin',
+           '-p', '/dev/stdout']
+    vw = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+
+    def write():
+        for doc in range(train.num_docs):
+            label = labels.index(train.doc_metadata(doc, train_label)) + 1
+            data = ' '.join(train.vocab[t] for t in train.doc_tokens(doc))
+            vw.stdin.write('{} 1 | {}\n'.format(label, data).encode())
+        for doc in range(test.num_docs):
+            label = labels.index(test.doc_metadata(doc, test_label)) + 1
+            data = ' '.join(test.vocab[t] for t in test.doc_tokens(doc))
+            vw.stdin.write('{} 0 | {}\n'.format(label, data).encode())
+        vw.stdin.close()
+    writer = threading.Thread(target=write)
+    writer.start()
+
+    data = []
+    def read():
+        for doc in range(train.num_docs):
+            vw.stdout.readline()
+        for doc in range(test.num_docs):
+            predicted = int(float(vw.stdout.readline())) - 1
+            actual = labels.index(test.doc_metadata(doc, test_label))
+            data.append((actual, predicted))
+    reader = threading.Thread(target=read)
+    reader.start()
+
+    writer.join()
+    reader.join()
+    return ContingencyTable(data)
