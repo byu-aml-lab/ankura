@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import os
+import numpy
 
 import ankura
 
@@ -73,28 +74,31 @@ def demo():
     dataset = get_newsgroups()
 
     def run(name, anchors):
-        print(name)
         topics = ankura.recover_topics(dataset, anchors)
-        for topic in ankura.topic.topic_summary_tokens(topics, dataset, 15):
-            print(' '.join(topic))
-
         features = ankura.topic_combine(topics, dataset)
         train, test = ankura.pipeline.train_test_split(features, .9)
 
-        naive = ankura.measure.NaiveBayes(train, 'dirname')
-        nb_contingency = naive.contingency(test)
-        print('NB Accuracy:', naive.validate(test))
-        print('NB F-Measure:', nb_contingency.fmeasure())
-        print('NB ARI:', nb_contingency.ari())
-        print('NB Rand:', nb_contingency.rand())
-        print('NB VI:', nb_contingency.vi())
-
         vw_contingency = ankura.measure.vowpal_contingency(train, test, 'dirname')
-        print('VW Accuracy:', ankura.measure.vowpal_accuracy(train, test, 'dirname'))
-        print('VW F-Measure:', vw_contingency.fmeasure())
-        print('VW ARI:', vw_contingency.ari())
-        print('VW Rand:', vw_contingency.rand())
-        print('VW VI:', vw_contingency.vi())
+        print(name, 'accuracy:', ankura.measure.vowpal_accuracy(train, test, 'dirname'))
+        print(name, 'f-Measure:', vw_contingency.fmeasure())
+        print(name, 'ari:', vw_contingency.ari())
+        print(name, 'rand:', vw_contingency.rand())
+        print(name, 'vi:', vw_contingency.vi())
+
+        coherence = []
+        for topic in ankura.topic.topic_summary_indices(topics, dataset, 10):
+            coherence.append(ankura.measure.topic_coherence(topic, dataset))
+        print(name, 'coherence-10:', numpy.mean(coherence))
+
+        coherence = []
+        for topic in ankura.topic.topic_summary_indices(topics, dataset, 15):
+            coherence.append(ankura.measure.topic_coherence(topic, dataset))
+        print(name, 'coherence-15:', numpy.mean(coherence))
+
+        coherence = []
+        for topic in ankura.topic.topic_summary_indices(topics, dataset, 20):
+            coherence.append(ankura.measure.topic_coherence(topic, dataset))
+        print(name, 'coherence-20:', numpy.mean(coherence))
 
     run('default', ankura.gramschmidt_anchors(get_newsgroups(), 20, 500))
     run('title', get_title_anchors(dataset))
