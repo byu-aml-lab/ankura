@@ -72,10 +72,12 @@ var app = angular.module('anchorApp', [])
         // This function sends the anchorsHistory array to the server
         //   and send the user to the "thank you" page
         ctrl.done = function() {
-          var data = JSON.stringify(ctrl.anchorsHistory);
-          $http.post("/finished", data).success(function(data, status) {
-              ctrl.finished = true;
-          });
+          if(window.confirm("Are you sure you are done?")) {
+            var data = JSON.stringify(ctrl.anchorsHistory);
+            $http.post("/finished", data).success(function(data, status) {
+                ctrl.finished = true;
+            });
+          }
         }
 
 
@@ -90,7 +92,6 @@ var app = angular.module('anchorApp', [])
         ctrl.addAnchor = function() {
           var anchorObj = {"anchors":[], "topic":[]};
           ctrl.anchors.push(anchorObj);
-          initAutocomplete(ctrl.vocab);
           ctrl.stopChanging();
         }
 
@@ -475,6 +476,47 @@ var app = angular.module('anchorApp', [])
             }
         }
     });
+
+app.directive("autocomplete", function() {
+  return {
+    restrict: 'A',
+    link: function(scope, elem, attr, ctrl) {
+      elem.autocomplete({
+        source: scope.ctrl.vocab,
+        minLength: 2,
+        // This function is called whenever a list choice is selected
+        select: function(event, ui) {
+          // This sets a listener to prevent the page from reloading
+          $(this).parents("form").on('submit', function() {
+            return false;
+          });
+          // This moves the selected value into the input before the
+          //   input is submitted
+          $(this).val(ui.item.value)
+          // This triggers the submit event, which turns the selected
+          //   word into a proper anchor word (with the border)
+          $(this).parents("form").submit();
+          // This prevents the value from being duplicated
+          return false;
+        }
+      }).keypress(function(e) {
+        // This closes the menu when the enter key is pressed
+        if (!e) e = window.event
+        if (e.keyCode == '13') {
+          $(".anchorInput" ).autocomplete('close')
+          // This sets a listener to prevent the page from reloading
+          $(this).parents("form").on('submit', function() {
+            return false;
+          });
+          // This triggers the submit event, which turns the selected
+          //   word into a proper anchor word (with the border)
+          $(this).parents("form").submit()
+          return false
+        }
+      });
+    }
+  }
+});
 
 
 //This function returns an array of anchor objects from arrays of anchors and topics.
