@@ -508,7 +508,7 @@ def train_test_split(dataset, train_percent=.75, rng=random):
     which only appear in test are discarded.
     """
     # find the indices of the docs for both train and test
-    shuffled_docs = range(dataset.num_docs)
+    shuffled_docs = list(range(dataset.num_docs))
     rng.shuffle(shuffled_docs)
     split = int(len(shuffled_docs) * train_percent)
     train_docs, test_docs = shuffled_docs[:split], shuffled_docs[split:]

@@ -160,7 +160,8 @@ def topic_transform(topics, dataset, alpha=.01, rng=random):
         tokens = dataset.doc_tokens(doc)
         Z[:, doc], _ = predict_topics(topics, tokens, alpha, rng)
     Z = scipy.sparse.csc_matrix(Z)
-    return Dataset(Z, [str(i) for i in range(T)], dataset.titles)
+    vocab = [str(i) for i in range(T)]
+    return Dataset(Z, vocab, dataset.titles, dataset.metadata)
 
 
 def topic_combine(topics, dataset, alpha=.01, rng=random):
@@ -173,9 +174,10 @@ def topic_combine(topics, dataset, alpha=.01, rng=random):
         for token, topic in zip(tokens, assignments):
             index = token * T + topic
             data[index, doc] += 1
-    vocab = ['{}-{}'.format(w, t) for w in dataset.vocab for t in range(T)]
 
-    dataset = Dataset(scipy.sparse.csc_matrix(data), vocab, dataset.titles)
+    data = scipy.sparse.csc_matrix(data)
+    vocab = ['{}-{}'.format(w, t) for w in dataset.vocab for t in range(T)]
+    dataset = Dataset(data, vocab, dataset.titles, dataset.metadata)
     dataset = filter_empty_words(dataset)
     return dataset
 

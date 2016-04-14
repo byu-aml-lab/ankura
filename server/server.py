@@ -20,10 +20,17 @@ app = flask.Flask(__name__, static_url_path='')
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-d", "--data_prefix",
-                    help="The directory where newsgroups lives")
-parser.add_argument("-s", "--single_anchors", help="Enables single-anchors mode",
-                    action="store_true")
+parser.add_argument('-d', '--data_prefix',
+                    help='The directory where newsgroups lives')
+parser.add_argument('-u', '--user_data',
+                    default='user_data',
+                    help='The directory where user data is saved')
+parser.add_argument('-s', '--single_anchors',
+                    action="store_true",
+                    help='Enables single-anchors mode')
+parser.add_argument('-p', '--port',
+                    type=int, default=5000,
+                    help='Port which should be used')
 args = parser.parse_args()
 
 
@@ -108,7 +115,7 @@ def save_user_data():
     """Receives and saves user data when done button is clicked in the ITM UI"""
     flask.request.get_data()
     input_json = flask.request.get_json(force=True)
-    with ankura.util.open_unique(dirname='user_data') as data_file:
+    with ankura.util.open_unique(dirname=args.user_data) as data_file:
         json.dump(input_json, data_file)
     return 'OK'
 
@@ -135,7 +142,7 @@ def topic_request():
     # infer the topics from the anchors
     topics = ankura.recover_topics(dataset, anchors, epsilon=1e-6)
     topic_summary = ankura.topic.topic_summary_tokens(topics, dataset, n=15)
-    
+
     # optionally produce an example of the resulting topics
     example_seed = flask.request.args.get('example')
     if example_seed is None:
@@ -169,4 +176,4 @@ if __name__ == '__main__':
     default_anchors()
 
     # start the server, with the data already cached
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=args.port)
