@@ -17,10 +17,10 @@
       <div class="row">
         <div class="col-sm-2 col-md-2 col-lg-2 col-xs-12"><h4>Anchor Words</h4></div>
         <div class="col-sm-6 col-md-6 col-lg-6 col-xs-12"><h4>Topic Words</h4></div>
-        <div class="col-sm-4 col-md-4 col-lg-4 col-xs-12" ng-show="ctrl.noChangesYet"><h4>Sample Document</h4></div>
+        <div class="col-sm-4 col-md-4 col-lg-4 col-xs-12" ng-show="ctrl.noChangesYet && ctrl.showSampleDocuments"><h4>Sample Documents</h4></div>
       </div>
       <div class="col-sm-8 col-md-8 col-lg-8 col-xs-12 anchors-and-topics"> 
-        <div class="row anchor-and-topic" id="anchor-and-topic-{{this.$index}}" ng-mouseover="ctrl.addHighlightsTopic($event, $index)" ng-mouseout="ctrl.removeHighlightsTopic($event, $index)" ng-repeat="anchorObj in ctrl.anchors">
+        <div class="row anchor-and-topic" id="anchor-and-topic-{{this.$index}}" ng-repeat="anchorObj in ctrl.anchors">
           <div class="col-sm-4 col-md-4 col-lg-4 col-xs-12">
             <button type="button" ng-click="ctrl.removeAnchor($index)" class="btn btn-danger removeAnchor">X</button>
             <div class="anchor" ondrop="drop(event)" ondragover="allowDrop(event)">
@@ -42,14 +42,14 @@
               <span class="btn btn-default btn-sm topicWord draggable" ng-repeat="word in anchorObj.topic" draggable="true" ondragstart="drag(event)" id="topic{{$parent.$index}}Word{{this.$index}}">{{word}}</span>
             </div>
           </div>
-          <div class="col-sm-1 col-md-1 col-lg-1 col-xs-12">
-            <button type="button" id="show-docs-button-{{this.$index}}" class="btn show-docs-button"><img src="docs_black.svg"></button>
+          <div class="col-sm-1 col-md-1 col-lg-1 col-xs-12" ng-show="ctrl.noChangesYet">
+            <button type="button" id="show-docs-button-{{this.$index}}" class="btn show-docs-button" ng-click="ctrl.getRelatedDocuments($index)"><img src="docs_black.svg"></button>
           </div>
         </div>
       </div>
-      <div class="col-sm-4 col-md-4 col-lg-4 col-xs-12 top-to-bottom" ng-show="ctrl.noChangesYet">
+      <div class="col-sm-4 col-md-4 col-lg-4 col-xs-12 top-to-bottom" ng-show="ctrl.noChangesYet && ctrl.showSampleDocuments">
         <div class="document-container">
-          <div class="document" id="document-{{$index}}" ng-repeat="doc in ctrl.documents" ng-mouseover="ctrl.addHighlightsDoc($event, $index)" ng-mouseout="ctrl.removeHighlightsDoc($event, $index)">{{doc['text']}}<hr></div>
+          <div class="document" id="document-{{$index}}" ng-repeat="doc in ctrl.documents">{{doc['text']}}<hr></div>
         </div>
       </div>
       <div class="row col-sm-12 col-md-12 col-lg-12 col-xs-12 forms-container">
@@ -61,9 +61,6 @@
         </form>
         <form id="updateForm" ng-submit="ctrl.getNewTopics(false)">
           <button type="submit" class="btn btn-primary btn-sm updateTopicsButtonClean">Update Topics</button>
-        </form>
-        <form id="newDocForm" ng-submit="ctrl.getNewTopics(true)" ng-show="ctrl.noChangesYet">
-          <button type="submit" class="btn btn-sm">New Documents</button>
         </form>
       </div>
     </div>

@@ -324,8 +324,8 @@ var app = angular.module('anchorApp', [])
         ctrl.documents
 
 
-        // Holds a map from document to topics it includes
-        ctrl.docToTopicList
+//        // Holds a map from document to topics it includes
+//        ctrl.docToTopicList
 
 
         // Holds the directory for the current example document
@@ -336,20 +336,20 @@ var app = angular.module('anchorApp', [])
         ctrl.topicToDocList
 
 
-        // Gets example documents to display on the right-hand side
-        ctrl.getExampleDocuments = function getExampleDocuments(exampleDocs) {
-          ctrl.documents = exampleDocs
-          ctrl.topicToDocList = []
-          for (var i = 0; i < ctrl.documents.length; i++) {
-            for (var j = 0; j < ctrl.documents[i]['topics'].length; j++) {
-              if (ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] === undefined) {
-                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] = []
-                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i)
-              }
-              else { ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i) }
-            }
-          }
-        }
+//        // Gets example documents to display on the right-hand side
+//        ctrl.getExampleDocuments = function getExampleDocuments(exampleDocs) {
+//          ctrl.documents = exampleDocs
+//          ctrl.topicToDocList = []
+//          for (var i = 0; i < ctrl.documents.length; i++) {
+//            for (var j = 0; j < ctrl.documents[i]['topics'].length; j++) {
+//              if (ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] === undefined) {
+//                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] = []
+//                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i)
+//              }
+//              else { ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i) }
+//            }
+//          }
+//        }
 
 
         // Called when an anchor words is added or deleted, since the topics
@@ -365,63 +365,75 @@ var app = angular.module('anchorApp', [])
         //   now reflect the current anchor words
         ctrl.startChanging = function startChanging() {
           ctrl.noChangesYet = true
+          ctrl.showSampleDocuments = false
+        }
+
+  
+        ctrl.showSampleDocuments = false
+
+
+        // Called when the "show-docs-button" is clicked, which should
+        //   get documents that relate to this topic
+        ctrl.getRelatedDocuments = function getRelatedDocuments(index) {
+          console.log("Button clicked for index " + index)
+          ctrl.showSampleDocuments = true
         }
 
 
-        // This allows documents and corresponding topics to highlight when
-        //   you mouse over a document (paragraph)
-        ctrl.addHighlightsDoc = function addHighlightsDoc(event, index) {
-          if (ctrl.noChangesYet) {
-            angular.element(event.target).css('background-color', '#FFFF55')
-            var list = ctrl.documents[index]['topics']
-            for (var i = 0; i < list.length; i++) {
-              $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #F0F055')
-            }
-          }
-        }
-
-
-        // This removes the highlights on documents and corresponding
-        //   topics when you take your mouse off a document (paragraph)
-        ctrl.removeHighlightsDoc = function removeHighlightsDoc(event, index) {
-          if (ctrl.noChangesYet) {
-            angular.element(event.target).css('background-color', '#FFFFFF')
-            var list = ctrl.documents[index]['topics']
-            for (var i = 0; i < list.length; i++) {
-              $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #FFFFFF')
-            }
-          }
-        }
-
-
-        // This allows topics and documents they are found in to highlight
-        //   when you mouse over a topic/anchor row
-        ctrl.addHighlightsTopic = function addHighlightsTopic(event, index) {
-          if (ctrl.noChangesYet) {
-            var list = ctrl.topicToDocList[index]
-            if (list !== undefined) {
-              $('#anchor-and-topic-'+index).css('border', 'solid 2px #F0F055')
-              for (var i = 0; i < list.length; i++) {
-                $('#document-'+list[i]).css('background-color', '#FFFF55')
-              }
-            }
-          }
-        }
-
-
-        // This removes the highlights on topics and documents they are found
-        //   in when you take your mouse off a topic/anchor row
-        ctrl.removeHighlightsTopic = function removeHighlightsTopic(event, index) {
-          if (ctrl.noChangesYet) {
-            var list = ctrl.topicToDocList[index]
-            if (list !== undefined) {
-              $('#anchor-and-topic-'+index).css('border', 'solid 2px #FFFFFF')
-              for (var i = 0; i < list.length; i++) {
-                $('#document-'+list[i]).css('background-color', '#FFFFFF')
-              }
-            }
-          }
-        }
+//        // This allows documents and corresponding topics to highlight when
+//        //   you mouse over a document (paragraph)
+//        ctrl.addHighlightsDoc = function addHighlightsDoc(event, index) {
+//          if (ctrl.noChangesYet) {
+//            angular.element(event.target).css('background-color', '#FFFF55')
+//            var list = ctrl.documents[index]['topics']
+//            for (var i = 0; i < list.length; i++) {
+//              $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #F0F055')
+//            }
+//          }
+//        }
+//
+//
+//        // This removes the highlights on documents and corresponding
+//        //   topics when you take your mouse off a document (paragraph)
+//        ctrl.removeHighlightsDoc = function removeHighlightsDoc(event, index) {
+//          if (ctrl.noChangesYet) {
+//            angular.element(event.target).css('background-color', '#FFFFFF')
+//            var list = ctrl.documents[index]['topics']
+//            for (var i = 0; i < list.length; i++) {
+//              $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #FFFFFF')
+//            }
+//          }
+//        }
+//
+//
+//        // This allows topics and documents they are found in to highlight
+//        //   when you mouse over a topic/anchor row
+//        ctrl.addHighlightsTopic = function addHighlightsTopic(event, index) {
+//          if (ctrl.noChangesYet) {
+//            var list = ctrl.topicToDocList[index]
+//            if (list !== undefined) {
+//              $('#anchor-and-topic-'+index).css('border', 'solid 2px #F0F055')
+//              for (var i = 0; i < list.length; i++) {
+//                $('#document-'+list[i]).css('background-color', '#FFFF55')
+//              }
+//            }
+//          }
+//        }
+//
+//
+//        // This removes the highlights on topics and documents they are found
+//        //   in when you take your mouse off a topic/anchor row
+//        ctrl.removeHighlightsTopic = function removeHighlightsTopic(event, index) {
+//          if (ctrl.noChangesYet) {
+//            var list = ctrl.topicToDocList[index]
+//            if (list !== undefined) {
+//              $('#anchor-and-topic-'+index).css('border', 'solid 2px #FFFFFF')
+//              for (var i = 0; i < list.length; i++) {
+//                $('#document-'+list[i]).css('background-color', '#FFFFFF')
+//              }
+//            }
+//          }
+//        }
 
     }).directive("autofillfix", function() {
         //This is required because of some problem between Angular and autofill
