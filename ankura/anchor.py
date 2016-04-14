@@ -132,7 +132,7 @@ def vector_or(anchor):
     return 1 - (1 - anchor).prod(axis=0)
 
 
-def multiword_anchors(dataset, anchor_tokens, combiner=vector_average):
+def multiword_anchors(dataset, anchor_tokens, combiner=vector_min):
     """Constructs anchors based on a set of user specified multiword anchors
 
     The anchors are given in the form of the string tokens. Any token which
@@ -152,7 +152,7 @@ def multiword_anchors(dataset, anchor_tokens, combiner=vector_average):
     return vectorize_anchors(dataset, anchor_indices, combiner)
 
 
-def vectorize_anchors(dataset, anchor_indices, combiner=vector_average):
+def vectorize_anchors(dataset, anchor_indices, combiner=vector_min):
     """Converts multiword anchors given as indices to anchor vectors"""
     basis = numpy.zeros((len(anchor_indices), dataset.Q.shape[1]))
     for i, anchor in enumerate(anchor_indices):
