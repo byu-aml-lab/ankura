@@ -43,7 +43,7 @@ def get_newsgroups():
     return dataset
 
 
-def get_title_anchors(dataset):
+def get_title_anchors(dataset, combiner):
     """Retrieves anchors constructed from the newsgroup titles"""
     anchor_tokens = [
         ['computer', 'graphics'],
@@ -66,7 +66,7 @@ def get_title_anchors(dataset):
         ['alternative', 'atheism'],
         ['social', 'religion', 'christian'],
     ]
-    return ankura.multiword_anchors(dataset, anchor_tokens)
+    return ankura.multiword_anchors(dataset, anchor_tokens, combiner)
 
 
 def demo():
@@ -101,7 +101,10 @@ def demo():
         print(name, 'coherence-20:', numpy.mean(coherence))
 
     run('default', ankura.gramschmidt_anchors(get_newsgroups(), 20, 500))
-    run('title', get_title_anchors(dataset))
+    run('title-avg', get_title_anchors(dataset, ankura.anchor.vector_average))
+    run('title-min', get_title_anchors(dataset, ankura.anchor.vector_min))
+    run('title-max', get_title_anchors(dataset, ankura.anchor.vector_max))
+    run('title-or', get_title_anchors(dataset, ankura.anchor.vector_or))
 
 
 if __name__ == '__main__':

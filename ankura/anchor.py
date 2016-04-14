@@ -127,6 +127,11 @@ def vector_min(anchor):
     return numpy.min(anchor, axis=0)
 
 
+def vector_or(anchor):
+    """Combines a multiword anchor (as vectors) using or probabilties"""
+    return 1 - (1-A).prod(axis=0)
+
+
 def multiword_anchors(dataset, anchor_tokens, combiner=vector_average):
     """Constructs anchors based on a set of user specified multiword anchors
 
