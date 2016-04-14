@@ -1,5 +1,6 @@
 """Functions for finding anchor words from a docwords matrix"""
 
+import functools
 import numpy
 
 from .util import tuplize
@@ -37,12 +38,20 @@ def identify_candidates(M, doc_threshold):
     return candidate_anchors
 
 
-def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
+def gramschmidt_anchors(dataset, k, candidate_threshold, **kwargs):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors
 
     The original Q will not be modified. The anchors are returned in the form
     of a list of k indicies into the original Q. The candidate threshold is
     used to determine which words are eligible to become an anchor.
+
+    If the project_dim keyword argument is non-zero, then the cooccurrence
+    matrix is randomly projected to the given number of dimensions. By default,
+    we project to 1000 dimensions.
+
+    If the return_indicies keyword argument is True, then the anchor indicies
+    are returned with the anchor vectors. By default the indices are not
+    returned.
     """
     # Find candidate words which appear in enough documents to be anchor words
     candidates = identify_candidates(dataset.M, candidate_threshold)
@@ -54,11 +63,12 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
     row_sums = Q.sum(1)
     for i in range(len(Q[:, 0])):
         Q[i, :] = Q[i, :] / float(row_sums[i])
+    project_dim = kwargs.get('project_dim', 1000)
     if project_dim:
         Q = random_projection(Q, project_dim)
 
     # setup book keeping for gram-schmidt
-    anchors = numpy.zeros(k, dtype=numpy.int)
+    anchor_indices = numpy.zeros(k, dtype=numpy.int)
     basis = numpy.zeros((k-1, Q.shape[1]))
 
     # find the farthest point p1 from the origin
@@ -67,11 +77,11 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
         dist = numpy.dot(Q[i], Q[i])
         if dist > max_dist:
             max_dist = dist
-            anchors[0] = i
+            anchor_indices[0] = i
 
     # let p1 be the origin of our coordinate system
     for i in candidates:
-        Q[i] = Q[i] - Q[anchors[0]]
+        Q[i] = Q[i] - Q[anchor_indices[0]]
 
     # find the farthest point from p1
     max_dist = 0
@@ -79,7 +89,7 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
         dist = numpy.dot(Q[i], Q[i])
         if dist > max_dist:
             max_dist = dist
-            anchors[1] = i
+            anchor_indices[1] = i
             basis[0] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
     # stabilized gram-schmidt to finds new anchor words to expand our subspace
@@ -91,34 +101,55 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, project_dim=1000):
             dist = numpy.dot(Q[i], Q[i])
             if dist > max_dist:
                 max_dist = dist
-                anchors[j + 1] = i
+                anchor_indices[j + 1] = i
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
-    return tuplize([anchor] for anchor in anchors)
+    # use the original Q to extract anchor vectors using the anchor indices
+    anchor_vectors = dataset.Q[anchor_indices, :]
+
+    if kwargs.get('return_indices'):
+        return anchor_vectors, anchor_indices
+    return anchor_vectors
 
 
-def constraint_anchors(dataset, constraints):
-    """Constructs anchors based on a set of user constraints
+def vector_average(anchor):
+    """Combines a multiword anchor (as vectors) using vector average"""
+    return numpy.mean(anchor, axis=0)
 
-    The constraints are given in the form of the string token. Any token which
-    is not present in the dataset vocabulary is ignored. The anchors are
-    returned as a list of indices for each anchor.
+
+def vector_max(anchor):
+    """Combines a multiword anchor (as vectors) using elementwise max"""
+    return numpy.max(anchor, axis=0)
+
+
+def vector_min(anchor):
+    """Combines a multiword anchor (as vectors) using elementwise max"""
+    return numpy.min(anchor, axis=0)
+
+
+def multiword_anchors(dataset, anchor_tokens, combiner=vector_average):
+    """Constructs anchors based on a set of user specified multiword anchors
+
+    The anchors are given in the form of the string tokens. Any token which
+    is not present in the dataset vocabulary is ignored. The multiword anchors
+    are combined into single anchor vectors using the specified combiner (which
+    defaults to vector average).
     """
-    anchors = []
-    for constraint in constraints:
-        anchor = []
-        for word in constraint:
+    anchor_indices = []
+    for anchor in anchor_tokens:
+        anchor_index = []
+        for word in anchor:
             try:
-                anchor.append(dataset.vocab.index(word))
+                anchor_index.append(dataset.vocab.index(word))
             except ValueError:
                 pass
-        anchors.append(anchor)
-    return tuplize(anchors)
+        anchor_indices.append(anchor_index)
+    return vectorize_anchors(dataset, anchor_indices, combiner)
 
 
-def anchor_vectors(dataset, anchors):
-    """Constructs basis vectors from a list of anchor indices"""
-    basis = numpy.zeros((len(anchors), dataset.Q.shape[1]))
-    for i, anchor in enumerate(anchors):
-        basis[i] = dataset.Q[anchor, :].sum(axis=0) / len(anchor)
+def vectorize_anchors(dataset, anchor_indices, combiner=vector_average):
+    """Converts multiword anchors given as indices to anchor vectors"""
+    basis = numpy.zeros((len(anchor_indices), dataset.Q.shape[1]))
+    for i, anchor in enumerate(anchor_indices):
+        basis[i] = combiner(dataset.Q[anchor, :])
     return basis

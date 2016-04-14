@@ -2,14 +2,19 @@
 
 from __future__ import division
 
+import collections
+import functools
 import numpy
 import scipy.sparse
+
 
 class NaiveBayes(object):
     """A simple Multinomial Naive Bayes classifier"""
 
-    def __init__(self, dataset, labels):
+    def __init__(self, dataset, label_name):
         # Get label set
+        labels = dataset.get_metadata(label_name)
+        self.label_name = label_name
         self.labels = list(set(labels))
         label_indices = {l: i for i, l in enumerate(self.labels)}
 
@@ -46,11 +51,159 @@ class NaiveBayes(object):
             log_likelihood += self.word_counts[label_index, token] * count
         return self.label_counts[label_index] + log_likelihood
 
-    def validate(self, dataset, labels):
+    def validate(self, dataset, label_name=None):
         """Computes the accuracy of the classifier on the given data"""
+        if not label_name:
+            label_name = self.label_name
+        labels = dataset.get_metadata(label_name)
+
         correct = 0
         for doc, label in enumerate(labels):
             predicted = self.classify(dataset.docwords[:, doc])
             if label == predicted:
                 correct += 1
         return correct / len(labels)
+
+    def contingency(self, dataset, label_name=None):
+        """Constructs a ContingencyTable for the given data"""
+        if not label_name:
+            label_name = self.label_name
+        gold_labels = dataset.get_metadata(label_name)
+
+        data = []
+        for doc, gold_label in enumerate(gold_labels):
+            pred_label = self.classify(dataset.docwords[:, doc])
+            data.append((gold_label, pred_label))
+
+        return ContingencyTable(data)
+
+
+def topic_coherence(word_indices, dataset, epsilon=0.01):
+    """Measures the coherence of a single topic"""
+    coherence = 0
+    for i in word_indices:
+        for j in word_indices:
+            pair_count = dataset.docwords[i].multiply(dataset.docwords[j]).nnz
+            count = dataset.docwords[j].nnz
+            coherence += numpy.log((pair_count + epsilon) / count)
+    return coherence
+
+
+class ContingencyTable(object):
+    """Computes various external clustering metrics on a contingency table"""
+
+    def __init__(self, data):
+        self.table = collections.defaultdict(counter)
+        self.gold_labels = set()
+        self.pred_labels = set()
+        for gold, pred in data:
+            self.gold_labels.add(gold)
+            self.pred_labels.add(pred)
+            self.table[gold][pred] += 1
+
+    def fmeasure(self):
+        """Computes the harmonic mean of precision and recall"""
+        gold_sums, pred_sums, total = self._sums()
+        fmeasures = counter()
+        for gold in self.gold_labels:
+            for pred in self.pred_labels:
+                count = self.table[gold][pred]
+                gold_sum = gold_sums[gold]
+                pred_sum = pred_sums[pred]
+                if count == 0 or gold_sum == 0 or pred_sum == 0:
+                    continue
+                recall = count / gold_sum
+                precision = count / pred_sum
+                fmeasure = recall * precision / (recall + precision)
+                fmeasures[gold] = max(fmeasures[gold], fmeasure)
+
+        result = 0
+        for gold, gold_sum in gold_sums.items():
+            result += fmeasures[gold] * gold_sum / total
+        return 2 * result
+
+    def ari(self):
+        """Computes the chance ajdusted version of the rand index"""
+        gold_sum, pred_sum, ind_sum, all_sum = self._rand_sums()
+        expected = gold_sum * pred_sum / all_sum
+        maximum = (gold_sum+pred_sum) / 2
+        return (ind_sum - expected) / (maximum - expected)
+
+    def rand(self):
+        """Computes the rand index, which is essentially pair-wise accuracy"""
+        gold_sum, pred_sum, ind_sum, all_sum = self._rand_sums()
+        return (all_sum + 2 * ind_sum - gold_sum - pred_sum) / all_sum
+
+    def vi(self):
+        """Computes variation of information"""
+        gold_sums, pred_sums, total = self._sums()
+
+        gold_entropy = 0
+        for count in gold_sums:
+            gold_entropy -= lim_plogp(count / total)
+
+        pred_entropy = 0
+        for count in pred_sums:
+            pred_entropy -= lim_plogp(count / total)
+
+        mutual_info = 0
+        for gold in self.gold_labels:
+            for pred in self.pred_labels:
+                count = self.table[gold][pred]
+                joint_prob = count / total
+                gold_prob = gold_sums[gold] / total
+                pred_prob = pred_sums[pred] / total
+                if gold_prob and pred_prob:
+                    mutal = joint_prob / (gold_prob * pred_prob)
+                    mutual_info += lim_xlogy(joint_prob, mutal)
+
+        return gold_entropy + pred_entropy - 2 * mutual_info
+
+    def _sums(self):
+        gold_sums = {gold: 0 for gold in self.gold_labels}
+        pred_sums = {pred: 0 for pred in self.pred_labels}
+        total = 0
+        for gold in self.gold_labels:
+            for pred in self.pred_labels:
+                count = self.table[gold][pred]
+                gold_sums[gold] += count
+                pred_sums[pred] += count
+                total += count
+        return gold_sums, pred_sums, total
+
+    def _rand_sums(self):
+        gold_sums, pred_sums, total = self._sums()
+
+        gold_sum = sum(n_choose_2(n) for n in gold_sums.values())
+        pred_sum = sum(n_choose_2(n) for n in pred_sums.values())
+
+        ind_sum = 0
+        for row in self.table.values():
+            for count in row.values():
+                ind_sum += n_choose_2(count)
+
+        all_sum = n_choose_2(total)
+
+        return gold_sum, pred_sum, ind_sum, all_sum
+
+
+def n_choose_2(n):
+    """Computes the binomial coefficient with k=2."""
+    return (n * (n - 1)) / 2
+
+
+def lim_plogp(p):
+    """Computes p log p if p != 0, otherwise returns 0."""
+    if not p:
+        return 0
+    return p * numpy.log(p)
+
+
+def lim_xlogy(x, y):
+    """Computes x log y of both x != 0 and y != 0, otherwise returns 0."""
+    if not x and not y:
+        return 0
+    return x * numpy.log(y)
+
+
+counter = functools.partial(collections.defaultdict, int)

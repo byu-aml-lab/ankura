@@ -4,8 +4,8 @@ import scipy.sparse
 import numpy
 import random
 
-from .anchor import anchor_vectors
-from .pipeline import Dataset
+from .pipeline import Dataset, filter_empty_words
+from .util import sample_categorical
 
 
 def logsum_exp(y):
@@ -87,7 +87,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
     return alpha
 
 
-def recover_topics(dataset, anchors, epsilon=1e-7):
+def recover_topics(dataset, anchors, epsilon=2e-7):
     """Recovers topics given a cooccurence matrix and a set of anchor vectors"""
     # dont modify original Q
     Q = dataset.Q.copy()
@@ -106,7 +106,6 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
         Q[word, :] = Q[word, :] / Q[word, :].sum()
 
     # compute normalized anchors X, and precompute X * X.T
-    anchors = anchor_vectors(dataset, anchors)
     X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
     XX = numpy.dot(X, X.transpose())
 
@@ -116,23 +115,23 @@ def recover_topics(dataset, anchors, epsilon=1e-7):
             alpha = numpy.ones(K) / K
         A[word, :] = alpha
 
-    # Use Bayes rule to compute topic matrix
-    A = numpy.matrix(P_w) * numpy.matrix(A) # TODO is matrix conversion needed?
+    # Use Bayes rule to compute topic matri
+    # TODO(jeff) is this matrix conversion needed?
+    A = numpy.matrix(P_w) * numpy.matrix(A)
     for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()
 
     return numpy.array(A)
 
 
-def predict_topics(topics, tokens, alpha=.01, rng=random):
+def predict_topics(topics, tokens, alpha=.01, rng=random, num_iters=10):
     """Produces topic assignments for a sequence tokens given a set of topics
 
-    Inference is performed using iterated conditional modes. A uniform
-    Dirichlet prior over the document topic distribution is used in the
-    computation.
+    Inference is performed using Gibbs sampling. A uniform Dirichlet prior over
+    the document topic distribution is used in the computation.
     """
     T = topics.shape[1]
-    z = numpy.zeros(len(tokens))
+    z = numpy.zeros(len(tokens), dtype='uint')
     counts = numpy.zeros(T)
 
     # init topics and topic counts
@@ -144,19 +143,13 @@ def predict_topics(topics, tokens, alpha=.01, rng=random):
     def _prob(w_n, t):
         return (alpha + counts[t]) * topics[w_n, t]
 
-    # iterate until no further changes
-    converged = False
-    while not converged:
-        converged = True
+    for _ in range(num_iters):
         for n, w_n in enumerate(tokens):
             counts[z[n]] -= 1
-            z_n = numpy.argmax([_prob(w_n, t) for t in range(T)])
-            if z_n != z[n]:
-                z[n] = z_n
-                converged = False
-            counts[z_n] += 1
+            z[n] = sample_categorical([_prob(w_n, t) for t in range(T)])
+            counts[z[n]] += 1
 
-    return counts.astype('uint')
+    return counts.astype('uint'), z
 
 
 def topic_transform(topics, dataset, alpha=.01, rng=random):
@@ -164,6 +157,46 @@ def topic_transform(topics, dataset, alpha=.01, rng=random):
     T = topics.shape[1]
     Z = numpy.zeros((T, dataset.num_docs), dtype='uint')
     for doc in range(dataset.num_docs):
-        Z[:, doc] = predict_topics(topics, dataset.doc_tokens(doc), alpha, rng)
+        tokens = dataset.doc_tokens(doc)
+        Z[:, doc], _ = predict_topics(topics, tokens, alpha, rng)
     Z = scipy.sparse.csc_matrix(Z)
     return Dataset(Z, [str(i) for i in range(T)], dataset.titles)
+
+
+def topic_combine(topics, dataset, alpha=.01, rng=random):
+    """Transforms a dataset to use token-topic features instead of tokens"""
+    T = topics.shape[1]
+    data = numpy.zeros((T*dataset.vocab_size, dataset.num_docs), dtype='uint')
+    for doc in range(dataset.num_docs):
+        tokens = dataset.doc_tokens(doc)
+        _, assignments = predict_topics(topics, tokens, alpha, rng)
+        for token, topic in zip(tokens, assignments):
+            index = token * T + topic
+            data[index, doc] += 1
+    vocab = ['{}-{}'.format(w, t) for w in dataset.vocab for t in range(T)]
+
+    dataset = Dataset(scipy.sparse.csc_matrix(data), vocab, dataset.titles)
+    dataset = filter_empty_words(dataset)
+    return dataset
+
+
+def topic_summary_indices(topics, dataset, n=10):
+    """Returns a list of the indices of the top n tokens per topic"""
+    indices = []
+    for k in range(topics.shape[1]):
+        index = []
+        for word in numpy.argsort(topics[:, k])[-n:][::-1]:
+            index.append(word)
+        indices.append(index)
+    return indices
+
+
+def topic_summary_tokens(topics, dataset, n=10):
+    """Returns a list of top n tokens per topic"""
+    summaries = []
+    for index in topic_summary_indices(topics, dataset):
+        summary = []
+        for word in index:
+            summary.append(dataset.vocab[word])
+        summaries.append(summary)
+    return summaries
