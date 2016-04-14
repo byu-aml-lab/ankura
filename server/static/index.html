@@ -37,10 +37,13 @@
               </span>
             </div>
           </div>
-          <div class="col-sm-8 col-md-8 col-lg-8 col-xs-12">
+          <div class="col-sm-7 col-md-7 col-lg-7 col-xs-12">
             <div class="topic">
               <span class="btn btn-default btn-sm topicWord draggable" ng-repeat="word in anchorObj.topic" draggable="true" ondragstart="drag(event)" id="topic{{$parent.$index}}Word{{this.$index}}">{{word}}</span>
             </div>
+          </div>
+          <div class="col-sm-1 col-md-1 col-lg-1 col-xs-12">
+            <button type="button" id="show-docs-button-{{this.$index}}" class="btn show-docs-button"><img src="docs_black.svg"></button>
           </div>
         </div>
       </div>

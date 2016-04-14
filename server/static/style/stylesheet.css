@@ -133,6 +133,12 @@ h4 {
   margin-left: 0px;
 }
 
+.show-docs-button {
+  width: 36px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
 #addAnchorForm {
     float: left;
 }
