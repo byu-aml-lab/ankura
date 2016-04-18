@@ -146,7 +146,7 @@ def topic_request():
     docdata = [[] for _ in range(topics.shape[1])]
     for doc in dataset.display_candidates:
         doc_tokens = dataset.doc_tokens(doc)
-        counts, doc_topics = ankura.topic.predict_topics(topics, doc_tokens)
+        counts, _ = ankura.topic.predict_topics(topics, doc_tokens)
         max_topic = int(numpy.argmax(counts))
         if len(docdata[max_topic]) < args.docs_per_topic:
             docdata[max_topic].append(dataset.doc_metadata(doc, 'text'))
