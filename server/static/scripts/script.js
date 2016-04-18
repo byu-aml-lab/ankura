@@ -190,6 +190,20 @@ var app = angular.module('anchorApp', [])
         }
 
 
+        //Creates a popup telling the user how to get sample documents
+        ctrl.sampleDocPopup = function sampleDocPopup() {
+          $("#show-docs-button-0").popover({
+            placement:'bottom',
+            trigger:'manual',
+            html:true,
+            content:'Click me to see sample documents for this topic.'
+          }).popover('show')
+          $timeout(function() {
+            $("#show-docs-button-0").popover('hide')
+          }, 2000)
+        }
+
+
         //Gets what the title should be
         ctrl.title = function title() {
           if (ctrl.singleAnchors) {return "Ankura ITM (Single-Word Anchors)"}
@@ -209,14 +223,17 @@ var app = angular.module('anchorApp', [])
                 //Ensure we can't redo something that's been written over
                 ctrl.anchorsHistory.splice(ctrl.historyIndex, ctrl.anchorsHistory.length-ctrl.historyIndex-1)
                 //Save the data
+                console.log(data)
                 ctrl.anchorsHistory.push(data)
                 ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"])
-                ctrl.getExampleDocuments(data['example'])
-                ctrl.exampleDoc = data['example_name']
+                ctrl.documents = data['examples']
+                //ctrl.getExampleDocuments(data['example'])
+                //ctrl.exampleDoc = data['example_name']
                 ctrl.singleAnchors = data['single_anchors']
                 ctrl.loading = false
                 ctrl.startChanging()
                 $scope.$apply()
+                ctrl.sampleDocPopup()
                 $(".top-to-bottom").css("height", $(".anchors-and-topics").height())
             })
         }
@@ -290,12 +307,14 @@ var app = angular.module('anchorApp', [])
                         ctrl.anchorsHistory.push(saveState)
                         //Update the anchors in the UI
                         ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"])
-                        ctrl.getExampleDocuments(data['example'])
-                        ctrl.exampleDoc = data['example_name']
+                        ctrl.documents = data['examples']
+                        //ctrl.getExampleDocuments(data['example'])
+                        //ctrl.exampleDoc = data['example_name']
                         ctrl.singleAnchors = data['single_anchors']
                         ctrl.loading = false
                         ctrl.startChanging()
                         $scope.$apply()
+                        ctrl.sampleDocPopup()
                         // Sets the height of the document container
                         $(".top-to-bottom").css("height", $(".anchors-and-topics").height())
                     })
@@ -320,7 +339,7 @@ var app = angular.module('anchorApp', [])
         }, 50)
 
 
-        // Holds all of the sample documents we were given
+        // Holds all of the sample documents we were given organized by topic
         ctrl.documents
 
 
@@ -328,12 +347,12 @@ var app = angular.module('anchorApp', [])
 //        ctrl.docToTopicList
 
 
-        // Holds the directory for the current example document
-        ctrl.exampleDoc
+//        // Holds the directory for the current example document
+//        ctrl.exampleDoc
 
 
-        // Holds a map from topic to documents that include it
-        ctrl.topicToDocList
+//        // Holds a map from topic to documents that include it
+//        ctrl.topicToDocList
 
 
 //        // Gets example documents to display on the right-hand side
@@ -371,11 +390,13 @@ var app = angular.module('anchorApp', [])
   
         ctrl.showSampleDocuments = false
 
+        ctrl.topicDocuments = []
+
 
         // Called when the "show-docs-button" is clicked, which should
         //   get documents that relate to this topic
         ctrl.getRelatedDocuments = function getRelatedDocuments(index) {
-          console.log("Button clicked for index " + index)
+          ctrl.topicDocuments = ctrl.documents[index]
           ctrl.showSampleDocuments = true
         }
 
