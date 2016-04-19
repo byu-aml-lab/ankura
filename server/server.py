@@ -18,47 +18,9 @@ from ankura import label
 
 app = flask.Flask(__name__, static_url_path='')
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-d', '--data_prefix',
-                    default='/local/jlund3/data',
-                    help='The directory where newsgroups lives')
-parser.add_argument('-u', '--user_data',
-                    default='user_data',
-                    help='The directory where user data is saved')
-parser.add_argument('-s', '--single_anchors',
-                    action="store_true",
-                    help='Enables single-anchors mode')
-parser.add_argument('-p', '--port',
-                    type=int, default=5000,
-                    help='Port which should be used')
-parser.add_argument('--docs-per-topic',
-                    default=5, type=int,
-                    help='Number of documents per topic to display')
-args = parser.parse_args()
 
-
-@ankura.util.memoize
-@ankura.util.pickle_cache('newsgroups-dataset.pickle')
-def get_newsgroups():
-    """Retrieves the 20 newsgroups dataset"""
-    news_glob =  os.path.join(args.data_prefix, 'newsgroups/*/*')
-    engl_stop =  os.path.join(args.data_prefix, 'stopwords/english.txt')
-    news_stop =  os.path.join(args.data_prefix, 'stopwords/newsgroups.txt')
-    name_stop =  os.path.join(args.data_prefix, 'stopwords/malenames.txt')
-    curse_stop = os.path.join(args.data_prefix, 'stopwords/profanity.txt')
-
-    news_text = functools.partial(label.text, formatter=label.news_formatter)
-    labeler = label.aggregate(news_text, label.title_dirname)
-
-    dataset = ankura.read_glob(news_glob, tokenizer=ankura.tokenize.news,
-                               labeler=labeler)
-    dataset = ankura.filter_stopwords(dataset, engl_stop)
-    dataset = ankura.filter_stopwords(dataset, news_stop)
-    dataset = ankura.combine_words(dataset, name_stop, '<name>')
-    dataset = ankura.combine_words(dataset, curse_stop, '<profanity>')
-    dataset = ankura.filter_rarewords(dataset, 100)
-    dataset = ankura.filter_commonwords(dataset, 1500)
-
+def find_display_candidates(dataset, curse_stop):
+    """Adds display candidates to a dataset"""
     # get display candidates
     candidates = filter(lambda d: len(dataset.metadata[d]['text']) < 3000,
                         range(dataset.num_docs))
@@ -78,8 +40,32 @@ def get_newsgroups():
 
 
 @ankura.util.memoize
+@ankura.util.pickle_cache('newsgroups-dataset.pickle')
+def get_newsgroups():
+    """Retrieves the 20 newsgroups dataset"""
+    news_glob =  os.path.join(args.data_prefix, 'newsgroups/*/*')
+    engl_stop =  os.path.join(args.data_prefix, 'stopwords/english.txt')
+    news_stop =  os.path.join(args.data_prefix, 'stopwords/newsgroups.txt')
+    name_stop =  os.path.join(args.data_prefix, 'stopwords/malenames.txt')
+    curse_stop = os.path.join(args.data_prefix, 'stopwords/profanity.txt')
+    news_text = functools.partial(label.text, formatter=label.news_formatter)
+
+    dataset = ankura.read_glob(news_glob, tokenizer=ankura.tokenize.news,
+                                          labeler=news_text)
+    dataset = ankura.filter_stopwords(dataset, engl_stop)
+    dataset = ankura.filter_stopwords(dataset, news_stop)
+    dataset = ankura.combine_words(dataset, name_stop, '<name>')
+    dataset = ankura.combine_words(dataset, curse_stop, '<profanity>')
+    dataset = ankura.filter_rarewords(dataset, 100)
+    dataset = ankura.filter_commonwords(dataset, 1500)
+    dataset = find_display_candidates(dataset, curse_stop)
+
+    return dataset
+
+
+@ankura.util.memoize
 @ankura.util.pickle_cache('newsgroups-anchors.pickle')
-def default_anchors():
+def newsgroup_anchors():
     """Retrieves default anchors for newsgroups using Gram-Schmidt"""
     dataset = get_newsgroups()
     anchors, indices = ankura.gramschmidt_anchors(dataset, 20, 500,
@@ -89,9 +75,65 @@ def default_anchors():
 
 
 @ankura.util.memoize
+@ankura.util.pickle_cache('amazon-dataset.pickle')
+def get_amazon():
+    """Retrieves the amazon dataset"""
+    text_path = os.path.join(args.data_prefix, 'amazon', 'amazon.txt')
+    engl_stop =  os.path.join(args.data_prefix, 'stopwords/english.txt')
+    curse_stop = os.path.join(args.data_prefix, 'stopwords/profanity.txt')
+
+    dataset = ankura.read_file(text_path, labeler=label.text)
+    dataset = ankura.filter_stopwords(dataset, engl_stop)
+    dataset = ankura.combine_words(dataset, curse_stop, '<profanity>')
+    dataset = ankura.filter_rarewords(dataset, 150)
+    dataset = ankura.filter_commonwords(dataset, 3000)
+    dataset = find_display_candidates(dataset, curse_stop)
+
+    return dataset
+
+
+@ankura.util.memoize
+@ankura.util.pickle_cache('amazon-anchors.pickle')
+def amazon_anchors():
+    """Retrieves default anchors for amazon using Gram-Schmidt"""
+    dataset = get_amazon()
+    anchors, indices = ankura.gramschmidt_anchors(dataset, 30, 500,
+                                                  return_indices=True)
+    anchor_tokens = [[dataset.vocab[index]] for index in indices]
+    return anchor_tokens, anchors
+
+
+datasets = {'newsgroups': (get_newsgroups, newsgroup_anchors),
+            'amazon': (get_amazon, amazon_anchors)}
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', '--data_prefix',
+                    default='/local/jlund3/data',
+                    help='The directory where data repo lives')
+parser.add_argument('-u', '--user_data',
+                    default='user_data',
+                    help='The directory where user data is saved')
+parser.add_argument('-s', '--single_anchors',
+                    action="store_true",
+                    help='Enables single-anchors mode')
+parser.add_argument('-p', '--port',
+                    type=int, default=5000,
+                    help='Port which should be used')
+parser.add_argument('--docs-per-topic',
+                    default=5, type=int,
+                    help='Number of documents per topic to display')
+parser.add_argument('--dataset',
+                    choices=list(datasets.keys()),
+                    default='newsgroups',
+                    help='The name of the dataset to run on')
+args = parser.parse_args()
+args.get_dataset, args.default_anchors = datasets[args.dataset]
+
+
+@ankura.util.memoize
 def user_anchors(anchor_tokens):
     """Computes multiword anchors from user specified anchor tokens"""
-    return ankura.multiword_anchors(get_newsgroups(), anchor_tokens)
+    return ankura.multiword_anchors(args.get_dataset(), anchor_tokens)
 
 
 @app.route('/')
@@ -113,16 +155,16 @@ def save_user_data():
 @app.route('/vocab')
 def get_vocab():
     """Returns all valid vocabulary words in the dataset"""
-    return flask.jsonify(vocab=get_newsgroups().vocab)
+    return flask.jsonify(vocab=args.get_dataset().vocab)
 
 
 @ankura.util.memoize
 def topic_inference(raw_anchors):
     """Returns infered topic info from raw anchors"""
-    dataset = get_newsgroups()
+    dataset = args.get_dataset()
 
     if raw_anchors is None:
-        anchor_tokens, anchors = default_anchors()
+        anchor_tokens, anchors = args.default_anchors()
     else:
         anchor_tokens = ankura.util.tuplize(json.loads(raw_anchors))
         anchors = user_anchors(anchor_tokens)
@@ -141,7 +183,7 @@ def topic_request():
     topics, topic_summary, anchor_tokens = topic_inference(raw_anchors)
 
     # get sample documents for each topic
-    dataset = get_newsgroups()
+    dataset = args.get_dataset()
     random.shuffle(dataset.display_candidates)
     docdata = [[] for _ in range(topics.shape[1])]
     for doc in dataset.display_candidates:
@@ -158,11 +200,10 @@ def topic_request():
                          examples=docdata,
                          single_anchors=args.single_anchors)
 
-
 if __name__ == '__main__':
     # call these to trigger pickle_cache
-    get_newsgroups()
-    default_anchors()
+    args.get_dataset()
+    args.default_anchors()
 
     # start the server, with the data already cached
     app.run(debug=True, host='0.0.0.0', port=args.port)
