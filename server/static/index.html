@@ -42,8 +42,8 @@
               <span class="btn btn-default btn-sm topicWord draggable" ng-repeat="word in anchorObj.topic" draggable="true" ondragstart="drag(event)" id="topic{{$parent.$index}}Word{{this.$index}}">{{word}}</span>
             </div>
           </div>
-          <div class="col-sm-1 col-md-1 col-lg-1 col-xs-12" ng-show="ctrl.noChangesYet">
-            <button type="button" id="show-docs-button-{{this.$index}}" class="btn show-docs-button" ng-click="ctrl.getRelatedDocuments($index)"><img src="docs_black.svg"></button>
+          <div class="col-sm-1 col-md-1 col-lg-1 col-xs-12">
+            <button type="button" id="show-docs-button-{{this.$index}}" class="btn show-docs-button" ng-disabled="!ctrl.noChangesYet" ng-click="ctrl.getRelatedDocuments($index)"><img src="docs_black.svg"></button>
           </div>
         </div>
       </div>
