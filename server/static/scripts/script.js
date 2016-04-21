@@ -403,14 +403,26 @@ var app = angular.module('anchorApp', [])
         ctrl.popoverIfDisabled = function popoverIfDisabled(index) {
             var selector = "#show-docs-button-" + index
             var coke = $(selector)
-            console.log("disabled", selector, coke, $(selector).prop('disabled'))
-            coke.popover({
-            placement:'bottom',
-            trigger:'manual',
-            html:true,
-            content:'Click me to see sample documents for this topic.'
-          })
+            var disabled = coke.prop('disabled')
+            console.log("disabled", selector, disabled)
+            coke.popover()
+            if (disabled) {
+                var parent = coke.parent()
+                console.log("parent", parent)
+                parent.popover({
+                    placement: 'bottom',
+                    trigger: 'manual',
+                    html: true,
+                    content: 'You cannot click me!'
+                }).popover('show')
+            }
         }
+
+      ctrl.closePopover = function closePopover(index) {
+          var selector = "#show-docs-button-" + index
+          var coke = $(selector)
+          coke.parent().popover('hide')
+      }
 
 
 //        // This allows documents and corresponding topics to highlight when
