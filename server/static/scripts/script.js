@@ -199,7 +199,7 @@ var app = angular.module('anchorApp', [])
             content:'Click me to see sample documents for this topic.'
           }).popover('show')
           $timeout(function() {
-            $("#show-docs-button-0").popover('hide')
+              $("#show-docs-button-0").popover('hide')
           }, 2000)
         }
 
@@ -387,7 +387,7 @@ var app = angular.module('anchorApp', [])
           ctrl.showSampleDocuments = false
         }
 
-  
+
         ctrl.showSampleDocuments = false
 
         ctrl.topicDocuments = []
@@ -398,6 +398,18 @@ var app = angular.module('anchorApp', [])
         ctrl.getRelatedDocuments = function getRelatedDocuments(index) {
           ctrl.topicDocuments = ctrl.documents[index]
           ctrl.showSampleDocuments = true
+        }
+
+        ctrl.popoverIfDisabled = function popoverIfDisabled(index) {
+            var selector = "#show-docs-button-" + index
+            var coke = $(selector)
+            console.log("disabled", selector, coke, $(selector).prop('disabled'))
+            coke.popover({
+            placement:'bottom',
+            trigger:'manual',
+            html:true,
+            content:'Click me to see sample documents for this topic.'
+          })
         }
 
 
@@ -509,6 +521,31 @@ app.directive("autocomplete", function() {
   }
 })
 
+// app.directive('tooltip', function () {
+//     return {
+//         restrict:'A',
+//         link: function(scope, element, attrs)
+//         {
+//             var pop = {
+//                     placement:'bottom',
+//                     trigger:'manual',
+//                     html:true,
+//                     content:'You found Me!'
+//                 }
+//             var parent = $(element).parent()
+//             parent.popover(pop)
+//             $(element).onmouseover = function () {
+//                 console.log("disabled", element.disabled)
+//                 if (element.disabled)
+//                 {
+//                     $(parent).popover('show')
+//                 }
+//             }
+//             console.log("parent", parent)
+//             scope.$apply()
+//         }
+//     }
+// })
 
 //This function returns an array of anchor objects from arrays of anchors and topics.
 //Anchor objects hold both anchor words and topic words related to the anchor words.
