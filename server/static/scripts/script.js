@@ -400,21 +400,22 @@ var app = angular.module('anchorApp', [])
           ctrl.showSampleDocuments = true
         }
 
-        ctrl.popoverIfDisabled = function popoverIfDisabled(index) {
+        ctrl.popoverIfDisabled = function(index) {
             var selector = "#show-docs-button-" + index
-            var coke = $(selector)
-            var disabled = coke.prop('disabled')
-            console.log("disabled", selector, disabled)
-            coke.popover()
+            var btn = $(selector)
+            var disabled = btn.prop('disabled')
+            btn.popover()
             if (disabled) {
-                var parent = coke.parent()
-                console.log("parent", parent)
+                var parent = btn.parent()
                 parent.popover({
                     placement: 'bottom',
                     trigger: 'manual',
                     html: true,
-                    content: 'You cannot click me!'
+                    content: 'Click `Update Topics` to sample new documents.'
                 }).popover('show')
+                $timeout(function() {
+                    ctrl.closePopover(index)
+                }, 3000)
             }
         }
 
