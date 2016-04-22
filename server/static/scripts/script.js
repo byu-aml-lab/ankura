@@ -404,14 +404,22 @@ var app = angular.module('anchorApp', [])
             var selector = "#show-docs-button-" + index
             var btn = $(selector)
             var disabled = btn.prop('disabled')
+            var anyOpen = false
+            $("[id^=show-docs-button-]").each(function() {
+                var pop = $(this).parent().data('bs.popover')
+                if (pop !== undefined)
+                {
+                    anyOpen = pop.tip().hasClass('in')
+                }
+            })
             btn.popover()
-            if (disabled) {
+            if (disabled && !anyOpen) {
                 var parent = btn.parent()
                 parent.popover({
                     placement: 'bottom',
                     trigger: 'manual',
                     html: true,
-                    content: 'Click `Update Topics` to sample new documents.'
+                    content: 'Click "Update Topics" to sample new documents.'
                 }).popover('show')
                 $timeout(function() {
                     ctrl.closePopover(index)
@@ -422,7 +430,7 @@ var app = angular.module('anchorApp', [])
       ctrl.closePopover = function closePopover(index) {
           var selector = "#show-docs-button-" + index
           var coke = $(selector)
-          coke.parent().popover('hide')
+          coke.parent().popover('destroy')
       }
 
 
