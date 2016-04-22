@@ -199,7 +199,7 @@ var app = angular.module('anchorApp', [])
             content:'Click me to see sample documents for this topic.'
           }).popover('show')
           $timeout(function() {
-            $("#show-docs-button-0").popover('hide')
+              $("#show-docs-button-0").popover('hide')
           }, 2000)
         }
 
@@ -387,7 +387,7 @@ var app = angular.module('anchorApp', [])
           ctrl.showSampleDocuments = false
         }
 
-  
+
         ctrl.showSampleDocuments = false
 
         ctrl.topicDocuments = []
@@ -399,6 +399,39 @@ var app = angular.module('anchorApp', [])
           ctrl.topicDocuments = ctrl.documents[index]
           ctrl.showSampleDocuments = true
         }
+
+        ctrl.popoverIfDisabled = function(index) {
+            var selector = "#show-docs-button-" + index
+            var btn = $(selector)
+            var disabled = btn.prop('disabled')
+            var anyOpen = false
+            $("[id^=show-docs-button-]").each(function() {
+                var pop = $(this).parent().data('bs.popover')
+                if (pop !== undefined)
+                {
+                    anyOpen = pop.tip().hasClass('in')
+                }
+            })
+            btn.popover()
+            if (disabled && !anyOpen) {
+                var parent = btn.parent()
+                parent.popover({
+                    placement: 'bottom',
+                    trigger: 'manual',
+                    html: true,
+                    content: 'Click "Update Topics" to sample new documents.'
+                }).popover('show')
+                $timeout(function() {
+                    ctrl.closePopover(index)
+                }, 3000)
+            }
+        }
+
+      ctrl.closePopover = function closePopover(index) {
+          var selector = "#show-docs-button-" + index
+          var coke = $(selector)
+          coke.parent().popover('destroy')
+      }
 
 
 //        // This allows documents and corresponding topics to highlight when
@@ -509,6 +542,31 @@ app.directive("autocomplete", function() {
   }
 })
 
+// app.directive('tooltip', function () {
+//     return {
+//         restrict:'A',
+//         link: function(scope, element, attrs)
+//         {
+//             var pop = {
+//                     placement:'bottom',
+//                     trigger:'manual',
+//                     html:true,
+//                     content:'You found Me!'
+//                 }
+//             var parent = $(element).parent()
+//             parent.popover(pop)
+//             $(element).onmouseover = function () {
+//                 console.log("disabled", element.disabled)
+//                 if (element.disabled)
+//                 {
+//                     $(parent).popover('show')
+//                 }
+//             }
+//             console.log("parent", parent)
+//             scope.$apply()
+//         }
+//     }
+// })
 
 //This function returns an array of anchor objects from arrays of anchors and topics.
 //Anchor objects hold both anchor words and topic words related to the anchor words.
