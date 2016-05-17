@@ -50,8 +50,9 @@ def get_newsgroups():
     curse_stop = os.path.join(args.data_prefix, 'stopwords/profanity.txt')
     news_text = functools.partial(label.text, formatter=label.news_formatter)
 
-    dataset = ankura.read_glob(news_glob, tokenizer=ankura.tokenize.news,
-                                          labeler=news_text)
+    dataset = ankura.read_glob(news_glob,
+                               tokenizer=ankura.tokenize.news,
+                               labeler=[news_text, label.title_dirname])
     dataset = ankura.filter_stopwords(dataset, engl_stop)
     dataset = ankura.filter_stopwords(dataset, news_stop)
     dataset = ankura.combine_words(dataset, name_stop, '<name>')
