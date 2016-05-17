@@ -12,7 +12,7 @@ import random
 import re
 import scipy.sparse
 
-from . import tokenize, segment
+from . import tokenize, segment, label
 
 
 class Dataset(object):
@@ -212,6 +212,8 @@ def _build_dataset(docdata, tokenizer, labeler):
     titles = []
     if labeler:
         metadata = []
+        if not callable(labeler):
+            labeler = label.aggregate(*labeler)
     else:
         metadata = None
     for title, data in docdata:
