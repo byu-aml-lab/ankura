@@ -34,6 +34,21 @@ class memoize(object): # pylint: disable=invalid-name
         return self.cache[args]
 
 
+def named_pickle_cache(pickle_path_format):
+    """Decorator to cache a single parameter function call result to disk"""
+    def _cache(data_func):
+        def _load_data(param):
+            pickle_path = pickle_path_format.format(param)
+            if os.path.exists(pickle_path):
+                return pickle.load(open(pickle_path, 'rb'))
+            else:
+                data = data_func(param)
+                pickle.dump(data, open(pickle_path, 'wb'))
+                return data
+        return _load_data
+    return _cache
+
+
 def _iscontainer(data):
     return isinstance(data, collections.Iterable) and not isinstance(data, str)
 
