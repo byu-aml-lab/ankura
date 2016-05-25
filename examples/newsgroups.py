@@ -107,9 +107,10 @@ def experiment():
 
     run('default', ankura.gramschmidt_anchors(get_newsgroups(), 20, 500))
     run('title-avg', get_title_anchors(dataset, ankura.anchor.vector_average))
+    run('title-or', get_title_anchors(dataset, ankura.anchor.vector_or))
     run('title-min', get_title_anchors(dataset, ankura.anchor.vector_min))
     run('title-max', get_title_anchors(dataset, ankura.anchor.vector_max))
-    run('title-or', get_title_anchors(dataset, ankura.anchor.vector_or))
+    run('title-hmean', get_title_anchors(dataset, ankura.anchor.vector_hmean))
 
 
 if __name__ == '__main__':
