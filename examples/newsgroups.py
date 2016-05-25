@@ -106,10 +106,8 @@ def experiment():
         print(name, 'coherence-20:', numpy.mean(coherence))
 
     run('default', ankura.gramschmidt_anchors(get_newsgroups(), 20, 500))
-    run('title-avg', get_title_anchors(dataset, ankura.anchor.vector_average))
-    run('title-min', get_title_anchors(dataset, ankura.anchor.vector_min))
-    run('title-max', get_title_anchors(dataset, ankura.anchor.vector_max))
     run('title-or', get_title_anchors(dataset, ankura.anchor.vector_or))
+    run('title-hmean', get_title_anchors(dataset, ankura.anchor.vector_hmean))
 
 
 if __name__ == '__main__':
