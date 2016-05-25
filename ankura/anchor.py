@@ -133,9 +133,13 @@ def vector_or(anchor):
     return 1 - (1 - anchor).prod(axis=0)
 
 
-def vector_hmean(anchor):
-    """Combines a multiword anchor (as vectors) with harmonic mean"""
-    return scipy.stats.hmean(anchor, axis=0)
+def vector_hmean(anchor, epsilon=1e-10):
+    """Combines a multiword anchor (as vectors) with elementwise harmonic mean
+
+    Since the harmonic mean is only defined when all values are greater than
+    zero, we add in epsilon as a smoothing constant to avoid divide by zero
+    """
+    return scipy.stats.hmean(anchor + epsilon, axis=0)
 
 
 def multiword_anchors(dataset, anchor_tokens, combiner=vector_min):
