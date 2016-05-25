@@ -207,4 +207,4 @@ if __name__ == '__main__':
     args.default_anchors()
 
     # start the server, with the data already cached
-    app.run(debug=True, host='0.0.0.0', port=args.port)
+    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=args.port)
