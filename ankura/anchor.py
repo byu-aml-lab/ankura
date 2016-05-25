@@ -2,6 +2,7 @@
 
 import functools
 import numpy
+import scipy.stats
 
 from .util import tuplize
 
@@ -130,6 +131,11 @@ def vector_min(anchor):
 def vector_or(anchor):
     """Combines a multiword anchor (as vectors) using or probabilties"""
     return 1 - (1 - anchor).prod(axis=0)
+
+
+def vector_hmean(anchor):
+    """Combines a multiword anchor (as vectors) with harmonic mean"""
+    return scipy.stats.hmean(anchor, axis=0)
 
 
 def multiword_anchors(dataset, anchor_tokens, combiner=vector_min):
