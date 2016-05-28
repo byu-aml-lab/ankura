@@ -43,6 +43,7 @@ def named_pickle_cache(pickle_path_format):
                 return pickle.load(open(pickle_path, 'rb'))
             else:
                 data = data_func(param)
+                ensure_dir(os.path.dirname(pickle_path))
                 pickle.dump(data, open(pickle_path, 'wb'))
                 return data
         return _load_data
@@ -74,6 +75,14 @@ def sample_categorical(counts):
     raise ValueError(counts)
 
 
+def ensure_dir(dirname):
+    """Creates the given directory if it does not already exist"""
+    try:
+        os.makedirs(dirname)
+    except FileExistsError:
+        pass
+
+
 def open_unique(prefix='', dirname=os.path.curdir):
     """Opens a uniquely named file
 
@@ -82,11 +91,7 @@ def open_unique(prefix='', dirname=os.path.curdir):
     specifying a dirname. If the specified directory does not exist, it will be
     created.
     """
-    try:
-        os.makedirs(dirname)
-    except FileExistsError:
-        pass
-
+    ensure_dir(dirname)
     return tempfile.NamedTemporaryFile(mode='w',
                                        delete=False,
                                        prefix=prefix,
