@@ -196,7 +196,7 @@ def topic_summary_indices(topics, dataset, n=10):
 def topic_summary_tokens(topics, dataset, n=10):
     """Returns a list of top n tokens per topic"""
     summaries = []
-    for index in topic_summary_indices(topics, dataset):
+    for index in topic_summary_indices(topics, dataset, n):
         summary = []
         for word in index:
             summary.append(dataset.vocab[word])
