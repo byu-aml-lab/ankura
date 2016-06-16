@@ -190,6 +190,20 @@ var app = angular.module('anchorApp', [])
         }
 
 
+        //Creates a popup telling the user how to get sample documents
+        ctrl.sampleDocPopup = function sampleDocPopup() {
+          $("#show-docs-button-0").popover({
+            placement:'bottom',
+            trigger:'manual',
+            html:true,
+            content:'Click me to see sample documents for this topic.'
+          }).popover('show')
+          $timeout(function() {
+              $("#show-docs-button-0").popover('hide')
+          }, 2000)
+        }
+
+
         //Gets what the title should be
         ctrl.title = function title() {
           if (ctrl.singleAnchors) {return "Ankura ITM (Single-Word Anchors)"}
@@ -209,14 +223,17 @@ var app = angular.module('anchorApp', [])
                 //Ensure we can't redo something that's been written over
                 ctrl.anchorsHistory.splice(ctrl.historyIndex, ctrl.anchorsHistory.length-ctrl.historyIndex-1)
                 //Save the data
+                console.log(data)
                 ctrl.anchorsHistory.push(data)
                 ctrl.anchors = getAnchorsArray(data["anchors"], data["topics"])
-                ctrl.getExampleDocuments(data['example'])
-                ctrl.exampleDoc = data['example_name']
+                ctrl.documents = data['examples']
+                //ctrl.getExampleDocuments(data['example'])
+                //ctrl.exampleDoc = data['example_name']
                 ctrl.singleAnchors = data['single_anchors']
                 ctrl.loading = false
                 ctrl.startChanging()
                 $scope.$apply()
+                ctrl.sampleDocPopup()
                 $(".top-to-bottom").css("height", $(".anchors-and-topics").height())
             })
         }
@@ -290,12 +307,14 @@ var app = angular.module('anchorApp', [])
                         ctrl.anchorsHistory.push(saveState)
                         //Update the anchors in the UI
                         ctrl.anchors = getAnchorsArray(currentAnchors, data["topics"])
-                        ctrl.getExampleDocuments(data['example'])
-                        ctrl.exampleDoc = data['example_name']
+                        ctrl.documents = data['examples']
+                        //ctrl.getExampleDocuments(data['example'])
+                        //ctrl.exampleDoc = data['example_name']
                         ctrl.singleAnchors = data['single_anchors']
                         ctrl.loading = false
                         ctrl.startChanging()
                         $scope.$apply()
+                        ctrl.sampleDocPopup()
                         // Sets the height of the document container
                         $(".top-to-bottom").css("height", $(".anchors-and-topics").height())
                     })
@@ -320,36 +339,36 @@ var app = angular.module('anchorApp', [])
         }, 50)
 
 
-        // Holds all of the sample documents we were given
+        // Holds all of the sample documents we were given organized by topic
         ctrl.documents
 
 
-        // Holds a map from document to topics it includes
-        ctrl.docToTopicList
+//        // Holds a map from document to topics it includes
+//        ctrl.docToTopicList
 
 
-        // Holds the directory for the current example document
-        ctrl.exampleDoc
+//        // Holds the directory for the current example document
+//        ctrl.exampleDoc
 
 
-        // Holds a map from topic to documents that include it
-        ctrl.topicToDocList
+//        // Holds a map from topic to documents that include it
+//        ctrl.topicToDocList
 
 
-        // Gets example documents to display on the right-hand side
-        ctrl.getExampleDocuments = function getExampleDocuments(exampleDocs) {
-          ctrl.documents = exampleDocs
-          ctrl.topicToDocList = []
-          for (var i = 0; i < ctrl.documents.length; i++) {
-            for (var j = 0; j < ctrl.documents[i]['topics'].length; j++) {
-              if (ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] === undefined) {
-                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] = []
-                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i)
-              }
-              else { ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i) }
-            }
-          }
-        }
+//        // Gets example documents to display on the right-hand side
+//        ctrl.getExampleDocuments = function getExampleDocuments(exampleDocs) {
+//          ctrl.documents = exampleDocs
+//          ctrl.topicToDocList = []
+//          for (var i = 0; i < ctrl.documents.length; i++) {
+//            for (var j = 0; j < ctrl.documents[i]['topics'].length; j++) {
+//              if (ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] === undefined) {
+//                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]] = []
+//                ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i)
+//              }
+//              else { ctrl.topicToDocList[ctrl.documents[i]['topics'][j]].push(i) }
+//            }
+//          }
+//        }
 
 
         // Called when an anchor words is added or deleted, since the topics
@@ -365,63 +384,110 @@ var app = angular.module('anchorApp', [])
         //   now reflect the current anchor words
         ctrl.startChanging = function startChanging() {
           ctrl.noChangesYet = true
+          ctrl.showSampleDocuments = false
         }
 
 
-        // This allows documents and corresponding topics to highlight when
-        //   you mouse over a document (paragraph)
-        ctrl.addHighlightsDoc = function addHighlightsDoc(event, index) {
-          if (ctrl.noChangesYet) {
-            angular.element(event.target).css('background-color', '#FFFF55')
-            var list = ctrl.documents[index]['topics']
-            for (var i = 0; i < list.length; i++) {
-              $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #F0F055')
+        ctrl.showSampleDocuments = false
+
+        ctrl.topicDocuments = []
+
+
+        // Called when the "show-docs-button" is clicked, which should
+        //   get documents that relate to this topic
+        ctrl.getRelatedDocuments = function getRelatedDocuments(index) {
+          ctrl.topicDocuments = ctrl.documents[index]
+          ctrl.showSampleDocuments = true
+        }
+
+        ctrl.popoverIfDisabled = function(index) {
+            var selector = "#show-docs-button-" + index
+            var btn = $(selector)
+            var disabled = btn.prop('disabled')
+            var anyOpen = false
+            $("[id^=show-docs-button-]").each(function() {
+                var pop = $(this).parent().data('bs.popover')
+                if (pop !== undefined)
+                {
+                    anyOpen = pop.tip().hasClass('in')
+                }
+            })
+            btn.popover()
+            if (disabled && !anyOpen) {
+                var parent = btn.parent()
+                parent.popover({
+                    placement: 'bottom',
+                    trigger: 'manual',
+                    html: true,
+                    content: 'Click "Update Topics" to sample new documents.'
+                }).popover('show')
+                $timeout(function() {
+                    ctrl.closePopover(index)
+                }, 3000)
             }
-          }
         }
 
-
-        // This removes the highlights on documents and corresponding
-        //   topics when you take your mouse off a document (paragraph)
-        ctrl.removeHighlightsDoc = function removeHighlightsDoc(event, index) {
-          if (ctrl.noChangesYet) {
-            angular.element(event.target).css('background-color', '#FFFFFF')
-            var list = ctrl.documents[index]['topics']
-            for (var i = 0; i < list.length; i++) {
-              $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #FFFFFF')
-            }
-          }
-        }
+      ctrl.closePopover = function closePopover(index) {
+          var selector = "#show-docs-button-" + index
+          var coke = $(selector)
+          coke.parent().popover('destroy')
+      }
 
 
-        // This allows topics and documents they are found in to highlight
-        //   when you mouse over a topic/anchor row
-        ctrl.addHighlightsTopic = function addHighlightsTopic(event, index) {
-          if (ctrl.noChangesYet) {
-            var list = ctrl.topicToDocList[index]
-            if (list !== undefined) {
-              $('#anchor-and-topic-'+index).css('border', 'solid 2px #F0F055')
-              for (var i = 0; i < list.length; i++) {
-                $('#document-'+list[i]).css('background-color', '#FFFF55')
-              }
-            }
-          }
-        }
-
-
-        // This removes the highlights on topics and documents they are found
-        //   in when you take your mouse off a topic/anchor row
-        ctrl.removeHighlightsTopic = function removeHighlightsTopic(event, index) {
-          if (ctrl.noChangesYet) {
-            var list = ctrl.topicToDocList[index]
-            if (list !== undefined) {
-              $('#anchor-and-topic-'+index).css('border', 'solid 2px #FFFFFF')
-              for (var i = 0; i < list.length; i++) {
-                $('#document-'+list[i]).css('background-color', '#FFFFFF')
-              }
-            }
-          }
-        }
+//        // This allows documents and corresponding topics to highlight when
+//        //   you mouse over a document (paragraph)
+//        ctrl.addHighlightsDoc = function addHighlightsDoc(event, index) {
+//          if (ctrl.noChangesYet) {
+//            angular.element(event.target).css('background-color', '#FFFF55')
+//            var list = ctrl.documents[index]['topics']
+//            for (var i = 0; i < list.length; i++) {
+//              $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #F0F055')
+//            }
+//          }
+//        }
+//
+//
+//        // This removes the highlights on documents and corresponding
+//        //   topics when you take your mouse off a document (paragraph)
+//        ctrl.removeHighlightsDoc = function removeHighlightsDoc(event, index) {
+//          if (ctrl.noChangesYet) {
+//            angular.element(event.target).css('background-color', '#FFFFFF')
+//            var list = ctrl.documents[index]['topics']
+//            for (var i = 0; i < list.length; i++) {
+//              $('#anchor-and-topic-'+list[i]).css('border', 'solid 2px #FFFFFF')
+//            }
+//          }
+//        }
+//
+//
+//        // This allows topics and documents they are found in to highlight
+//        //   when you mouse over a topic/anchor row
+//        ctrl.addHighlightsTopic = function addHighlightsTopic(event, index) {
+//          if (ctrl.noChangesYet) {
+//            var list = ctrl.topicToDocList[index]
+//            if (list !== undefined) {
+//              $('#anchor-and-topic-'+index).css('border', 'solid 2px #F0F055')
+//              for (var i = 0; i < list.length; i++) {
+//                $('#document-'+list[i]).css('background-color', '#FFFF55')
+//              }
+//            }
+//          }
+//        }
+//
+//
+//        // This removes the highlights on topics and documents they are found
+//        //   in when you take your mouse off a topic/anchor row
+//        ctrl.removeHighlightsTopic = function removeHighlightsTopic(event, index) {
+//          if (ctrl.noChangesYet) {
+//            var list = ctrl.topicToDocList[index]
+//            if (list !== undefined) {
+//              $('#anchor-and-topic-'+index).css('border', 'solid 2px #FFFFFF')
+//              for (var i = 0; i < list.length; i++) {
+//                $('#document-'+list[i]).css('background-color', '#FFFFFF')
+//              }
+//            }
+//          }
+//        }
 
     }).directive("autofillfix", function() {
         //This is required because of some problem between Angular and autofill
@@ -476,6 +542,31 @@ app.directive("autocomplete", function() {
   }
 })
 
+// app.directive('tooltip', function () {
+//     return {
+//         restrict:'A',
+//         link: function(scope, element, attrs)
+//         {
+//             var pop = {
+//                     placement:'bottom',
+//                     trigger:'manual',
+//                     html:true,
+//                     content:'You found Me!'
+//                 }
+//             var parent = $(element).parent()
+//             parent.popover(pop)
+//             $(element).onmouseover = function () {
+//                 console.log("disabled", element.disabled)
+//                 if (element.disabled)
+//                 {
+//                     $(parent).popover('show')
+//                 }
+//             }
+//             console.log("parent", parent)
+//             scope.$apply()
+//         }
+//     }
+// })
 
 //This function returns an array of anchor objects from arrays of anchors and topics.
 //Anchor objects hold both anchor words and topic words related to the anchor words.

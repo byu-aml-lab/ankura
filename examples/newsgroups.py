@@ -69,14 +69,19 @@ def get_title_anchors(dataset, combiner):
     return ankura.multiword_anchors(dataset, anchor_tokens, combiner)
 
 
-def demo():
-    """Runs the demo"""
+def experiment():
+    """Runs the experiment"""
     dataset = get_newsgroups()
 
     def run(name, anchors):
-        topics = ankura.recover_topics(dataset, anchors)
-        features = ankura.topic_combine(topics, dataset)
-        train, test = ankura.pipeline.train_test_split(features, .9)
+        train, test = ankura.pipeline.train_test_split(dataset, .9)
+        topics = ankura.recover_topics(train, anchors)
+        train = ankura.topic_combine(topics, train)
+        test = ankura.topic_combine(topics, test)
+
+        # topics = ankura.recover_topics(dataset, anchors)
+        # features = ankura.topic_combine(topics, dataset)
+        # train, test = ankura.pipeline.train_test_split(features, .9)
 
         vw_contingency = ankura.measure.vowpal_contingency(train, test, 'dirname')
         print(name, 'accuracy:', ankura.measure.vowpal_accuracy(train, test, 'dirname'))
@@ -102,10 +107,11 @@ def demo():
 
     run('default', ankura.gramschmidt_anchors(get_newsgroups(), 20, 500))
     run('title-avg', get_title_anchors(dataset, ankura.anchor.vector_average))
+    run('title-or', get_title_anchors(dataset, ankura.anchor.vector_or))
     run('title-min', get_title_anchors(dataset, ankura.anchor.vector_min))
     run('title-max', get_title_anchors(dataset, ankura.anchor.vector_max))
-    run('title-or', get_title_anchors(dataset, ankura.anchor.vector_or))
+    run('title-hmean', get_title_anchors(dataset, ankura.anchor.vector_hmean))
 
 
 if __name__ == '__main__':
-    demo()
+    experiment()
