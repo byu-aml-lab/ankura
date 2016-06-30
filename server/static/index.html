@@ -13,7 +13,7 @@
   </head>
   <body>
     <div class="loading" ng-show="ctrl.loading"><img class="loadingImage" src="images/spinner.gif"/></div>
-    <div class="container" ng-hide="ctrl.finished">
+    <div class="container main-container" ng-hide="ctrl.finished">
       <div class="row">
         <div class="col-sm-2 col-md-2 col-lg-2 col-xs-12"><h4>Anchor Words</h4></div>
         <div class="col-sm-6 col-md-6 col-lg-6 col-xs-12"><h4>Topic Words</h4></div>
@@ -52,12 +52,16 @@
           <div class="document" id="document-{{$index}}" ng-repeat="doc in ctrl.topicDocuments">{{doc}}<hr></div>
         </div>
       </div>
-      <div class="row col-sm-12 col-md-12 col-lg-12 col-xs-12 forms-container">
-        <form id="addAnchorForm" ng-submit="ctrl.addAnchor()">
-          <button type="submit" class="btn btn-success btn-sm">Add Topic</button>
-        </form>
+      <div class="row col-sm-12 col-md-12 col-lg-12 col-xs-12 done-container">
         <form id="doneForm" ng-submit="ctrl.done()">
           <button type="submit" class="btn btn-danger btn-sm">I'm Finished!</button>
+        </form>
+      </div>
+    </div>
+    <div id="forms-container">
+      <div class="forms-row row">
+        <form id="addAnchorForm" ng-submit="ctrl.addAnchor()">
+          <button type="submit" class="btn btn-success btn-sm">Add Topic</button>
         </form>
         <form id="updateForm" ng-submit="ctrl.getNewTopics(false)">
           <button type="submit" class="btn btn-primary btn-sm updateTopicsButtonClean">Update Topics</button>
