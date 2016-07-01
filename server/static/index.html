@@ -58,7 +58,7 @@
         </form>
       </div>
     </div>
-    <div id="forms-container">
+    <div id="forms-container" ng-hide="ctrl.loading || ctrl.finished">
       <div class="forms-row row">
         <form id="addAnchorForm" ng-submit="ctrl.addAnchor()">
           <button type="submit" class="btn btn-success btn-sm">Add Topic</button>
