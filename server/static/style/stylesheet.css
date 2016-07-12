@@ -28,6 +28,10 @@ h4 {
     max-width: 100%;
 }
 
+.main-container {
+  margin-bottom: 50px;
+}
+
 .topic {
     display: inline-block;
     vertical-align: middle;
@@ -128,9 +132,23 @@ h4 {
     z-index: 1;
 }
 
-.forms-container {
+.forms-row {
   margin-top: 5px;
   margin-left: 0px;
+  bottom: 0;
+  position: fixed;
+  z-index: 150;
+  _position:absolute;
+  _top:expression(eval(document.documentElement.scrollTop+
+      (document.documentElement.clientHeight-this.offsetHeight)));
+  height:50px;
+  background-color: #f5f5f5;
+  width: 100%;
+}
+
+.forms-container {
+  margin-left: 10px;
+  margin-right: 10px;
 }
 
 .show-docs-button {
@@ -143,16 +161,8 @@ h4 {
 
 #addAnchorForm {
     float: left;
-}
-
-#undoForm {
-    margin-left: 5px;
-    float: left;
-}
-
-#redoForm {
-    margin-left: 5px;
-    float: left;
+    margin-top: 5px;
+    margin-left: 50px;
 }
 
 #doneForm {
@@ -163,7 +173,8 @@ h4 {
 }
 
 #updateForm {
-    float: right;
+    float: left;
+    margin-top: 5px;
     margin-left: 5px;
 }
 
