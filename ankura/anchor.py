@@ -1,10 +1,7 @@
 """Functions for finding anchor words from a docwords matrix"""
 
-import functools
 import numpy
 import scipy.stats
-
-from .util import tuplize
 
 
 def random_projection(A, k, rng=numpy.random):
