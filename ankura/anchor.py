@@ -53,7 +53,8 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, **kwargs):
     returned.
     """
     # Find candidate words which appear in enough documents to be anchor words
-    candidates = identify_candidates(dataset.M, candidate_threshold)
+    id_cands = kwargs.get('id_cands', identify_candidates)
+    candidates = id_cands(dataset.M, candidate_threshold)
 
     # don't modify the original Q
     Q = dataset.Q.copy()
