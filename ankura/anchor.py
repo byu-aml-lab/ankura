@@ -37,12 +37,16 @@ def identify_candidates(M, doc_threshold):
     return candidate_anchors
 
 
-def gramschmidt_anchors(dataset, k, candidate_threshold, **kwargs):
+def gramschmidt_anchors(dataset, k, candidate_selector, **kwargs):
     """Uses stabilized Gram-Schmidt decomposition to find k anchors
 
     The original Q will not be modified. The anchors are returned in the form
-    of a list of k indicies into the original Q. The candidate threshold is
-    used to determine which words are eligible to become an anchor.
+    of a list of k indicies into the original Q.
+
+    The candidate_selector parameter can be either a callable or an integer. If
+    it is a callable, it will get called with dataset.M as parameter; if it is
+    an integer, only those words which appear in a number of documents greater
+    than the integer specified will be eligible as candidate anchor words.
 
     If the project_dim keyword argument is non-zero, then the cooccurrence
     matrix is randomly projected to the given number of dimensions. By default,
@@ -52,8 +56,12 @@ def gramschmidt_anchors(dataset, k, candidate_threshold, **kwargs):
     are returned with the anchor vectors. By default the indices are not
     returned.
     """
-    # Find candidate words which appear in enough documents to be anchor words
-    candidates = identify_candidates(dataset.M, candidate_threshold)
+    if callable(candidate_selector):
+        candidates = candidate_selector(dataset.M)
+    else:
+        # Find candidate words which appear in enough documents to be anchor
+        # words
+        candidates = identify_candidates(dataset.M, candidate_selector)
 
     # don't modify the original Q
     Q = dataset.Q.copy()
