@@ -59,14 +59,12 @@ def gramschmidt_anchors(dataset, k, candidate_selector, **kwargs):
     if callable(candidate_selector):
         candidates = candidate_selector(dataset.M)
     else:
-        # Find candidate words which appear in enough documents to be anchor
-        # words
         candidates = identify_candidates(dataset.M, candidate_selector)
 
     # don't modify the original Q
     Q = dataset.Q.copy()
 
-    # normalized rows of Q and perform dimensionality reduction
+    # normalize rows of Q and perform dimensionality reduction
     row_sums = Q.sum(1)
     for i in range(len(Q[:, 0])):
         Q[i, :] = Q[i, :] / float(row_sums[i])
