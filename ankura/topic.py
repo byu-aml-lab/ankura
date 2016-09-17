@@ -182,7 +182,7 @@ def topic_combine(topics, dataset, alpha=.01, rng=random):
     return dataset
 
 
-def topic_summary_indices(topics, dataset, n=10):
+def topic_summary_indices(topics, n=10):
     """Returns a list of the indices of the top n tokens per topic"""
     indices = []
     for k in range(topics.shape[1]):
@@ -196,7 +196,7 @@ def topic_summary_indices(topics, dataset, n=10):
 def topic_summary_tokens(topics, dataset, n=10):
     """Returns a list of top n tokens per topic"""
     summaries = []
-    for index in topic_summary_indices(topics, dataset, n):
+    for index in topic_summary_indices(topics, n):
         summary = []
         for word in index:
             summary.append(dataset.vocab[word])

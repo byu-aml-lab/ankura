@@ -1,4 +1,4 @@
-"""Functions for evaluating topics"""
+"""Functions for evaluating topics using a downstream classification task"""
 
 from __future__ import division
 
