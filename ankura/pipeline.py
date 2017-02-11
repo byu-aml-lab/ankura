@@ -76,7 +76,7 @@ class Dataset(object):
         """Computes the cooccurrence matrix for the dataset"""
         # See supplementary 4.1 of Aurora et. al. 2012 for information on these
         vocab_size, num_docs = self.M.shape
-        H_tilde = scipy.sparse.csc_matrix(self.M, dtype=float)
+        H_tilde = scipy.sparse.csc_matrix(self.M.copy(), dtype=float)
         H_hat = numpy.zeros(vocab_size)
 
         # Construct H_tilde and H_hat
@@ -92,7 +92,7 @@ class Dataset(object):
 
             # update H_hat and H_tilde (see supplementary)
             if norm != 0:
-                H_hat[row_indices] = H_tilde.data[col_start: col_end] / norm
+                H_hat[row_indices] += H_tilde.data[col_start: col_end] / norm
                 H_tilde.data[col_start: col_end] /= numpy.sqrt(norm)
 
         # construct and store normalized Q
