@@ -39,6 +39,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
     # Initialize book keeping
     stepsize = 1
     decreased = False
+    prev_convergence = float('-inf')
     convergence = float('inf')
 
     while convergence >= epsilon:
@@ -60,7 +61,8 @@ def exponentiated_gradient(Y, X, XX, epsilon):
 
         # See if stepsize should decrease
         old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
-        if new_obj > old_obj + _C1 * stepsize * numpy.dot(grad, alpha - old_alpha):
+        new_obj_threshold = old_obj + _C1 * stepsize * numpy.dot(grad, alpha - old_alpha)
+        if new_obj > new_obj_threshold or prev_convergence == convergence:
             stepsize /= 2.0
             alpha = old_alpha
             log_alpha = old_log_alpha
@@ -82,6 +84,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
 
         # Update book keeping
         decreased = False
+        prev_convergence = convergence
         convergence = numpy.dot(alpha, grad - grad.min())
 
     return alpha
