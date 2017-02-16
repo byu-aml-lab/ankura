@@ -72,7 +72,7 @@ class Dataset(object):
         """Gets the word cooccurrence matrix"""
         return self.Q
 
-    def compute_cooccurrences(self):
+    def compute_cooccurrences(self, epsilon=1e-15):
         """Computes the cooccurrence matrix for the dataset"""
         # See supplementary 4.1 of Aurora et. al. 2012 for information on these
         vocab_size, num_docs = self.M.shape
@@ -98,6 +98,9 @@ class Dataset(object):
         # construct and store normalized Q
         Q = H_tilde * H_tilde.transpose() - numpy.diag(H_hat)
         self._cooccurrences = numpy.array(Q / num_docs)
+
+        # squash precision errors to 0
+        self._cooccurrences[(-epsilon < self._cooccurrences) & (self._cooccurrences < 0)] = 0
 
     @property
     def vocab_size(self):
