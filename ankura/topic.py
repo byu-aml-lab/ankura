@@ -16,7 +16,6 @@ def logsum_exp(y):
 
 _C1 = 1e-4
 _C2 = .75
-HISTORY_SIZE = 50
 
 def exponentiated_gradient(Y, X, XX, epsilon):
     """Solves an exponentied gradient problem with L2 divergence"""
@@ -40,11 +39,10 @@ def exponentiated_gradient(Y, X, XX, epsilon):
     # Initialize book keeping
     stepsize = 1
     decreased = False
-    prev_convergence = float('inf')
+    prev_convergence = float('-inf')
     convergence = float('inf')
-    same_count = 0
 
-    while convergence >= epsilon and same_count < HISTORY_SIZE:
+    while convergence >= epsilon:
         old_obj = new_obj
         old_alpha = numpy.copy(alpha)
         old_log_alpha = numpy.copy(log_alpha)
@@ -63,7 +61,8 @@ def exponentiated_gradient(Y, X, XX, epsilon):
 
         # See if stepsize should decrease
         old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
-        if new_obj > old_obj + _C1 * stepsize * numpy.dot(grad, alpha - old_alpha):
+        new_obj_threshold = old_obj + _C1 * stepsize * numpy.dot(grad, alpha - old_alpha)
+        if new_obj > new_obj_threshold or prev_convergence == convergence:
             stepsize /= 2.0
             alpha = old_alpha
             log_alpha = old_log_alpha
@@ -87,10 +86,6 @@ def exponentiated_gradient(Y, X, XX, epsilon):
         decreased = False
         prev_convergence = convergence
         convergence = numpy.dot(alpha, grad - grad.min())
-        if prev_convergence == convergence:
-            same_count += 1
-        else:
-            same_count = 0
 
     return alpha
 
