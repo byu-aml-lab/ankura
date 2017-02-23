@@ -6,6 +6,7 @@ import glob
 import gzip
 import os
 import string
+import re
 
 import bs4
 
@@ -144,6 +145,35 @@ def default_tokenizer():
     punctuation. Empty tokens are removed.
     """
     return translate_tokenizer(split_tokenizer())
+
+
+def regex_tokenizer(base_tokenizer, pattern, repl):
+    """Transforms the output of another tokenizer by replacing all tokens which
+    match a regular expression. Note that the entire token is replaced if any
+    part of it matches the regular expression, so it may be desirable to use ^
+    and $ anchors to match the entire token.
+    """
+    combine_re = re.compile(pattern).search
+    combine = lambda t: TokenLoc(repl, t.loc) if combine_re(t.token) else t
+    @functools.wraps(regex_tokenizer)
+    def _tokenizer(data):
+        tokens = base_tokenizer(data)
+        tokens = [combine(t) for t in tokens]
+        return tokens
+    return _tokenizer
+
+
+def combine_tokenizer(base_tokenizer, combine, repl):
+    """Transforms the output of another tokenizer by replace all tokens which
+    appear in a combine list
+    """
+    combine_set = set(combine)
+    combine = lambda t: TokenLoc(repl, t.loc) if t.token in combine_set else t
+    @functools.wraps(combine_tokenizer)
+    def _tokenizer(data):
+        tokens = base_tokenizer(data)
+        tokens = [combine(t) for t in tokens]
+        return tokens
 
 
 # Labelers are callables which generate metadata from a Text name. Typically
