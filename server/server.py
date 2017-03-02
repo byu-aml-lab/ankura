@@ -195,11 +195,13 @@ def topic_request():
             docdata[max_topic].append(dataset.doc_metadata(doc, 'text'))
         if min(len(docs) for docs in docdata) == args.docs_per_topic:
             break
+    accuracy = 0.752283200000001
 
     return flask.jsonify(anchors=anchor_tokens,
                          topics=topic_summary,
                          examples=docdata,
-                         single_anchors=args.single_anchors)
+                         single_anchors=args.single_anchors,
+                         accuracy=accuracy)
 
 if __name__ == '__main__':
     # call these to trigger pickle_cache

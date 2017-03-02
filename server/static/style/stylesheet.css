@@ -159,6 +159,11 @@ h4 {
   padding-bottom: 2px;
 }
 
+#accuracyHolder {
+  margin-top: 10px;
+  margin-left: 240px;
+}
+
 #addAnchorForm {
     float: left;
     margin-top: 5px;
