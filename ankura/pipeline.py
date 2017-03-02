@@ -1,4 +1,4 @@
-"""Functionality for importing datasets from disk"""
+"""Functionality for creating import pipelines"""
 
 import collections
 import functools
@@ -10,7 +10,7 @@ import re
 
 import bs4
 
-# Types used throughout the pipeline process
+# POD types used throughout the pipeline process
 
 Text = collections.namedtuple('Text', ['name', 'data'])
 TokenLoc = collections.namedtuple('TokenLoc', ['token', 'loc'])
@@ -163,16 +163,38 @@ def regex_tokenizer(base_tokenizer, pattern, repl):
     return _tokenizer
 
 
-def combine_tokenizer(base_tokenizer, combine, repl):
-    """Transforms the output of another tokenizer by replace all tokens which
-    appear in a combine list
+def combine_tokenizer(base_tokenizer, combine, repl, strip=True):
+    """Transforms the output of another tokenizer by replacing all tokens which
+    appear in a combine list. The optional strip parameter (default true)
+    indicates whether the tokens in the combine list should have whitespace
+    stripped.
     """
-    combine_set = set(combine)
+    if strip:
+        combine_set = set(t.strip() for t in combine)
+    else:
+        combine_set = set(combine)
     combine = lambda t: TokenLoc(repl, t.loc) if t.token in combine_set else t
     @functools.wraps(combine_tokenizer)
     def _tokenizer(data):
         tokens = base_tokenizer(data)
         tokens = [combine(t) for t in tokens]
+        return tokens
+
+
+def stopword_tokenizer(base_tokenizer, stopwords, strip=True):
+    """Transforms the output of another tokenizer by removing all tokens which
+    appear in a stopword list. The optional strip parameter (default true)
+    indicates whether the tokens in the stopword list should have whitespace
+    stripped.
+    """
+    if strip:
+        stopword_set = set(t.strip() for t in stopwords)
+    else:
+        stopword_set = set(stopwords)
+    @functools.wraps(stopword_tokenizer)
+    def _tokenizer(data):
+        tokens = base_tokenizer(data)
+        tokens = [t for t in tokens if t.token not in stopword_set]
         return tokens
 
 
@@ -239,7 +261,7 @@ class VocabBuilder(object):
 
 
 class Pipeline(object):
-    """Pipeline"""
+    """Pipeline describes the process of importing a Corpus"""
 
     def __init__(self, inputer, extractor, tokenizer, labeler):
         self.inputer = inputer
