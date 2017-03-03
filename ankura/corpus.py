@@ -66,7 +66,7 @@ def bible():
     """Gets a Corpus containing the King James version of the Bible with over
     250,000 cross references
     """
-    return ankura.pipeline.Pipeline(
+    pipeline = ankura.pipeline.Pipeline(
         download_inputer('bible/bible.txt'),
         ankura.pipeline.line_extractor(),
         ankura.pipeline.stopword_tokenizer(
@@ -77,4 +77,6 @@ def bible():
             )
         ),
         ankura.pipeline.title_labeler(),
-    ).run()
+    )
+    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 1)
+    return pipeline.run()

@@ -180,6 +180,69 @@ def test_stopword_tokenizer():
     assert actual == expected
 
 
+def test_frequency_tokenizer():
+    """Tests ankura.pipeline.frequency_tokenizer"""
+    disk = [
+        #          0         1
+        #          012345678901234567
+        Text("1", "rare normal common"),
+        Text("2", "normal common"),
+        Text("3", "normal common"),
+        Text("4", "normal common"),
+        Text("5", "common"),
+        Text("6", "common"),
+    ]
+    def _mock_inputer():
+        for text in disk:
+            yield _mock_file(text.name, text.data)
+
+    cases = [
+        (
+            2, 5,
+            [
+                [TokenLoc('normal', 5)],
+                [TokenLoc('normal', 0)],
+                [TokenLoc('normal', 0)],
+                [TokenLoc('normal', 0)],
+                [],
+                [],
+            ],
+        ), (
+            2, None,
+            [
+                [TokenLoc('normal', 5), TokenLoc('common', 12)],
+                [TokenLoc('normal', 0), TokenLoc('common', 7)],
+                [TokenLoc('normal', 0), TokenLoc('common', 7)],
+                [TokenLoc('normal', 0), TokenLoc('common', 7)],
+                [TokenLoc('common', 0)],
+                [TokenLoc('common', 0)],
+            ],
+        ), (
+            None, 5,
+            [
+                [TokenLoc('rare', 0), TokenLoc('normal', 5)],
+                [TokenLoc('normal', 0)],
+                [TokenLoc('normal', 0)],
+                [TokenLoc('normal', 0)],
+                [],
+                [],
+            ],
+        ),
+    ]
+
+    for rare, common, expecteds in cases:
+        pipeline = Pipeline(
+            _mock_inputer,
+            whole_extractor(),
+            split_tokenizer(),
+            noop_labeler(),
+        )
+        pipeline.tokenizer = frequency_tokenizer(pipeline, rare, common)
+        for text, expected in zip(disk, expecteds):
+            actual = pipeline.tokenizer(text.data)
+            assert actual == expected, (text.data, rare, common)
+
+
 def test_noop_labeler():
     """Tests ankura.pipeline.noop_labeler"""
     assert noop_labeler()('name') == {}
