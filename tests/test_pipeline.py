@@ -171,7 +171,7 @@ def test_stopword_tokenizer():
     stopwords = io.StringIO('the\na\nthis\nof\n')
     #       0          1         2
     #       01234 567890123456789012345
-    data = 'What\'s the point of this?'
+    data = 'What\'s the point Of this?'
     expected = [
         TokenLoc('whats', 0),
         TokenLoc('point', 11),

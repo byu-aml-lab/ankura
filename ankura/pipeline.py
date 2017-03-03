@@ -23,7 +23,8 @@ Corpus = collections.namedtuple('Corpus', ['documents', 'vocabulary'])
 
 # Inputers are callables which generate the filenames a Pipeline should read.
 # The files should be opened in binary read mode. The caller is reponsible for
-# closing the file objects.
+# closing the file objects, although garbage collection should handle this as
+# soon as the caller is finished with the file object.
 
 
 def file_inputer(*filenames):
@@ -194,16 +195,20 @@ def regex_tokenizer(base_tokenizer, pattern, repl):
     return _tokenizer
 
 
+def _tokenset(tokens, strip):
+    if strip:
+        return set(t.strip() for t in tokens)
+    else:
+        return set(tokens)
+
+
 def combine_tokenizer(base_tokenizer, combine, repl, strip=True):
     """Transforms the output of another tokenizer by replacing all tokens which
     appear in a combine list. The optional strip parameter (default true)
     indicates whether the tokens in the combine list should have whitespace
     stripped.
     """
-    if strip:
-        combine_set = set(t.strip() for t in combine)
-    else:
-        combine_set = set(combine)
+    combine_set = _tokenset(combine, strip)
     combine = lambda t: TokenLoc(repl, t.loc) if t.token in combine_set else t
     @functools.wraps(combine_tokenizer)
     def _tokenizer(data):
@@ -219,10 +224,7 @@ def stopword_tokenizer(base_tokenizer, stopwords, strip=True):
     indicates whether the tokens in the stopword list should have whitespace
     stripped.
     """
-    if strip:
-        stopword_set = set(t.strip() for t in stopwords)
-    else:
-        stopword_set = set(stopwords)
+    stopword_set = _tokenset(stopwords, strip)
     @functools.wraps(stopword_tokenizer)
     def _tokenizer(data):
         tokens = base_tokenizer(data)

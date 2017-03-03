@@ -1,6 +1,7 @@
 """Provides access to some standard datasets"""
 
 import functools
+import itertools
 import os
 import urllib
 
@@ -13,7 +14,7 @@ def _path(name):
     return os.path.join(download_dir, name)
 
 
-base_url = 'https://github.com/jlund3/data/raw/master/' # pylint: disable=invalid-name
+base_url = 'https://github.com/jlund3/data/raw/data2/' # pylint: disable=invalid-name
 
 def _url(name):
     return base_url + name
@@ -33,21 +34,31 @@ def _ensure_download(name):
         urllib.request.urlretrieve(_url(name), path)
 
 
-def _open_download(name):
+def open_download(name, mode='r'):
+    """Gets a file object for the given name, downloading the data to download
+    dir from base_url if needed. By default the files are opened in read mode.
+    If used as part of an inputer, the mode should likely be changed to binary
+    mode. For a list of useable names with the default base_url, see
+    download_inputer.
+    """
     _ensure_download(name)
-    return open(_path(name), 'rb')
+    return open(_path(name), mode)
 
 
 def download_inputer(*names):
     """Generates file objects for the given names, downloading the data to
-    download_dir from base_url if needed. The available names are:
+    download_dir from base_url if needed. Using the default base_url the
+    available names are:
         * bible/bible.txt
         * bible/xref.txt
+        * newsgroups/newsgroups.tar.gz
+        * stopwords/english.txt
+        * stopwords/jacobean.txt
     """
     @functools.wraps(download_inputer)
     def _inputer():
         for name in names:
-            yield _open_download(name)
+            yield open_download(name, mode='rb')
     return _inputer
 
 
@@ -58,21 +69,12 @@ def bible():
     return ankura.pipeline.Pipeline(
         download_inputer('bible/bible.txt'),
         ankura.pipeline.line_extractor(),
-        ankura.pipeline.default_tokenizer(),
-        ankura.pipeline.title_labeler(),
-    ).run()
-
-
-def newsgroups():
-    """Gets a Corpus containing roughly 20,000 messages from 20 different
-    usenet groups in the early 1990's
-    """
-    return ankura.pipeline.Pipeline(
-        download_inputer('newsgroups/newsgroups.tar.gz'),
-        ankura.pipeline.skip_extractor(),
-        ankura.pipeline.default_tokenizer(),
-        ankura.pipeline.composite_labeler(
-            ankura.pipeline.title_labeler(),
-            ankura.pipeline.dir_labeler('newsgroup'),
+        ankura.pipeline.stopword_tokenizer(
+            ankura.pipeline.default_tokenizer(),
+            itertools.chain(
+                open_download('stopwords/english.txt'),
+                open_download('stopwords/jacobean.txt'),
+            )
         ),
+        ankura.pipeline.title_labeler(),
     ).run()
