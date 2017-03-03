@@ -15,11 +15,10 @@
     <div class="loading" ng-show="ctrl.loading"><img class="loadingImage" src="images/spinner.gif"/></div>
     <div class="container main-container" ng-hide="ctrl.finished">
       <div class="row">
-        <div class="col-sm-2 col-md-2 col-lg-2 col-xs-12"><h4>Anchor Words</h4></div>
-        <div class="col-sm-6 col-md-6 col-lg-6 col-xs-12"><h4>Topic Words</h4></div>
-        <div class="col-sm-4 col-md-4 col-lg-4 col-xs-12" ng-show="ctrl.noChangesYet && ctrl.showSampleDocuments"><h4>Sample Documents</h4></div>
+        <div class="col-sm-3 col-md-3 col-lg-3 col-xs-12"><h4>Anchor Words</h4></div>
+        <div class="col-sm-9 col-md-9 col-lg-9 col-xs-12"><h4>Topic Words</h4></div>
       </div>
-      <div class="col-sm-8 col-md-8 col-lg-8 col-xs-12 anchors-and-topics"> 
+      <div class="col-sm-12 col-md-12 col-lg-12 col-xs-12 anchors-and-topics"> 
         <div class="row anchor-and-topic" id="anchor-and-topic-{{this.$index}}" ng-repeat="anchorObj in ctrl.anchors">
           <div class="col-sm-4 col-md-4 col-lg-4 col-xs-12">
             <button type="button" ng-click="ctrl.removeAnchor($index)" class="btn btn-danger removeAnchor">X</button>
@@ -37,19 +36,11 @@
               </span>
             </div>
           </div>
-          <div class="col-sm-7 col-md-7 col-lg-7 col-xs-12">
+          <div class="col-sm-8 col-md-8 col-lg-8 col-xs-12">
             <div class="topic">
               <span class="btn btn-default btn-sm topicWord draggable" ng-repeat="word in anchorObj.topic" draggable="true" ondragstart="drag(event)" id="topic{{$parent.$index}}Word{{this.$index}}">{{word}}</span>
             </div>
           </div>
-          <div class="col-sm-1 col-md-1 col-lg-1 col-xs-12" ng-mouseover="ctrl.popoverIfDisabled($index)" ng-mouseleave="ctrl.closePopover($index)">
-            <button type="button" id="show-docs-button-{{this.$index}}" class="btn show-docs-button" ng-disabled="!ctrl.noChangesYet" ng-click="ctrl.getRelatedDocuments($index)"><img src="docs_black.svg"></button>
-          </div>
-        </div>
-      </div>
-      <div class="col-sm-4 col-md-4 col-lg-4 col-xs-12 top-to-bottom" ng-show="ctrl.noChangesYet && ctrl.showSampleDocuments">
-        <div class="document-container">
-          <div class="document" id="document-{{$index}}" ng-repeat="doc in ctrl.topicDocuments">{{doc}}<hr></div>
         </div>
       </div>
       <div class="row col-sm-12 col-md-12 col-lg-12 col-xs-12 done-container">
@@ -66,6 +57,7 @@
         <form id="updateForm" ng-submit="ctrl.getNewTopics(false)">
           <button type="submit" class="btn btn-primary btn-sm updateTopicsButtonClean">Update Topics</button>
         </form>
+        <h3 id="accuracyHolder"></h3>
       </div>
     </div>
     <div ng-show="ctrl.finished">

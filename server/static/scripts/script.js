@@ -230,6 +230,7 @@ var app = angular.module('anchorApp', [])
                 //ctrl.getExampleDocuments(data['example'])
                 //ctrl.exampleDoc = data['example_name']
                 ctrl.singleAnchors = data['single_anchors']
+                ctrl.setAccuracy(data['accuracy'])
                 ctrl.loading = false
                 ctrl.startChanging()
                 $scope.$apply()
@@ -310,6 +311,7 @@ var app = angular.module('anchorApp', [])
                         ctrl.documents = data['examples']
                         //ctrl.getExampleDocuments(data['example'])
                         //ctrl.exampleDoc = data['example_name']
+                        ctrl.setAccuracy(data['accuracy'])
                         ctrl.singleAnchors = data['single_anchors']
                         ctrl.loading = false
                         ctrl.startChanging()
@@ -377,6 +379,17 @@ var app = angular.module('anchorApp', [])
           ctrl.noChangesYet = false
           $('.document').css('background-color', '#FFFFFF')
           $('.anchor-and-topic').css('border', 'solid 2px #FFFFFF')
+        }
+
+
+        ctrl.setAccuracy = function setAccuracy(accuracy) {
+          if (!accuracy) {
+            $('#accuracyHolder').text('No accuracy yet')
+          }
+          else {
+            ctrl.classifierAccuracy = accuracy
+            $('#accuracyHolder').text('Accuracy: ' + (accuracy*100).toFixed(2) + '%')
+          }
         }
 
 
