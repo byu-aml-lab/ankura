@@ -347,6 +347,27 @@ def composite_labeler(*labelers):
     return _labeler
 
 
+# Filterers are callables which return True if a Document should be included in
+# a Corpus.
+
+def keep_filter():
+    """Always returns True reguardless of the Document"""
+    @functools.wraps(keep_filter)
+    def _filterer(_doc):
+        return True
+    return _filterer
+
+
+def length_filterer(threshold=1):
+    """Returns True if the number of tokens in the document is at or above the
+    given threshold. The default threshold of 1 filters out empty documents.
+    """
+    @functools.wraps(length_filterer)
+    def _filterer(doc):
+        return len(doc.tokens) >= threshold
+    return _filterer
+
+
 # Pipeline describes the process of importing a Corpus. It consists of an
 # inputer, extractor, tokenizer, and labeler.
 
@@ -368,16 +389,16 @@ class VocabBuilder(object):
         """Converts a sequence of TokenLoc to a sequence of TypeLoc"""
         return [TypeLoc(self[t.token], t.loc) for t in tokens]
 
-# TODO Add filterer to Pipeline (include keep, length and empty filterers)
-
 class Pipeline(object):
     """Pipeline describes the process of importing a Corpus"""
 
-    def __init__(self, inputer, extractor, tokenizer, labeler):
+    # pylint: disable=too-many-arguments
+    def __init__(self, inputer, extractor, tokenizer, labeler, filterer):
         self.inputer = inputer
         self.extractor = extractor
         self.tokenizer = tokenizer
         self.labeler = labeler
+        self.filterer = filterer
 
     def run(self, pickle_path=None):
         """Creates a new Corpus using the Pipeline"""
@@ -391,7 +412,9 @@ class Pipeline(object):
                 tokens = self.tokenizer(text.data)
                 types = vocab.convert(tokens)
                 metadata = self.labeler(text.name)
-                documents.append(Document(text.data, types, metadata))
+                document = Document(text.data, types, metadata)
+                if self.filterer(document):
+                    documents.append(document)
         corpus = Corpus(documents, vocab.tokens)
 
         if pickle_path:

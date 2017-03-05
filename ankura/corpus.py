@@ -83,6 +83,7 @@ def bible():
                 attr='xref',
             )
         ),
+        ankura.pipeline.keep_filter(),
     )
     pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 1)
     return pipeline.run(_path('bible.pickle'))
