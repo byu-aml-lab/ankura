@@ -6,6 +6,7 @@ import glob
 import gzip
 import io
 import os
+import pickle
 import re
 import string
 import tarfile
@@ -378,8 +379,11 @@ class Pipeline(object):
         self.tokenizer = tokenizer
         self.labeler = labeler
 
-    def run(self):
+    def run(self, pickle_path=None):
         """Creates a new Corpus using the Pipeline"""
+        if pickle_path and os.path.exists(pickle_path):
+            return pickle.load(open(pickle_path, 'rb'))
+
         documents = []
         vocab = VocabBuilder()
         for docfile in self.inputer():
@@ -388,4 +392,8 @@ class Pipeline(object):
                 types = vocab.convert(tokens)
                 metadata = self.labeler(text.name)
                 documents.append(Document(text.data, types, metadata))
-        return Corpus(documents, vocab.tokens)
+        corpus = Corpus(documents, vocab.tokens)
+
+        if pickle_path:
+            pickle.dump(corpus, open(pickle_path, 'wb'))
+        return corpus

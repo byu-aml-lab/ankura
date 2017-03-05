@@ -3,7 +3,7 @@
 import functools
 import itertools
 import os
-import urllib
+import urllib.request
 
 import ankura
 
@@ -76,7 +76,13 @@ def bible():
                 open_download('stopwords/jacobean.txt'),
             )
         ),
-        ankura.pipeline.title_labeler(),
+        ankura.pipeline.composite_labeler(
+            ankura.pipeline.title_labeler(),
+            ankura.pipeline.multistring_labeler(
+                open_download('bible/xref.txt'),
+                attr='xref',
+            )
+        ),
     )
     pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 1)
-    return pipeline.run()
+    return pipeline.run(_path('bible.pickle'))
