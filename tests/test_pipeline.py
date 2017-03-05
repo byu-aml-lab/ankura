@@ -258,6 +258,24 @@ def test_dir_labeler():
     assert dir_labeler()('dirname/filename') == {'dirname': 'dirname'}
 
 
+def test_string_labeler():
+    """Tests ankura.pipeline.string_labeler"""
+    data = io.StringIO('a A\nb B\nc C\n')
+    assert string_labeler(data, ' ', 'class')('b') == {'class': 'B'}
+
+
+def test_float_labeler():
+    """Tests ankura.pipeline.float_labeler"""
+    data = io.StringIO('a 1\nb 3.14\nc 1e3\n')
+    assert float_labeler(data, ' ', 'class')('b') == {'class': 3.14}
+
+
+def test_multistring_labeler():
+    """Tests ankura.pipeline.multistring_labeler"""
+    data = io.StringIO('a b\na c\nb a\nc a\nc d')
+    assert multistring_labeler(data, ' ', 'ref')('c') == {'ref': ['a', 'd']}
+
+
 def test_composite_labeler():
     """Tests ankura.pipeline.composite_labeler"""
     labeler = composite_labeler(title_labeler(), dir_labeler())

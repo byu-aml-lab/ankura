@@ -64,8 +64,8 @@ def skip_extractor(delim='\n\n'):
     @functools.wraps(skip_extractor)
     def _extractor(docfile):
         data = docfile.read().decode()
-        start = data.index(delim) + len(delim)
-        yield Text(docfile.name, data[start:])
+        _, data = data.split(delim, 1)
+        yield Text(docfile.name, data)
     return _extractor
 
 
@@ -78,8 +78,8 @@ def line_extractor(delim=' '):
     def _extractor(docfile):
         for line in docfile:
             line = line.decode().strip()
-            index = line.index(delim)
-            yield Text(line[:index], line[index + len(delim):])
+            name, data = line.split(delim, 1)
+            yield Text(name, data)
     return _extractor
 
 
@@ -294,9 +294,45 @@ def dir_labeler(attr='dirname'):
     return _labeler
 
 
-# TODO Add string_labeler with helper
-# TODO Add float_labeler with helper
-# TODO Add multistring_labeler with helper
+def dict_labeler(values, attr='label'):
+    """Returns a labeling using values from a dict"""
+    @functools.wraps(dict_labeler)
+    def _labeler(name):
+        return {attr: values[name]}
+    return _labeler
+
+
+def string_labeler(data, delim=' ', attr='label'):
+    """Builds a dict labeler from a data stream. Each line in the data should
+    contain a single name/label pair, separated by the given delimiter and the
+    label is string.
+    """
+    labels = dict(line.strip().split(delim, 1) for line in data)
+    return dict_labeler(labels, attr)
+
+
+def float_labeler(data, delim=' ', attr='label'):
+    """Builds a dict labeler from a data stream. Each line in the data should
+    contain a single name/value pair, separated by the given delimiter, and the
+    value is parsable as a float.
+    """
+    labels = dict(line.strip().split(delim, 1) for line in data)
+    labels = {name: float(value) for name, value in labels.items()}
+    return dict_labeler(labels, attr)
+
+
+def multistring_labeler(data, delim=' ', attr='labels'):
+    """Builds a dict labeler from a data stream which maps each name to
+    multiple values. Each line in the data should contain a single name/label
+    pair, separated by the given delimiter. In order to associate a single name
+    with multiple string labels, multiple lines are needed. Missing names
+    default to an empty list.
+    """
+    labels = collections.defaultdict(list)
+    for line in data:
+        name, value = line.strip().split(delim, 1)
+        labels[name].append(value)
+    return dict_labeler(labels, attr)
 
 
 def composite_labeler(*labelers):
