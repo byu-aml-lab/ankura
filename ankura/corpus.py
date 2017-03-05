@@ -83,7 +83,30 @@ def bible():
                 attr='xref',
             )
         ),
-        ankura.pipeline.keep_filter(),
+        ankura.pipeline.keep_filterer(),
     )
     pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 1)
     return pipeline.run(_path('bible.pickle'))
+
+
+def newsgroups():
+    """Gets a Corpus containing roughly 20,000 usenet postings from 20
+    different newsgroups in the early 1990's
+    """
+    pipeline = ankura.pipeline.Pipeline(
+        download_inputer('newsgroups/newsgroups.tar.gz'),
+        ankura.pipeline.targz_extractor(
+            ankura.pipeline.skip_extractor(errors='replace'),
+        ),
+        ankura.pipeline.stopword_tokenizer(
+            ankura.pipeline.default_tokenizer(),
+            open_download('stopwords/english.txt'),
+        ),
+        ankura.pipeline.composite_labeler(
+            ankura.pipeline.title_labeler(),
+            ankura.pipeline.dir_labeler('newsgroup'),
+        ),
+        ankura.pipeline.length_filterer(),
+    )
+    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 50)
+    return pipeline.run(_path('newsgroups.pickle'))

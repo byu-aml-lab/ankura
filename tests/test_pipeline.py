@@ -236,6 +236,7 @@ def test_frequency_tokenizer():
             whole_extractor(),
             split_tokenizer(),
             noop_labeler(),
+            keep_filterer(),
         )
         pipeline.tokenizer = frequency_tokenizer(pipeline, rare, common)
         for text, expected in zip(disk, expecteds):
@@ -280,3 +281,10 @@ def test_composite_labeler():
     """Tests ankura.pipeline.composite_labeler"""
     labeler = composite_labeler(title_labeler(), dir_labeler())
     assert labeler('a/b') == {'title': 'a/b', 'dirname': 'a'}
+
+
+def test_length_filterer():
+    """Tests ankura.pipeline.length_filterer"""
+    assert not length_filterer()(Document('', [], {}))
+    assert not length_filterer(2)(Document('', [TypeLoc(0, 0)], {}))
+    assert length_filterer(2)(Document('', [TypeLoc(0, 0), TypeLoc(1, 5)], {}))

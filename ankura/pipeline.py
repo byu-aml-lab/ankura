@@ -50,27 +50,27 @@ def glob_inputer(pattern):
 # parameter a file object, and zero or more yield Text.
 
 
-def whole_extractor():
+def whole_extractor(encoding='utf-8', errors='strict'):
     """Extracts the entire contents of a file as a single Text"""
     @functools.wraps(whole_extractor)
     def _extractor(docfile):
-        yield Text(docfile.name, docfile.read().decode())
+        yield Text(docfile.name, docfile.read().decode(encoding, errors))
     return _extractor
 
 
-def skip_extractor(delim='\n\n'):
+def skip_extractor(delim='\n\n', encoding='utf-8', errors='strict'):
     """After skipping a header, extracts the remaining contents of a file as a
     single Text
     """
     @functools.wraps(skip_extractor)
     def _extractor(docfile):
-        data = docfile.read().decode()
+        data = docfile.read().decode(encoding, errors)
         _, data = data.split(delim, 1)
         yield Text(docfile.name, data)
     return _extractor
 
 
-def line_extractor(delim=' '):
+def line_extractor(delim=' ', encoding='utf-8', errors='strict'):
     """Treats each line of a file as a Text, regarding everything before the
     delimiter as the name of the Text, and everything after as the Text data.
     Each line is stripped of leading and trailing whitespace before processing.
@@ -78,13 +78,13 @@ def line_extractor(delim=' '):
     @functools.wraps(line_extractor)
     def _extractor(docfile):
         for line in docfile:
-            line = line.decode().strip()
+            line = line.decode(encoding, errors).strip()
             name, data = line.split(delim, 1)
             yield Text(name, data)
     return _extractor
 
 
-def html_extractor():
+def html_extractor(encoding='utf-8', errors='strict'):
     """Extracts the text content of an HTML file as a single Text. Blank lines
     are removed from the result, and both leading and trailing whitespace are
     stripped.
@@ -92,7 +92,8 @@ def html_extractor():
     newline = re.compile(r'\n\n+')
     @functools.wraps(html_extractor)
     def _extractor(docfile):
-        soup = bs4.BeautifulSoup(docfile.read().decode(), 'html.parser')
+        raw = docfile.read().decode(encoding, errors)
+        soup = bs4.BeautifulSoup(raw, 'html.parser')
         text = soup.get_text()
         text = newline.sub('\n', text)
         text = text.strip()
@@ -116,6 +117,8 @@ def tar_extractor(base_extractor):
     def _extractor(docfile):
         archive = tarfile.TarFile(fileobj=docfile, mode='r')
         for info in archive:
+            if not info.isfile():
+                continue
             member = io.BytesIO(archive.extractfile(info.name).read())
             member.name = info.name
             for text in base_extractor(member):
@@ -350,9 +353,9 @@ def composite_labeler(*labelers):
 # Filterers are callables which return True if a Document should be included in
 # a Corpus.
 
-def keep_filter():
+def keep_filterer():
     """Always returns True reguardless of the Document"""
-    @functools.wraps(keep_filter)
+    @functools.wraps(keep_filterer)
     def _filterer(_doc):
         return True
     return _filterer
@@ -364,7 +367,7 @@ def length_filterer(threshold=1):
     """
     @functools.wraps(length_filterer)
     def _filterer(doc):
-        return len(doc.tokens) >= threshold
+        return len(doc.types) >= threshold
     return _filterer
 
 
