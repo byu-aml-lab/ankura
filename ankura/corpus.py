@@ -110,3 +110,27 @@ def newsgroups():
     )
     pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 50)
     return pipeline.run(_path('newsgroups.pickle'))
+
+
+def amazon():
+    """Gets a Corpus containing roughly 40,000 Amazon product reviews, with
+    star ratings.
+    """
+    pipeline = ankura.pipeline.Pipeline(
+        download_inputer('amazon/amazon.txt'),
+        ankura.pipeline.line_extractor('\t'),
+        ankura.pipeline.stopword_tokenizer(
+            ankura.pipeline.default_tokenizer(),
+            open_download('stopwords/english.txt'),
+        ),
+        ankura.pipeline.composite_labeler(
+            ankura.pipeline.title_labeler('id'),
+            ankura.pipeline.float_labeler(
+                open_download('amazon/amazon.stars'),
+                delim='\t', attr='rating',
+            ),
+        ),
+        ankura.pipeline.length_filterer(),
+    )
+    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 50)
+    return pipeline.run(_path('amazon.pickle'))
