@@ -8,6 +8,7 @@ import io
 import os
 import pickle
 import re
+import shelve
 import string
 import tarfile
 
@@ -392,6 +393,36 @@ class VocabBuilder(object):
         """Converts a sequence of TokenLoc to a sequence of TypeLoc"""
         return [TypeLoc(self[t.token], t.loc) for t in tokens]
 
+
+class DocumentShelf(object):
+    """Implements a small shelve-backed subset of list for Corpus documents"""
+
+    def __init__(self, filename):
+        self._filename = filename
+        self._db = shelve.open(filename, 'n')
+
+    def append(self, doc):
+        """Add a document to the document shelf"""
+        self._db[str(len(self._db))] = doc
+
+    def __getitem__(self, index):
+        return self._db[str(index)]
+
+    def __len__(self):
+        return len(self._db)
+
+    def __iter__(self):
+        for i in range(len(self)): # pylint: disable=consider-using-enumerate
+            yield self[i]
+
+    def __getstate__(self):
+        return self._filename
+
+    def __setstate__(self, state):
+        self._filename = state
+        self._db = shelve.open(state, 'c')
+
+
 class Pipeline(object):
     """Pipeline describes the process of importing a Corpus"""
 
@@ -403,12 +434,13 @@ class Pipeline(object):
         self.labeler = labeler
         self.filterer = filterer
 
-    def run(self, pickle_path=None):
+    def run(self, pickle_path=None, shelve_path=None):
         """Creates a new Corpus using the Pipeline"""
         if pickle_path and os.path.exists(pickle_path):
             return pickle.load(open(pickle_path, 'rb'))
 
-        documents = []
+        documents = DocumentShelf(shelve_path) if shelve_path else []
+
         vocab = VocabBuilder()
         for docfile in self.inputer():
             for text in self.extractor(docfile):
@@ -418,8 +450,11 @@ class Pipeline(object):
                 document = Document(text.data, types, metadata)
                 if self.filterer(document):
                     documents.append(document)
-        corpus = Corpus(documents, vocab.tokens)
 
+        corpus = Corpus(documents, vocab.tokens)
         if pickle_path:
             pickle.dump(corpus, open(pickle_path, 'wb'))
         return corpus
+
+
+# TODO Replace shelve with sqlite3 for better performance
