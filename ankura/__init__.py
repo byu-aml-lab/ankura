@@ -1,3 +1,3 @@
 """Toolkit for analyzing text with topic modeling"""
 
-from . import pipeline, corpus, cooccurrence
+from . import pipeline, corpus, cooccurrence, anchor

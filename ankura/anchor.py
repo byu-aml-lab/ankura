@@ -4,26 +4,30 @@ import collections
 import numpy
 
 
-def gram_schmidt_candidates(corpus, doc_threshold):
-    """Generates candidates for finding anchor words using gram_schmidt."""
+def random_projection(A, k):
+    """Randomly reduces the dimensionality of a n x d matrix A to k x d
+
+    Follows the method given by Achlioptas 2001 which yeilds a projection which
+    preserves pairwise distances within some small factor.
+    """
+    R = numpy.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
+    return numpy.dot(A, R * numpy.sqrt(3))
+
+
+def gram_schmidt(corpus, Q, k, doc_threshold=500, project_dim=1000):
+    """Uses stabalized Gram-Schmidt decomposition to find k anchors.
+    """
+    # Find candidate anchors
     counts = collections.Counter()
     for doc in corpus.documents:
-        counts.update(set(doc.types))
-    return [tid for tid, count in counts.items() if count > doc_threshold]
+        counts.update(set(t.type for t in doc.types))
+    candidates = [tid for tid, count in counts.items() if count > doc_threshold]
 
-
-def gram_schmidt(Q, k, candidates, project_dim=500):
-    """Uses stabalized Gram-Schmidt decomposition to find k anchors.
-
-    The candidate anchors are typically choosen using gram_schmidt_candidates.
-    """
     # Row-normalize and project Q, preserving the original Q
     Q_orig = Q
     Q = Q / Q.sum(axis=1, keepdims=True)
     if project_dim:
-        # Randomly project Q using method from Achlioptas 2001
-        R = numpy.random.choice([-1, 0, 0, 0, 0, 1], (Q.shape[1], project_dim))
-        Q = numpy.dot(Q, R * numpy.sqrt(3))
+        Q = random_projection(Q, project_dim)
 
     # Setup book keeping
     indices = numpy.zeros(k, dtype=numpy.int)

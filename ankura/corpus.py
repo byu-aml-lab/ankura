@@ -134,3 +134,6 @@ def amazon():
     )
     pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 50)
     return pipeline.run(_path('amazon.pickle'))
+
+
+# TODO Add numeric combiner to newsgroup and amazon pipelines
