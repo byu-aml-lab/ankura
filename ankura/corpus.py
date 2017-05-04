@@ -17,7 +17,7 @@ def _path(name):
 base_url = 'https://github.com/jlund3/data/raw/data2/' # pylint: disable=invalid-name
 
 def _url(name):
-    return base_url + name
+    return os.path.join(base_url, name)
 
 
 def _ensure_dir(path):
