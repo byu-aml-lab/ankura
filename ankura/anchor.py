@@ -128,20 +128,19 @@ def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None,
 
     In the case of unlabeled documents, equal likelihood is given to all known
     classes, equal to smoothing. smoothing must be greater than zero.
+
+    Returns cooccurrence matrix and a mapping from the label to its index
     """
     assert label_weight > 0, 'label_weight must be greater than zero'
     assert smoothing > 0, 'smoothing must be greater than zero'
     V, D = len(corpus.vocabulary), len(corpus.documents)
     data, row, col = [], [], []
 
-    label_types = {}
-    for doc in corpus.documents:
-        cur_label = doc.metadata[attr_name]
-        if cur_label not in label_types:
-            # count label as if a new token
-            label_types[cur_label] = len(label_types) + V
     to_label = set(labeled_docs) if labeled_docs \
         else set(range(len(corpus.documents)))
+    # account only for labels found in labeled set [via set comprehension]
+    labels_found = {corpus.documents[i].metadata[attr_name] for i in to_label}
+    label_types = {v: i+V for i, v in enumerate(labels_found)}
 
     H_hat = numpy.zeros(V + len(label_types))
 
@@ -179,7 +178,7 @@ def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None,
     H_tilde = scipy.sparse.coo_matrix((data, (row, col)),
                                       (V + len(label_types), D)).tocsc()
     Q = H_tilde * H_tilde.T - numpy.diag(H_hat)
-    return numpy.array(Q / D)
+    return numpy.array(Q / D), label_types
 
 
 # pylint: disable=too-many-locals
