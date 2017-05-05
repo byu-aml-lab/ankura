@@ -162,11 +162,11 @@ def test_build_supervised_cooccurrence1():
                                             [1, 0, 0, 1],
                                             [2, 0, 0, 0],
                                             [1, 1, 0, 0]])
-    actual = anchor.build_supervised_cooccurrence(corpus,
-                                                  'label',
-                                                  labeled_docs=None,
-                                                  label_weight=1,
-                                                  smoothing=1e-7)
+    actual, _ = anchor.build_supervised_cooccurrence(corpus,
+                                                     'label',
+                                                     labeled_docs=None,
+                                                     label_weight=1,
+                                                     smoothing=1e-7)
     assert numpy.allclose(expected, actual)
 
 
@@ -188,16 +188,15 @@ def test_build_supervised_cooccurrence2():
         ['dog', 'cat'],
     )
     eps = 1e-7
-    A = (2+2*eps)*(1+2*eps)
-    expected = (1/2) * numpy.array([[2/6, 1/A, 2/6+eps/A, eps/A],
-                                    [1/A, 0, eps/A, eps/A],
-                                    [2/6+eps/A, eps/A, (eps*eps-eps)/A, eps*eps/A],
-                                    [eps/A, eps/A, eps*eps/A, (eps*eps-eps)/A]])
-    actual = anchor.build_supervised_cooccurrence(corpus,
-                                                  'label',
-                                                  labeled_docs=[0],
-                                                  label_weight=1,
-                                                  smoothing=eps)
+    A = (2+eps)*(1+eps)
+    expected = (1/2) * numpy.array([[2/6, 1/A, 2/6+eps/A],
+                                    [1/A, 0, eps/A],
+                                    [2/6+eps/A, eps/A, (eps*eps-eps)/A]])
+    actual, _ = anchor.build_supervised_cooccurrence(corpus,
+                                                     'label',
+                                                     labeled_docs=[0],
+                                                     label_weight=1,
+                                                     smoothing=eps)
     assert numpy.allclose(expected, actual)
 
 
