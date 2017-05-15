@@ -3,6 +3,7 @@
 import collections
 import numpy
 import scipy.sparse
+import scipy.stats
 
 
 def build_cooccurrence(corpus):
@@ -13,18 +14,18 @@ def build_cooccurrence(corpus):
     H_hat = numpy.zeros(V)
 
     for i, doc in enumerate(corpus.documents):
-        n_d = len(doc.types)
+        n_d = len(doc.tokens)
         if n_d <= 1:
             continue
 
         norm = 1 / (n_d * (n_d - 1))
         sqrt_norm = numpy.sqrt(norm)
 
-        for token in doc.types:
+        for t in doc.tokens:
             data.append(sqrt_norm)
-            row.append(token.type)
+            row.append(t.token)
             col.append(i)
-            H_hat[token.type] += norm
+            H_hat[t.token] += norm
 
     H_tilde = scipy.sparse.coo_matrix((data, (row, col)), (V, D)).tocsc()
     Q = H_tilde * H_tilde.T - numpy.diag(H_hat)
@@ -41,13 +42,13 @@ def random_projection(A, k):
     return numpy.dot(A, R * numpy.sqrt(3))
 
 
-def gram_schmidt(corpus, Q, k, doc_threshold=500, project_dim=1000):
-    """Uses stabalized Gram-Schmidt decomposition to find k anchors.
-    """
+# pylint: disable=too-many-locals
+def gram_schmidt(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
+    """Uses stabalized Gram-Schmidt decomposition to find k anchors."""
     # Find candidate anchors
     counts = collections.Counter()
     for doc in corpus.documents:
-        counts.update(set(t.type for t in doc.types))
+        counts.update(set(t.token for t in doc.tokens))
     candidates = [tid for tid, count in counts.items() if count > doc_threshold]
 
     # Row-normalize and project Q, preserving the original Q
@@ -93,8 +94,32 @@ def gram_schmidt(corpus, Q, k, doc_threshold=500, project_dim=1000):
                 indices[j + 1] = i
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
+    # If requested, just return the indicies instead of anchor vectors
+    if kwargs.get('return_indices'):
+        return indices
+
     # Use the original Q to extract anchor vectors using the anchor indices
     return Q_orig[indices, :]
+
+
+def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
+    """Creates pseudoword anchors from user provided anchor facets"""
+    if corpus:
+        anchor_indices = []
+        for anchor in anchors:
+            anchor_index = []
+            for word in anchor:
+                try:
+                    anchor_index.append(corpus.vocabulary.index(word))
+                except ValueError:
+                    pass
+            anchor_indices.append(anchor_index)
+        anchors = anchor_indices
+
+    basis = numpy.zeros((len(anchors), Q.shape[1]))
+    for i, anchor in enumerate(anchors):
+        basis[i] = scipy.stats.hmean(Q[anchor, :] + epsilon, axis=0)
+    return basis
 
 
 def logsum_exp(y):

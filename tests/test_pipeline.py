@@ -286,5 +286,7 @@ def test_composite_labeler():
 def test_length_filterer():
     """Tests ankura.pipeline.length_filterer"""
     assert not length_filterer()(Document('', [], {}))
-    assert not length_filterer(2)(Document('', [TypeLoc(0, 0)], {}))
-    assert length_filterer(2)(Document('', [TypeLoc(0, 0), TypeLoc(1, 5)], {}))
+    assert not length_filterer(2)(Document('', [TokenLoc(0, 0)], {}))
+    assert length_filterer(2)(
+        Document('', [TokenLoc(0, 0), TokenLoc(1, 5)], {})
+    )

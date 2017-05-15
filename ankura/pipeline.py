@@ -18,8 +18,7 @@ import bs4
 
 Text = collections.namedtuple('Text', ['name', 'data'])
 TokenLoc = collections.namedtuple('TokenLoc', ['token', 'loc'])
-TypeLoc = collections.namedtuple('TypeLoc', ['type', 'loc'])
-Document = collections.namedtuple('Document', ['text', 'types', 'metadata'])
+Document = collections.namedtuple('Document', ['text', 'tokens', 'metadata'])
 Corpus = collections.namedtuple('Corpus', ['documents', 'vocabulary'])
 
 # Inputers are callables which generate the filenames a Pipeline should read.
@@ -369,7 +368,7 @@ def length_filterer(threshold=1):
     """
     @functools.wraps(length_filterer)
     def _filterer(doc):
-        return len(doc.types) >= threshold
+        return len(doc.tokens) >= threshold
     return _filterer
 
 
@@ -391,8 +390,8 @@ class VocabBuilder(object):
         return self.types[token]
 
     def convert(self, tokens):
-        """Converts a sequence of TokenLoc to a sequence of TypeLoc"""
-        return [TypeLoc(self[t.token], t.loc) for t in tokens]
+        """Converts a sequence of TokenLoc to use types"""
+        return [TokenLoc(self[t.token], t.loc) for t in tokens]
 
 
 class DocumentShelf(object):

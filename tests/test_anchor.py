@@ -18,12 +18,12 @@ def test_build_cooccurrence1():
         [
             pipeline.Document(
                 'dog dog',
-                [pipeline.TypeLoc(0, 0), pipeline.TypeLoc(0, 4)],
+                [pipeline.TokenLoc(0, 0), pipeline.TokenLoc(0, 4)],
                 {},
             ),
             pipeline.Document(
                 'cat dog',
-                [pipeline.TypeLoc(1, 0), pipeline.TypeLoc(0, 4)],
+                [pipeline.TokenLoc(1, 0), pipeline.TokenLoc(0, 4)],
                 {},
             ),
         ],
@@ -42,34 +42,34 @@ def test_build_cooccurrence2():
             pipeline.Document(
                 'dog dog',
                 [
-                    pipeline.TypeLoc(0, 0),
-                    pipeline.TypeLoc(0, 4),
+                    pipeline.TokenLoc(0, 0),
+                    pipeline.TokenLoc(0, 4),
                 ],
                 {},
             ),
             pipeline.Document(
                 'cat dog',
                 [
-                    pipeline.TypeLoc(1, 0),
-                    pipeline.TypeLoc(0, 4),
+                    pipeline.TokenLoc(1, 0),
+                    pipeline.TokenLoc(0, 4),
                 ],
                 {},
             ),
             pipeline.Document(
                 'cat cat cat',
                 [
-                    pipeline.TypeLoc(1, 0),
-                    pipeline.TypeLoc(1, 4),
-                    pipeline.TypeLoc(1, 8),
+                    pipeline.TokenLoc(1, 0),
+                    pipeline.TokenLoc(1, 4),
+                    pipeline.TokenLoc(1, 8),
                 ],
                 {},
             ),
             pipeline.Document(
                 'cat cat dog',
                 [
-                    pipeline.TypeLoc(1, 0),
-                    pipeline.TypeLoc(1, 4),
-                    pipeline.TypeLoc(0, 8),
+                    pipeline.TokenLoc(1, 0),
+                    pipeline.TokenLoc(1, 4),
+                    pipeline.TokenLoc(0, 8),
                 ],
                 {},
             ),
@@ -85,3 +85,43 @@ def test_build_cooccurrence2():
 @pytest.mark.skip(reason='test implementation missing')
 def test_recover_topics():
     """Tests recover_topics"""
+
+
+def test_tandem_anchors():
+    """Tests tandem anchors"""
+    Q = numpy.array([[1, 2, 3, 4, 5, 6],
+                     [1, 2, 3, 4, 5, 6],
+                     [6, 5, 4, 3, 2, 1],
+                     [6, 5, 4, 3, 2, 1],
+                     [3, 2, 1, 6, 5, 4],
+                     [6, 5, 4, 3, 2, 1]], dtype=float)
+    anchors = [[0, 1], [3, 4, 5]]
+    expected = numpy.array([[1, 2, 3, 4, 5, 6],
+                            [3/(1/6+1/3+1/6),
+                             3/(1/5+1/2+1/5),
+                             3/(1/4+1/1+1/4),
+                             3/(1/3+1/6+1/3),
+                             3/(1/2+1/5+1/2),
+                             3/(1/1+1/4+1/1)]])
+    actual = anchor.tandem_anchors(anchors, Q)
+    assert numpy.allclose(expected, actual)
+
+
+def test_tandem_anchors_vocab():
+    """Tests tandem anchors"""
+    Q = numpy.array([[1, 2, 3, 4, 5, 6],
+                     [1, 2, 3, 4, 5, 6],
+                     [6, 5, 4, 3, 2, 1],
+                     [6, 5, 4, 3, 2, 1],
+                     [3, 2, 1, 6, 5, 4],
+                     [6, 5, 4, 3, 2, 1]], dtype=float)
+    anchors = [[0, 1], [3, 4, 5]]
+    expected = numpy.array([[1, 2, 3, 4, 5, 6],
+                            [3/(1/6+1/3+1/6),
+                             3/(1/5+1/2+1/5),
+                             3/(1/4+1/1+1/4),
+                             3/(1/3+1/6+1/3),
+                             3/(1/2+1/5+1/2),
+                             3/(1/1+1/4+1/1)]])
+    actual = anchor.tandem_anchors(anchors, Q)
+    assert numpy.allclose(expected, actual)

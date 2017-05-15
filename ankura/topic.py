@@ -1,9 +1,10 @@
 """Functions for using and displaying topics"""
 
+import collections
 import numpy
 
 
-def topic_summary(topics, vocabulary=None, n=10):
+def topic_summary(topics, corpus=None, n=10):
     """Gets the top n tokens per topic.
 
     If a vocabulary is provided, the tokens are returned instead of the types.
@@ -15,8 +16,8 @@ def topic_summary(topics, vocabulary=None, n=10):
             index.append(word)
         summary.append(index)
 
-    if vocabulary:
-        summary = [[vocabulary[word] for word in topic] for topic in summary]
+    if corpus:
+        summary = [[corpus.vocabulary[w] for w in topic] for topic in summary]
 
     return summary
 
