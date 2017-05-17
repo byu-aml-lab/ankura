@@ -104,12 +104,7 @@ def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None,
     return numpy.array(Q / D), label_types
 
 
-def random_projection(A, k):
-    """Randomly reduces the dimensionality of a n x d matrix A to k x d
-
-    Follows the method given by Achlioptas 2001 which yeilds a projection which
-    preserves pairwise distances within some small factor.
-    """
+def _random_projection(A, k):
     R = numpy.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
     return numpy.dot(A, R * numpy.sqrt(3))
 
@@ -127,7 +122,7 @@ def gram_schmidt(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
     Q_orig = Q
     Q = Q / Q.sum(axis=1, keepdims=True)
     if project_dim:
-        Q = random_projection(Q, project_dim)
+        Q = _random_projection(Q, project_dim)
 
     # Setup book keeping
     indices = numpy.zeros(k, dtype=numpy.int)
@@ -194,8 +189,7 @@ def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
     return basis
 
 
-def logsum_exp(y):
-    """Computes the sum of y in log space"""
+def _logsum_exp(y):
     ymax = y.max()
     return ymax + numpy.log((numpy.exp(y - ymax)).sum())
 
@@ -203,8 +197,7 @@ def logsum_exp(y):
 _C1 = 1e-4
 _C2 = .75
 
-def exponentiated_gradient(Y, X, XX, epsilon):
-    """Solves an exponentied gradient problem with L2 divergence"""
+def _exponentiated_gradient(Y, X, XX, epsilon):
     XY = numpy.dot(X, Y)
     YY = float(numpy.dot(Y, Y))
 
@@ -236,7 +229,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
 
         # Add the gradient and renormalize in logspace, then exponentiate
         log_alpha -= stepsize * grad
-        log_alpha -= logsum_exp(log_alpha)
+        log_alpha -= _logsum_exp(log_alpha)
         alpha = numpy.exp(log_alpha)
 
         # Precompute quantities needed for adaptive stepsize
@@ -246,9 +239,8 @@ def exponentiated_gradient(Y, X, XX, epsilon):
 
         # See if stepsize should decrease
         old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
-        offset = _C1 * stepsize * numpy.dot(grad, alpha - old_alpha)
-        new_obj_threshold = old_obj + offset
-        if new_obj >= new_obj_threshold:
+        if new_obj >= (
+                old_obj + _C1 * stepsize * numpy.dot(grad, alpha - old_alpha)):
             stepsize /= 2.0
             alpha = old_alpha
             log_alpha = old_log_alpha
@@ -260,7 +252,8 @@ def exponentiated_gradient(Y, X, XX, epsilon):
         old_grad, grad = grad, 2 * (AXX - XY)
 
         # See if stepsize should increase
-        if not decreased and numpy.dot(grad, alpha - old_alpha) < _C2 * numpy.dot(old_grad, alpha - old_alpha):
+        if not decreased and numpy.dot(grad, alpha - old_alpha) < (
+                _C2 * numpy.dot(old_grad, alpha - old_alpha)):
             stepsize *= 2.0
             alpha = old_alpha
             log_alpha = old_log_alpha
@@ -298,7 +291,7 @@ def recover_topics(Q, anchors, epsilon=2e-7):
     XX = numpy.dot(X, X.transpose())
 
     for word in range(V):
-        alpha = exponentiated_gradient(Q[word, :], X, XX, epsilon)
+        alpha = _exponentiated_gradient(Q[word, :], X, XX, epsilon)
         if numpy.isnan(alpha).any():
             alpha = numpy.ones(K) / K
         A[word, :] = alpha

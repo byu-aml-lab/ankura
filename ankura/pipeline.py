@@ -16,10 +16,10 @@ import bs4
 
 # POD types used throughout the pipeline process
 
-Text = collections.namedtuple('Text', ['name', 'data'])
-TokenLoc = collections.namedtuple('TokenLoc', ['token', 'loc'])
-Document = collections.namedtuple('Document', ['text', 'tokens', 'metadata'])
-Corpus = collections.namedtuple('Corpus', ['documents', 'vocabulary'])
+Text = collections.namedtuple('Text', 'name data')
+TokenLoc = collections.namedtuple('TokenLoc', 'token loc')
+Document = collections.namedtuple('Document', 'text tokens metadata')
+Corpus = collections.namedtuple('Corpus', 'documents vocabulary')
 
 # Inputers are callables which generate the filenames a Pipeline should read.
 # The files should be opened in binary read mode. The caller is reponsible for
