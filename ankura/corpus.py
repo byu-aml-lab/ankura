@@ -85,7 +85,7 @@ def bible():
         ),
         ankura.pipeline.keep_filterer(),
     )
-    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 1)
+    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 2)
     return pipeline.run(_path('bible.pickle'))
 
 
@@ -98,9 +98,12 @@ def newsgroups():
         ankura.pipeline.targz_extractor(
             ankura.pipeline.skip_extractor(errors='replace'),
         ),
-        ankura.pipeline.stopword_tokenizer(
-            ankura.pipeline.default_tokenizer(),
-            open_download('stopwords/english.txt'),
+        ankura.pipeline.remove_tokenizer(
+            ankura.pipeline.stopword_tokenizer(
+                ankura.pipeline.default_tokenizer(),
+                open_download('stopwords/english.txt'),
+            ),
+            r'^(.{0,2}|.{15,})$', # remove any token t for which 2<len(t)<=15
         ),
         ankura.pipeline.composite_labeler(
             ankura.pipeline.title_labeler(),
@@ -108,7 +111,7 @@ def newsgroups():
         ),
         ankura.pipeline.length_filterer(),
     )
-    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 50)
+    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 50, 2000)
     return pipeline.run(_path('newsgroups.pickle'))
 
 
