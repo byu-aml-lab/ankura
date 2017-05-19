@@ -32,9 +32,10 @@ def _sample_categorical(counts):
     raise ValueError(counts)
 
 
-# POD types used by topic prediction
+# POD types used for topic prediction
 TokenTopic = collections.namedtuple('TokenTopic', 'token loc topic')
-DocumentTheta = collections.namedtuple('Document', 'text tokens metadata theta')
+DocumentTheta = collections.namedtuple('DocumentTheta',
+                                       'text tokens metadata theta')
 
 
 def predict_topics(doc, topics, alpha=.01, num_iters=10):
@@ -65,3 +66,10 @@ def predict_topics(doc, topics, alpha=.01, num_iters=10):
     tokens = [TokenTopic(t.token, t.loc, z_n) for t, z_n in zip(doc.tokens, z)]
     theta = counts / counts.sum()
     return DocumentTheta(doc.text, tokens, doc.metadata, theta)
+
+
+def topic_transform(corpus, topics, alpha=.01, num_iters=10):
+    """Auguments a corpus so that it includes topic predictions"""
+    corpus.documents[:] = [predict_topics(doc, topics, alpha, num_iters)
+                           for doc in corpus.documents]
+    return corpus

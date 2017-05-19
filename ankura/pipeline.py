@@ -200,6 +200,21 @@ def regex_tokenizer(base_tokenizer, pattern, repl):
     return _tokenizer
 
 
+def remove_tokenizer(base_tokenizer, pattern):
+    """Transforms the output of another tokenizer by removing all tokens which
+    match a regular expression. Note that the entire token is removed if any
+    part of it matches the regular expression, so it may be desirable to use ^
+    and $ anchors to match the entire token.
+    """
+    remove_re = re.compile(pattern).search
+    @functools.wraps(remove_tokenizer)
+    def _tokenizer(data):
+        tokens = base_tokenizer(data)
+        tokens = [t for t in tokens if not remove_re(t.token)]
+        return tokens
+    return _tokenizer
+
+
 def _tokenset(tokens, strip):
     if strip:
         return set(t.strip() for t in tokens)
