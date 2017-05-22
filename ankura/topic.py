@@ -46,6 +46,10 @@ def predict_topics(doc, topics, alpha=.01, num_iters=10):
     document-topic distribution is used.
     """
     T = topics.shape[1]
+
+    if not doc.tokens:
+        return DocumentTheta(doc.text, [], doc.metadata, numpy.ones(T) / T)
+
     z = numpy.zeros(len(doc.tokens), dtype='uint')
     counts = numpy.zeros(T, dtype='uint')
 
@@ -72,4 +76,3 @@ def topic_transform(corpus, topics, alpha=.01, num_iters=10):
     """Auguments a corpus so that it includes topic predictions"""
     corpus.documents[:] = [predict_topics(doc, topics, alpha, num_iters)
                            for doc in corpus.documents]
-    return corpus
