@@ -3,6 +3,8 @@
 import numpy
 import random
 import collections
+import scipy.spatial
+import sys
 
 
 def topic_summary(topics, corpus=None, n=10):
@@ -76,3 +78,12 @@ def topic_transform(corpus, topics, alpha=.01, num_iters=10):
     """Auguments a corpus so that it includes topic predictions"""
     corpus.documents[:] = [predict_topics(doc, topics, alpha, num_iters)
                            for doc in corpus.documents]
+
+
+def cross_reference(doc, corpus, n=sys.maxsize, threshold=1):
+    """Finds the nearest documents by topic similarity"""
+    dists = numpy.array([scipy.spatial.distance.cosine(doc.theta, d.theta)
+                         if doc is not d else float('nan')
+                         for d in corpus.documents])
+    return list(corpus.documents[i] for i in dists.argsort()[:n]
+                if dists[i] <= threshold)
