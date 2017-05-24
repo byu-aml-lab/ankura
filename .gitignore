@@ -1,3 +1,6 @@
 __pycache__
 *.pickle
 .cache/
+
+.coverage
+htmlcov

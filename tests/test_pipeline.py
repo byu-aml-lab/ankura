@@ -16,8 +16,20 @@ def _mock_file(name, data):
     return docfile
 
 
+def test_glob_inputer(tmpdir):
+    """Tests ankura.pipeline.glob_inputer"""
+    tmpdir.join('baz').write('baz')
+    tmpdir.join('bar').write('bar')
+    tmpdir.join('foo').write('foo')
+
+    inputer = glob_inputer(str(tmpdir.join('b*')))
+    actual = {f.read() for f in inputer()}
+    expected = {b'baz', b'bar'}
+    assert actual == expected
+
+
 def test_whole_extractor():
-    """Tests whole_extractor"""
+    """Tests ankura.pipeline.whole_extractor"""
     name, data = 'name', 'lorem ipsum\ndolar set'
     docfile = _mock_file(name, data)
     expected = [Text(name, data)]
@@ -26,7 +38,7 @@ def test_whole_extractor():
 
 
 def test_skip_extractor():
-    """Tests skip_extractor"""
+    """Tests ankura.pipeline.skip_extractor"""
     name, delim = 'name', '\n\n'
     docfile = _mock_file(name, 'header\nheader\n\nlorem ipsum\ndolar set.')
     expected = [Text(name, 'lorem ipsum\ndolar set.')]
@@ -35,14 +47,14 @@ def test_skip_extractor():
 
 
 def test_skip_extractor_err():
-    """Tests the failure case for skip_extractor"""
+    """Tests the failure case for ankura.pipeline.skip_extractor"""
     docfile = _mock_file('name', 'header\nheader\n\nlorem ipsum\ndolar set.')
     with pytest.raises(ValueError):
         list(skip_extractor('$$$')(docfile))
 
 
 def test_line_extractor():
-    """Tests line_extractor"""
+    """Tests ankura.pipeline.line_extractor"""
     docfile = _mock_file('file', ' lorem ipsum dolar set\nasdf qwer zxcv')
     expected = [
         Text('lorem', 'ipsum dolar set'),
@@ -53,14 +65,14 @@ def test_line_extractor():
 
 
 def test_line_extractor_err():
-    """Tests the failure case for line_extractor"""
+    """Tests the failure case for ankura.pipeline.line_extractor"""
     docfile = _mock_file('file', 'lorem$$$ipsum\nasdf qwer\nfoo$$$bar')
     with pytest.raises(ValueError):
         list(line_extractor('$$$')(docfile))
 
 
 def test_html_extractor():
-    """Tests html_extractor"""
+    """Tests ankura.pipeline.html_extractor"""
     name = 'page.html'
     html = """<!doctype html>
 <html>
@@ -84,8 +96,8 @@ Lorem ipsum dolar set"""
 
 
 def test_targz_extractor():
-    """Tests targz_extractor, which in turn relies on
-    ankura.gzip_extractor and ankura.tar_extractor
+    """Tests ankura.pipeline.targz_extractor, which in turn relies on
+    ankura.pipeline.gzip_extractor and ankura.pipeline.tar_extractor
     """
     expected = [
         Text('lorem.txt', 'lorem ipsum dolar set'),
@@ -93,16 +105,24 @@ def test_targz_extractor():
         Text('foobar.txt', 'foobar foobaz spam eggs'),
     ]
 
+    # create in memory tar file
     tbuf = io.BytesIO()
     tfile = tarfile.TarFile(fileobj=tbuf, mode='w')
+    # add directory (make sure its skipped)
+    info = tarfile.TarInfo('directory')
+    info.type = tarfile.DIRTYPE
+    tfile.addfile(info)
+    # add expected files
     for text in expected:
         data = text.data.encode()
         info = tarfile.TarInfo(text.name)
         info.size = len(data)
         tfile.addfile(info, io.BytesIO(data))
+    # reset buffer so we can read it
     tfile.close()
     tbuf.seek(0)
 
+    # rewrite the tar file as an in memory gzip
     zbuf = io.BytesIO()
     zfile = gzip.GzipFile(fileobj=zbuf, mode='w')
     zfile.write(tbuf.read())
@@ -114,8 +134,8 @@ def test_targz_extractor():
 
 
 def test_default_tokenizer():
-    """Tests ankura.default_tokenizer, which in turn relies on
-    ankura.translate_tokenizer and ankura.split_tokenizer
+    """Tests ankura.pipeline.default_tokenizer, which in turn relies on
+    ankura.pipeline.translate_tokenizer and ankura.pipeline.split_tokenizer
     """
     #       0         1           2         3         4
     #       012345678901 23456 78901234567890123 456789
@@ -243,6 +263,32 @@ def test_frequency_tokenizer():
             actual = pipeline.tokenizer(text.data)
             assert actual == expected, (text.data, rare, common)
 
+    # make sure that the noop frequency_tokenizer just reuses base tokenizer
+    pipeline = Pipeline(
+        _mock_inputer,
+        whole_extractor(),
+        split_tokenizer(),
+        noop_labeler(),
+        keep_filterer(),
+    )
+    assert frequency_tokenizer(pipeline, None, None) is pipeline.tokenizer
+
+
+
+def test_remove_tokenizer():
+    """Tests ankura.pipeline.remove_tokenizer"""
+    #       0         1         2         3
+    #       0123456789012345678901234567890
+    data = 'Lorem Ipsum $100 token weird$69'
+    expected = [
+        TokenLoc('Lorem', 0),
+        TokenLoc('Ipsum', 6),
+        TokenLoc('token', 17),
+        TokenLoc('weird$69', 23),
+    ]
+    actual = remove_tokenizer(split_tokenizer(), r'^\$\d+$')(data)
+    assert actual == expected
+
 
 def test_noop_labeler():
     """Tests ankura.pipeline.noop_labeler"""
@@ -283,6 +329,11 @@ def test_composite_labeler():
     assert labeler('a/b') == {'title': 'a/b', 'dirname': 'a'}
 
 
+def test_keep_filterer():
+    """Tests ankura.pipeline.keep_filterer"""
+    assert keep_filterer()(Document('', [TokenLoc(0, 0)], {}))
+
+
 def test_length_filterer():
     """Tests ankura.pipeline.length_filterer"""
     assert not length_filterer()(Document('', [], {}))
@@ -290,3 +341,49 @@ def test_length_filterer():
     assert length_filterer(2)(
         Document('', [TokenLoc(0, 0), TokenLoc(1, 5)], {})
     )
+
+
+def test_pipeline_run(tmpdir):
+    """Tests ankura.pipeline.Pipeline.run"""
+    pickle_path = str(tmpdir.join('corpus.pickle'))
+
+    disk = [
+        #          0         1
+        #          01234567890
+        Text('1', 'lorem ipsum'),
+        Text('2', 'ipsum dolar'),
+    ]
+    def _mock_inputer():
+        for text in disk:
+            yield _mock_file(text.name, text.data)
+    pipeline = Pipeline(
+        _mock_inputer,
+        whole_extractor(),
+        split_tokenizer(),
+        noop_labeler(),
+        keep_filterer(),
+    )
+    expected = Corpus(
+        [
+            Document(
+                'lorem ipsum',
+                [TokenLoc(0, 0), TokenLoc(1, 6)],
+                {},
+            ),
+            Document(
+                'ipsum dolar',
+                [TokenLoc(1, 0), TokenLoc(2, 6)],
+                {},
+            ),
+        ],
+        ['lorem', 'ipsum', 'dolar'],
+    )
+
+    # test the pipeline import
+    actual = pipeline.run(pickle_path)
+    assert expected == actual
+
+    # test the pipeline pickling (since the import will fail, must read pickle)
+    pipeline = Pipeline(None, None, None, None, None)
+    actual = pipeline.run(pickle_path)
+    assert expected == actual
