@@ -91,7 +91,7 @@ class Dataset(object):
             norm = count * (count - 1)
 
             # update H_hat and H_tilde (see supplementary)
-            if norm != 0:
+            if norm >= 2:
                 H_hat[row_indices] += H_tilde.data[col_start: col_end] / norm
                 H_tilde.data[col_start: col_end] /= numpy.sqrt(norm)
 
