@@ -38,10 +38,7 @@ def file_inputer(*filenames):
 
 def glob_inputer(pattern):
     """Generates file objects for each filename matching a glob pattern"""
-    @functools.wraps(glob_inputer)
-    def _inputer():
-        return file_inputer(*glob.glob(pattern))
-    return _inputer
+    return file_inputer(*glob.glob(pattern))
 
 
 # Extractors are callables which generate Text from a file object. Typically
@@ -216,10 +213,7 @@ def remove_tokenizer(base_tokenizer, pattern):
 
 
 def _tokenset(tokens, strip):
-    if strip:
-        return set(t.strip() for t in tokens)
-    else:
-        return set(tokens)
+    return set(t.strip() for t in tokens) if strip else set(tokens)
 
 
 def combine_tokenizer(base_tokenizer, combine, repl, strip=True):
@@ -409,35 +403,6 @@ class VocabBuilder(object):
         return [TokenLoc(self[t.token], t.loc) for t in tokens]
 
 
-class DocumentShelf(object):
-    """Implements a small shelve-backed subset of list for Corpus documents"""
-
-    def __init__(self, filename):
-        self._filename = filename
-        self._db = shelve.open(filename, 'n')
-
-    def append(self, doc):
-        """Add a document to the document shelf"""
-        self._db[str(len(self._db))] = doc
-
-    def __getitem__(self, index):
-        return self._db[str(index)]
-
-    def __len__(self):
-        return len(self._db)
-
-    def __iter__(self):
-        for i in range(len(self)): # pylint: disable=consider-using-enumerate
-            yield self[i]
-
-    def __getstate__(self):
-        return self._filename
-
-    def __setstate__(self, state):
-        self._filename = state
-        self._db = shelve.open(state, 'c')
-
-
 class Pipeline(object):
     """Pipeline describes the process of importing a Corpus"""
 
@@ -449,14 +414,13 @@ class Pipeline(object):
         self.labeler = labeler
         self.filterer = filterer
 
-    def run(self, pickle_path=None, shelve_path=None):
+    def run(self, pickle_path=None):
         """Creates a new Corpus using the Pipeline"""
         if pickle_path and os.path.exists(pickle_path):
             return pickle.load(open(pickle_path, 'rb'))
 
-        documents = DocumentShelf(shelve_path) if shelve_path else []
+        documents = []
         vocab = VocabBuilder()
-
         for docfile in self.inputer():
             for text in self.extractor(docfile):
                 tokens = self.tokenizer(text.data)
@@ -473,5 +437,4 @@ class Pipeline(object):
 
 
 # TODO Replace shelve with better performing persistant storage
-# Could use sqlite3 for a better performing random access
-# Could also disallow random access and only have document streams
+# Could use shelve or sqlite3, especially if we disallow random access for docs
