@@ -63,12 +63,12 @@ def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None,
         else set(range(len(corpus.documents)))
     # account only for labels found in labeled set [via set comprehension]
     labels_found = {corpus.documents[i].metadata[attr_name] for i in to_label}
-    label_types = {v: i+V for i, v in enumerate(labels_found)}
+    label_types = {v: i+V for i, v in enumerate(sorted(labels_found))}
 
     H_hat = numpy.zeros(V + len(label_types))
 
     for i, doc in enumerate(corpus.documents):
-        n_d = len(doc.types)
+        n_d = len(doc.tokens)
         if i in to_label:
             n_d += label_weight
         if n_d <= 1:
@@ -78,11 +78,11 @@ def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None,
         sqrt_norm = numpy.sqrt(norm)
 
         # intentionally adding duplicate (row, col) entries
-        for token in doc.types:
+        for token in doc.tokens:
             data.append(sqrt_norm)
-            row.append(token.type)
+            row.append(token.token)
             col.append(i)
-            H_hat[token.type] += norm
+            H_hat[token.token] += norm
 
         if i in to_label:
             cur_type = label_types[corpus.documents[i].metadata[attr_name]]
