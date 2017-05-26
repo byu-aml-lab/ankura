@@ -88,12 +88,12 @@ def test_build_supervised_cooccurrence1():
         [
             pipeline.Document(
                 'dog dog',
-                [pipeline.TypeLoc(0, 0), pipeline.TypeLoc(0, 4)],
+                [pipeline.TokenLoc(0, 0), pipeline.TokenLoc(0, 4)],
                 {'label': 'awesome'},
             ),
             pipeline.Document(
                 'cat dog',
-                [pipeline.TypeLoc(1, 0), pipeline.TypeLoc(0, 4)],
+                [pipeline.TokenLoc(1, 0), pipeline.TokenLoc(0, 4)],
                 {'label': 'terrible'},
             ),
         ],
@@ -117,12 +117,12 @@ def test_build_supervised_cooccurrence2():
         [
             pipeline.Document(
                 'dog dog',
-                [pipeline.TypeLoc(0, 0), pipeline.TypeLoc(0, 4)],
+                [pipeline.TokenLoc(0, 0), pipeline.TokenLoc(0, 4)],
                 {'label': 'awesome'},
             ),
             pipeline.Document(
                 'cat dog',
-                [pipeline.TypeLoc(1, 0), pipeline.TypeLoc(0, 4)],
+                [pipeline.TokenLoc(1, 0), pipeline.TokenLoc(0, 4)],
                 {'label': 'terrible'},
             ),
         ],
