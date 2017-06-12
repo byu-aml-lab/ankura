@@ -4,23 +4,28 @@ import scipy.sparse
 import numpy
 import random
 
+import numba
+
 from .pipeline import Dataset, filter_empty_words
 from .util import sample_categorical
 
 
+@numba.jit(nopython=True)
 def logsum_exp(y):
     """Computes the sum of y in log space"""
     ymax = y.max()
     return ymax + numpy.log((numpy.exp(y - ymax)).sum())
 
 
-_C1 = 1e-4
-_C2 = .75
 
+@numba.jit(nopython=True)
 def exponentiated_gradient(Y, X, XX, epsilon):
     """Solves an exponentied gradient problem with L2 divergence"""
+    _C1 = 1e-4
+    _C2 = .75
+
     XY = numpy.dot(X, Y)
-    YY = float(numpy.dot(Y, Y))
+    YY = numpy.dot(Y, Y)
 
     alpha = numpy.ones(X.shape[0]) / X.shape[0]
     old_alpha = numpy.copy(alpha)
@@ -28,8 +33,8 @@ def exponentiated_gradient(Y, X, XX, epsilon):
     old_log_alpha = numpy.copy(log_alpha)
 
     AXX = numpy.dot(alpha, XX)
-    AXY = float(numpy.dot(alpha, XY))
-    AXXA = float(numpy.dot(AXX, alpha.transpose()))
+    AXY = numpy.dot(alpha, XY)
+    AXXA = numpy.dot(AXX, alpha.transpose())
 
     grad = 2 * (AXX - XY)
     old_grad = numpy.copy(grad)
@@ -39,7 +44,7 @@ def exponentiated_gradient(Y, X, XX, epsilon):
     # Initialize book keeping
     stepsize = 1
     decreased = False
-    convergence = float('inf')
+    convergence = numpy.inf
 
     while convergence >= epsilon:
         old_obj = new_obj
@@ -55,8 +60,8 @@ def exponentiated_gradient(Y, X, XX, epsilon):
 
         # Precompute quantities needed for adaptive stepsize
         AXX = numpy.dot(alpha, XX)
-        AXY = float(numpy.dot(alpha, XY))
-        AXXA = float(numpy.dot(AXX, alpha.transpose()))
+        AXY = numpy.dot(alpha, XY)
+        AXXA = numpy.dot(AXX, alpha.transpose())
 
         # See if stepsize should decrease
         old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
@@ -98,21 +103,16 @@ def recover_topics(dataset, anchors, epsilon=2e-7):
     K = len(anchors)
     A = numpy.zeros((V, K))
 
-    P_w = numpy.diag(Q.sum(axis=1))
-    for word in range(V):
-        if numpy.isnan(P_w[word, word]):
-            P_w[word, word] = 1e-16
-
-    # normalize the rows of Q to get Q_prime
-    for word in range(V):
-        Q[word, :] = Q[word, :] / Q[word, :].sum()
-
     # compute normalized anchors X, and precompute X * X.T
     X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
     XX = numpy.dot(X, X.transpose())
 
+    P_w = numpy.diag(Q.sum(axis=1))
     for word in range(V):
-        alpha = exponentiated_gradient(Q[word, :], X, XX, epsilon)
+        if numpy.isnan(P_w[word, word]):
+            P_w[word, word] = 1e-16
+        # use normalized row of Q
+        alpha = exponentiated_gradient(Q[word, :] / Q[word, :].sum(), X, XX, epsilon)
         if numpy.isnan(alpha).any():
             alpha = numpy.ones(K) / K
         A[word, :] = alpha
