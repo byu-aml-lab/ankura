@@ -32,6 +32,78 @@ def build_cooccurrence(corpus):
     return numpy.array(Q / D)
 
 
+def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None,
+                                  label_weight=1, smoothing=1e-7):
+    """Constructs a cooccurrence matrix from a labeled Corpus
+
+    To find the label associated with a given document, this function looks at
+    the document's metadata attribute for the value associated with the
+    attr_name key. Thus, this function is for classification tasks, not
+    regression.
+
+    When labeled_docs is None or emtpy, all documents with attr_name as a key
+    in their metadata are considered labeled; for semisupervised learning,
+    specify only the documents you want labeled as an iterable of integers.
+
+    To specify how strong a cooccurrence effect a label has with the tokens in
+    the document, set label_weight accordingly. label_weight must be greater
+    than zero.
+
+    In the case of unlabeled documents, equal likelihood is given to all known
+    classes, equal to smoothing. smoothing must be greater than zero.
+
+    Returns cooccurrence matrix and a mapping from the label to its index
+    """
+    assert label_weight > 0, 'label_weight must be greater than zero'
+    assert smoothing > 0, 'smoothing must be greater than zero'
+    V, D = len(corpus.vocabulary), len(corpus.documents)
+    data, row, col = [], [], []
+
+    to_label = set(labeled_docs) if labeled_docs \
+        else set(range(len(corpus.documents)))
+    # account only for labels found in labeled set [via set comprehension]
+    labels_found = {corpus.documents[i].metadata[attr_name] for i in to_label}
+    label_types = {v: i+V for i, v in enumerate(sorted(labels_found))}
+
+    H_hat = numpy.zeros(V + len(label_types))
+
+    for i, doc in enumerate(corpus.documents):
+        n_d = len(doc.tokens)
+        if i in to_label:
+            n_d += label_weight
+        if n_d <= 1:
+            continue
+
+        norm = 1 / (n_d * (n_d - 1))
+        sqrt_norm = numpy.sqrt(norm)
+
+        # intentionally adding duplicate (row, col) entries
+        for token in doc.tokens:
+            data.append(sqrt_norm)
+            row.append(token.token)
+            col.append(i)
+            H_hat[token.token] += norm
+
+        if i in to_label:
+            cur_type = label_types[corpus.documents[i].metadata[attr_name]]
+            data.append(sqrt_norm * label_weight)
+            row.append(cur_type)
+            col.append(i)
+            H_hat[cur_type] += norm * label_weight
+        else:
+            for label, cur_type in label_types.items():
+                data.append(sqrt_norm * smoothing)
+                row.append(cur_type)
+                col.append(i)
+                H_hat[cur_type] += norm * smoothing
+
+    # duplicate entries are summed together when COO is converted to CSC
+    H_tilde = scipy.sparse.coo_matrix((data, (row, col)),
+                                      (V + len(label_types), D)).tocsc()
+    Q = H_tilde * H_tilde.T - numpy.diag(H_hat)
+    return numpy.array(Q / D), label_types
+
+
 def _random_projection(A, k):
     R = numpy.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
     return numpy.dot(A, R * numpy.sqrt(3))
