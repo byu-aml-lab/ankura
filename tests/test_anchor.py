@@ -83,7 +83,57 @@ def test_build_cooccurrence2():
 
 
 def test_build_supervised_cooccurrence1():
-    """Tests build_supervised_cooccurrence (example 1)"""
+    """Tests build_supervised_cooccurrence (example 1, all labeled)"""
+    corpus = pipeline.Corpus(
+        [
+            pipeline.Document(
+                'dog dog',
+                [pipeline.TokenLoc(0, 0), pipeline.TokenLoc(0, 4)],
+                {'label': 'awesome'},
+            ),
+            pipeline.Document(
+                'cat dog',
+                [pipeline.TokenLoc(1, 0), pipeline.TokenLoc(0, 4)],
+                {'label': 'terrible'},
+            ),
+        ],
+        ['dog', 'cat'],
+    )
+    expected = numpy.array([[2/3, 1/3, 2/3, 1/3],
+                            [1, 0, 0, 1]])
+    actual, _ = anchor.build_supervised_cooccurrence(corpus,
+                                                     'label',
+                                                     labeled_docs=None)
+    assert numpy.allclose(expected, actual)
+
+
+def test_build_supervised_cooccurrence2():
+    """Tests build_supervised_cooccurrence (example 2, partially labeled)"""
+    corpus = pipeline.Corpus(
+        [
+            pipeline.Document(
+                'dog dog',
+                [pipeline.TokenLoc(0, 0), pipeline.TokenLoc(0, 4)],
+                {'label': 'awesome'},
+            ),
+            pipeline.Document(
+                'cat dog',
+                [pipeline.TokenLoc(1, 0), pipeline.TokenLoc(0, 4)],
+                {'label': 'terrible'},
+            ),
+        ],
+        ['dog', 'cat'],
+    )
+    expected = numpy.array([[2/3, 1/3, 1],
+                            [1, 0, 0]])
+    actual, _ = anchor.build_supervised_cooccurrence(corpus,
+                                                     'label',
+                                                     labeled_docs=[0])
+    assert numpy.allclose(expected, actual)
+
+
+def test_build_pseudo_cooccurrence1():
+    """Tests build_pseudo_cooccurrence (example 1)"""
     corpus = pipeline.Corpus(
         [
             pipeline.Document(
@@ -103,16 +153,16 @@ def test_build_supervised_cooccurrence1():
                                             [1, 0, 0, 1],
                                             [2, 0, 0, 0],
                                             [1, 1, 0, 0]])
-    actual, _ = anchor.build_supervised_cooccurrence(corpus,
-                                                     'label',
-                                                     labeled_docs=None,
-                                                     label_weight=1,
-                                                     smoothing=1e-7)
+    actual, _ = anchor.build_pseudo_cooccurrence(corpus,
+                                                 'label',
+                                                 labeled_docs=None,
+                                                 label_weight=1,
+                                                 smoothing=1e-7)
     assert numpy.allclose(expected, actual)
 
 
-def test_build_supervised_cooccurrence2():
-    """Tests build_supervised_cooccurrence (example 2)"""
+def test_build_pseudo_cooccurrence2():
+    """Tests build_pseudo_cooccurrence (example 2)"""
     corpus = pipeline.Corpus(
         [
             pipeline.Document(
@@ -133,11 +183,11 @@ def test_build_supervised_cooccurrence2():
     expected = (1/2) * numpy.array([[2/6, 1/A, 2/6+eps/A],
                                     [1/A, 0, eps/A],
                                     [2/6+eps/A, eps/A, (eps*eps-eps)/A]])
-    actual, _ = anchor.build_supervised_cooccurrence(corpus,
-                                                     'label',
-                                                     labeled_docs=[0],
-                                                     label_weight=1,
-                                                     smoothing=eps)
+    actual, _ = anchor.build_pseudo_cooccurrence(corpus,
+                                                 'label',
+                                                 labeled_docs=[0],
+                                                 label_weight=1,
+                                                 smoothing=eps)
     assert numpy.allclose(expected, actual)
 
 
