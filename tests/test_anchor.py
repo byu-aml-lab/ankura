@@ -56,6 +56,13 @@ def test_build_cooccurrence2():
                 {},
             ),
             pipeline.Document(
+                'cat',
+                [
+                    pipeline.TokenLoc(1, 0),
+                ],
+                {},
+            ),
+            pipeline.Document(
                 'cat cat cat',
                 [
                     pipeline.TokenLoc(1, 0),
@@ -82,7 +89,7 @@ def test_build_cooccurrence2():
     assert numpy.allclose(expected, actual)
 
 
-def test_build_supervised_cooccurrence1():
+def test_supervised_cooccurrence1():
     """Tests build_supervised_cooccurrence (example 1)"""
     corpus = pipeline.Corpus(
         [
@@ -111,7 +118,7 @@ def test_build_supervised_cooccurrence1():
     assert numpy.allclose(expected, actual)
 
 
-def test_build_supervised_cooccurrence2():
+def test_supervised_cooccurrence2():
     """Tests build_supervised_cooccurrence (example 2)"""
     corpus = pipeline.Corpus(
         [

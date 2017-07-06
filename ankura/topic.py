@@ -71,7 +71,7 @@ def predict_topics(doc, topics, alpha=.01, num_iters=10):
 
     tokens = [TokenTopic(t.token, t.loc, z_n) for t, z_n in zip(doc.tokens, z)]
     theta = counts / counts.sum()
-    return DocumentTheta(doc.text, tokens, doc.metadata, theta)
+    return DocumentTheta(doc.text, tuple(tokens), doc.metadata, tuple(theta))
 
 
 def topic_transform(corpus, topics, alpha=.01, num_iters=10):
@@ -80,10 +80,28 @@ def topic_transform(corpus, topics, alpha=.01, num_iters=10):
                            for doc in corpus.documents]
 
 
-def cross_reference(doc, corpus, n=sys.maxsize, threshold=1):
-    """Finds the nearest documents by topic similarity"""
-    dists = numpy.array([scipy.spatial.distance.cosine(doc.theta, d.theta)
-                         if doc is not d else float('nan')
-                         for d in corpus.documents])
-    return list(corpus.documents[i] for i in dists.argsort()[:n]
-                if dists[i] <= threshold)
+def cross_reference(corpus, doc=None, n=sys.maxsize, threshold=1):
+    """Finds the nearest documents by topic similarity.
+
+    If a document is given, then a list of references is returned for that
+    document. Otherwise, cross references for each document in a corpus are
+    given in a dict keyed by the documents. Consequently, the documents must be
+    hashable.
+
+    The closest n documents will be retruned (default=sys.maxsize). Documents
+    whose similarity is behond the threshold (default=1) will not be returned.
+    A threshold of 1 indicates that no filtering should be done, while a 0
+    indicates that only exact topical matches should be returned. Note that
+    the corpus must use DocumentTheta from predict_topics (or topic_transform).
+    """
+    def _xrefs(doc):
+        dists = numpy.array([scipy.spatial.distance.cosine(doc.theta, d.theta)
+                             if doc is not d else float('nan')
+                             for d in corpus.documents])
+        return list(corpus.documents[i] for i in dists.argsort()[:n]
+                    if dists[i] <= threshold)
+
+    if doc:
+        return _xrefs(doc)
+    else:
+        return {doc: _xrefs(doc) for doc in corpus.documents}

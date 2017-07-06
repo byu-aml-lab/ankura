@@ -32,6 +32,7 @@ def build_cooccurrence(corpus):
     return numpy.array(Q / D)
 
 
+# pylint: disable=too-many-locals
 def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None,
                                   label_weight=1, smoothing=1e-7):
     """Constructs a cooccurrence matrix from a labeled Corpus
@@ -91,7 +92,7 @@ def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None,
             col.append(i)
             H_hat[cur_type] += norm * label_weight
         else:
-            for label, cur_type in label_types.items():
+            for cur_type in label_types.values():
                 data.append(sqrt_norm * smoothing)
                 row.append(cur_type)
                 col.append(i)

@@ -8,7 +8,6 @@ import io
 import os
 import pickle
 import re
-import shelve
 import string
 import tarfile
 
