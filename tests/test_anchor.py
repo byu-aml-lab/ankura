@@ -140,6 +140,7 @@ def test_build_supervised_cooccurrence2():
                                                      labeled_docs=[0])
     assert numpy.allclose(expected, actual)
 
+# TODO test build_supervised_coocurrence with document with 1 token skip
 
 def test_build_pseudo_cooccurrence1():
     """Tests build_pseudo_cooccurrence (example 1)"""
