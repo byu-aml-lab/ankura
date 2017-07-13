@@ -32,23 +32,62 @@ def build_cooccurrence(corpus):
     return numpy.array(Q / D)
 
 
-# pylint: disable=too-many-locals
-def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None,
-                                  label_weight=1, smoothing=1e-7):
-    """Constructs a cooccurrence matrix from a labeled Corpus
+def build_supervised_cooccurrence(corpus, attr_name, labeled_docs=None):
+    """Constructs a cooccurrence matrix from a labeled Corpus, according to
+    supervised anchor words.
 
     To find the label associated with a given document, this function looks at
     the document's metadata attribute for the value associated with the
     attr_name key. Thus, this function is for classification tasks, not
     regression.
 
-    When labeled_docs is None or emtpy, all documents with attr_name as a key
+    When labeled_docs is None or empty, all documents with attr_name as a key
+    in their metadata are considered labeled; for semisupervised learning,
+    specify only the documents you want labeled as an iterable of integers.
+    """
+    V = len(corpus.vocabulary)
+    to_label = set(labeled_docs) if labeled_docs \
+        else set(range(len(corpus.documents)))
+    # account only for labels found in labeled set [via set comprehension]
+    labels_found = {corpus.documents[i].metadata[attr_name] for i in to_label}
+    label_types = {v: i for i, v in enumerate(sorted(labels_found))}
+
+    label_cols = numpy.zeros((V, len(label_types)))
+
+    for i in to_label:
+        label = corpus.documents[i].metadata[attr_name]
+        for token in corpus.documents[i].tokens:
+            label_cols[token.token, label_types[label]] += 1
+
+    # row normalize
+    label_cols = label_cols / label_cols.sum(axis=1, keepdims=True)
+    # the only time division by zero happens is when all values in the row were
+    # zeros
+    label_cols[numpy.isnan(label_cols)] = 0
+    q_bar = build_cooccurrence(corpus)
+    q_bar = q_bar / q_bar.sum(axis=1, keepdims=True)
+    q_bar[numpy.isnan(q_bar)] = 0
+
+    return numpy.append(q_bar, label_cols, axis=1), label_types
+
+
+# pylint: disable=too-many-locals
+def build_pseudo_cooccurrence(corpus, attr_name, labeled_docs=None,
+                              label_weight=1, smoothing=1e-7):
+    """Constructs a cooccurrence matrix from a labeled Corpus, counting labels
+    as pseudo-words.
+
+    To find the label associated with a given document, this function looks at
+    the document's metadata attribute for the value associated with the
+    attr_name key. Thus, this function is for classification tasks, not
+    regression.
+
+    When labeled_docs is None or empty, all documents with attr_name as a key
     in their metadata are considered labeled; for semisupervised learning,
     specify only the documents you want labeled as an iterable of integers.
 
-    To specify how strong a cooccurrence effect a label has with the tokens in
-    the document, set label_weight accordingly. label_weight must be greater
-    than zero.
+    To specify how many label pseudo-words are counted in a labeled document,
+    set label_weight accordingly. label_weight must be greater than zero.
 
     In the case of unlabeled documents, equal likelihood is given to all known
     classes, equal to smoothing. smoothing must be greater than zero.
@@ -195,10 +234,11 @@ def _logsum_exp(y):
     return ymax + numpy.log((numpy.exp(y - ymax)).sum())
 
 
-_C1 = 1e-4
-_C2 = .75
-
 def _exponentiated_gradient(Y, X, XX, epsilon):
+    # pylint: disable=invalid-name
+    _C1 = 1e-4
+    _C2 = .75
+
     XY = numpy.dot(X, Y)
     YY = float(numpy.dot(Y, Y))
 
