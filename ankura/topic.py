@@ -6,6 +6,8 @@ import collections
 import scipy.spatial
 import sys
 
+import ankura.util
+
 
 def topic_summary(topics, corpus=None, n=10):
     """Gets the top n tokens per topic.
@@ -23,15 +25,6 @@ def topic_summary(topics, corpus=None, n=10):
         summary = [[corpus.vocabulary[w] for w in topic] for topic in summary]
 
     return summary
-
-
-def _sample_categorical(counts):
-    sample = random.uniform(0, sum(counts))
-    for key, count in enumerate(counts):
-        if sample < count:
-            return key
-        sample -= count
-    raise ValueError(counts)
 
 
 # POD types used for topic prediction
@@ -60,13 +53,11 @@ def predict_topics(doc, topics, alpha=.01, num_iters=10):
         z[n] = z_n
         counts[z_n] += 1
 
-    def _prob(w_n, t):
-        return (alpha + counts[t]) * topics[w_n, t]
-
     for _ in range(num_iters):
         for n, w_n in enumerate(doc.tokens):
             counts[z[n]] -= 1
-            z[n] = _sample_categorical([_prob(w_n.token, t) for t in range(T)])
+            cond = [alpha + counts[t] * topics[w_n, t] for t in range(T)]
+            z[n] = ankura.util.sample_categorical(cond)
             counts[z[n]] += 1
 
     tokens = [TokenTopic(t.token, t.loc, z_n) for t, z_n in zip(doc.tokens, z)]

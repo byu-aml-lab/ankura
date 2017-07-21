@@ -4,36 +4,24 @@
 import flask
 
 import ankura
+import ankura.util
 
 app = flask.Flask(__name__, static_url_path='')
 
 
-class memoize(object): # pylint: disable=invalid-name
-    """Decorator for memoizing a function"""
-
-    def __init__(self, func):
-        self.func = func
-        self.cache = {}
-
-    def __call__(self, *args):
-        if args not in self.cache:
-            self.cache[args] = self.func(*args)
-        return self.cache[args]
-
-
-@memoize
+@ankura.util.memoize
 def get_corpus():
     """Gets the 20 newsgroups corpus"""
     return ankura.corpus.newsgroups()
 
 
-@memoize
+@ankura.util.memoize
 def get_Q():
     """Gets the cooccurrence matrix for the corpus"""
     return ankura.anchor.build_cooccurrence(get_corpus())
 
 
-@memoize
+@ankura.util.memoize
 def get_gs_anchors(k=20):
     """Gets the default gram-schmidt anchors for the corpus"""
     corpus = get_corpus()

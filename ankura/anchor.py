@@ -5,6 +5,8 @@ import numpy
 import scipy.sparse
 import scipy.stats
 
+import ankura.util
+
 
 def build_cooccurrence(corpus):
     """Constructs a cooccurrence matrix from a Corpus"""
@@ -142,11 +144,6 @@ def build_pseudo_cooccurrence(corpus, attr_name='label', labeled_docs=None,
     return numpy.array(Q / D), label_types
 
 
-def _random_projection(A, k):
-    R = numpy.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
-    return numpy.dot(A, R * numpy.sqrt(3))
-
-
 # pylint: disable=too-many-locals
 def gram_schmidt(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors."""
@@ -160,7 +157,7 @@ def gram_schmidt(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
     Q_orig = Q
     Q = Q / Q.sum(axis=1, keepdims=True)
     if project_dim:
-        Q = _random_projection(Q, project_dim)
+        Q = ankura.util.random_projection(Q, project_dim)
 
     # Setup book keeping
     indices = numpy.zeros(k, dtype=numpy.int)
@@ -227,11 +224,6 @@ def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
     return basis
 
 
-def _logsum_exp(y):
-    ymax = y.max()
-    return ymax + numpy.log((numpy.exp(y - ymax)).sum())
-
-
 def _exponentiated_gradient(Y, X, XX, epsilon):
     # pylint: disable=invalid-name
     _C1 = 1e-4
@@ -268,7 +260,7 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
 
         # Add the gradient and renormalize in logspace, then exponentiate
         log_alpha -= stepsize * grad
-        log_alpha -= _logsum_exp(log_alpha)
+        log_alpha -= ankura.util.logsumexp(log_alpha)
         alpha = numpy.exp(log_alpha)
 
         # Precompute quantities needed for adaptive stepsize
