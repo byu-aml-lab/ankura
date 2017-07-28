@@ -1,6 +1,7 @@
 """Functions for using and displaying topics"""
 
 import numpy
+import functools
 import random
 import collections
 import scipy.spatial
@@ -70,6 +71,8 @@ def topic_transform(corpus, topics, alpha=.01, num_iters=10):
     corpus.documents[:] = [predict_topics(doc, topics, alpha, num_iters)
                            for doc in corpus.documents]
 
+# TODO Add in option topic_transform using lda-c or scikit-learn like classtm
+
 
 def cross_reference(corpus, doc=None, n=sys.maxsize, threshold=1):
     """Finds the nearest documents by topic similarity.
@@ -96,3 +99,13 @@ def cross_reference(corpus, doc=None, n=sys.maxsize, threshold=1):
         return _xrefs(doc)
     else:
         return {doc: _xrefs(doc) for doc in corpus.documents}
+
+
+def free_classifier(topics, Q, labels):
+    """ASDF"""
+    A_f = topics[:, -len(labels):]
+    Q_L = Q[:]
+    @functools.wraps(free_classifier)
+    def _classifier(doc):
+        return labels[numpy.argmax(A_f.dot(doc.theta) + Q_L.dot(doc.H))]
+    return _classifier

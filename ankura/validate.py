@@ -117,3 +117,11 @@ def cross_reference(corpus, xrefs, xref_attr='xref', title_attr='title'):
         contingency[True, False] += FN
         contingency[False, False] += TN
     return contingency
+
+
+def free_classifier(corpus, predictions, cls_attr='class'):
+    """Generate a contingency table for evaluating classifier performance"""
+    contingency = Contingency()
+    for doc, pred in zip(corpus.documents, predictions):
+        contingency[doc.metadata[cls_attr], pred] += 1
+    return contingency

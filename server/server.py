@@ -1,70 +1,60 @@
 #!/usr/bin/python3
 """Runs a user interface for interactive anchor words algorithm"""
 
-import flask
+import functools
+import gzip
+import json
 
 import ankura
-import ankura.util
-
-app = flask.Flask(__name__, static_url_path='')
 
 
-@ankura.util.memoize
-def get_corpus():
-    """Gets the 20 newsgroups corpus"""
-    return ankura.corpus.newsgroups()
+def amazon_json_extractor():
+    """Reads the amazon large json file"""
+    @functools.wraps(amazon_json_extractor)
+    def _extractor(docfile):
+        for line in docfile:
+            review = json.loads(line.decode())
+            name = review['asin'] + '-' + review['reviewerID']
+            data = review['summary'] + ' ' + review['reviewText']
+            yield ankura.pipeline.Text(name, data)
+    return _extractor
 
 
-@ankura.util.memoize
-def get_Q():
-    """Gets the cooccurrence matrix for the corpus"""
-    return ankura.anchor.build_cooccurrence(get_corpus())
+def amazon_labeler(pipeline):
+    """Reads labels for amazon"""
+    metadata = {}
+    for docfile in pipeline.inputer():
+        docfile = gzip.GzipFile(fileobj=docfile)
+        for line in docfile:
+            review = json.loads(line.decode())
+            name = review['asin'] + '-' + review['reviewerID']
+            rating = float(review['overall'])
+            metadata[name] = {'rating': rating, 'asin': review['asin']}
+    @functools.wraps(amazon_labeler)
+    def _labeler(name):
+        return metadata[name]
+    return _labeler
 
 
-@ankura.util.memoize
-def get_gs_anchors(k=20):
-    """Gets the default gram-schmidt anchors for the corpus"""
-    corpus = get_corpus()
-    Q = get_Q()
-    indices = ankura.anchor.gram_schmidt(corpus, Q, k, return_indices=True)
-    anchors = Q[indices, :]
-    tokens = [[corpus.vocabulary[i]] for i in indices]
-    return anchors, tokens
-
-
-def get_topics(anchors):
-    """Gets the topics from a set of anchors"""
-    return ankura.anchor.recover_topics(get_Q(), anchors)
-
-
-@app.route('/topics')
-def topic_request():
-    """Performs a topic request using anchors from the query string"""
-    anchor_tokens = flask.request.args.get('anchors')
-    if anchor_tokens is None:
-        anchor_vectors, anchor_tokens = get_gs_anchors()
-    else:
-        corpus = get_corpus()
-        Q = get_Q()
-        anchor_vectors = ankura.anchor.tandem_anchors(anchor_tokens, Q, corpus)
-
-    topics = get_topics(anchor_vectors)
-    summary = ankura.topic.topic_summary(topics, get_corpus())
-
-    # TODO Accuracy from free classifier
-
-    return flask.jsonify(anchors=anchor_tokens,
-                         topics=summary)
-
-
-@app.route('/vocab')
-def vocab_request():
-    """Gets all valid vocabulary words in the corpus"""
-    return flask.jsonify(vocab=get_corpus().vocabulary)
+def amazon():
+    """Gets the amazon large dataset"""
+    datapath = '/aml/data/amazon_large/item_dedup.json.gz'
+    stoppath = '/aml/data/stopwords/english.txt'
+    picklepath = '/aml/scratch/jlund3/amazon.pickle'
+    pipeline = ankura.pipeline.Pipeline(
+        ankura.pipeline.file_inputer(datapath),
+        ankura.pipeline.gzip_extractor(amazon_json_extractor()),
+        ankura.pipeline.stopword_tokenizer(
+            ankura.pipeline.default_tokenizer(),
+            open(stoppath),
+        ),
+        ankura.pipeline.noop_labeler(),
+        ankura.pipeline.length_filterer(),
+    )
+    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 50)
+    pipeline.labeler = amazon_labeler(pipeline)
+    return pipeline.run(picklepath)
 
 
 if __name__ == '__main__':
-    # trigger memoization
-    get_gs_anchors()
-    # start dev server
-    app.run(debug=True, use_reloader=False, host='0.0.0.0', port=8000)
+    amazon()
