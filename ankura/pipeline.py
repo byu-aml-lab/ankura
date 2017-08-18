@@ -258,24 +258,37 @@ def frequency_tokenizer(pipeline, rare=None, common=None):
     much of the import must be run. Consequently, the construction of this
     tokenizer may take significant time.
     """
-    if rare and common:
-        keep = lambda n: rare <= n <= common
-    elif rare:
-        keep = lambda n: rare <= n
-    elif common:
-        keep = lambda n: n <= common
-    else:
-        return pipeline.tokenizer
+    pipeline_inputer = pipeline.inputer
+    pipeline_extractor = pipeline.extractor
+    pipeline_tokenizer = pipeline.tokenizer
+    def _init():
+        if rare and common:
+            keep = lambda n: rare <= n <= common
+        elif rare:
+            keep = lambda n: rare <= n
+        elif common:
+            keep = lambda n: n <= common
+        else:
+            return tokenizer
 
-    counts = collections.defaultdict(int)
-    for docfile in pipeline.inputer():
-        for text in pipeline.extractor(docfile):
-            tokens = {t.token for t in pipeline.tokenizer(text.data)}
-            for token in tokens:
-                counts[token] += 1
+        counts = collections.defaultdict(int)
+        for docfile in pipeline_inputer():
+            for text in pipeline_extractor(docfile):
+                tokens = {t.token for t in pipeline_tokenizer(text.data)}
+                for token in tokens:
+                    counts[token] += 1
 
-    stopwords = [token for token, count in counts.items() if not keep(count)]
-    return stopword_tokenizer(pipeline.tokenizer, stopwords)
+        stopwords = [t for t, c in counts.items() if not keep(c)]
+        return stopword_tokenizer(pipeline_tokenizer, stopwords)
+
+    tokenizer = None
+    @functools.wraps(frequency_tokenizer)
+    def _tokenizer(data):
+        nonlocal tokenizer
+        if tokenizer is None:
+            tokenizer = _init()
+        return tokenizer(data)
+    return _tokenizer
 
 
 # Labelers are callables which generate metadata from a Text name. Typically
@@ -284,7 +297,7 @@ def frequency_tokenizer(pipeline, rare=None, common=None):
 
 
 def noop_labeler():
-    """Returns an empty labeling"""
+    """Returns an empty labeler"""
     @functools.wraps(noop_labeler)
     def _labeler(_name):
         return {}
@@ -292,7 +305,7 @@ def noop_labeler():
 
 
 def title_labeler(attr='title'):
-    """Returns a labeling with the name as the value"""
+    """Returns a labeler with the name as the value"""
     @functools.wraps(title_labeler)
     def _labeler(name):
         return {attr: name}
@@ -300,52 +313,60 @@ def title_labeler(attr='title'):
 
 
 def dir_labeler(attr='dirname'):
-    """Returns a labeling with the dirname of the name as the value"""
+    """Returns a labeler with the dirname of the name as the value"""
     @functools.wraps(dir_labeler)
     def _labeler(name):
         return {attr: os.path.dirname(name)}
     return _labeler
 
 
-def dict_labeler(values, attr='label'):
-    """Returns a labeling using values from a dict"""
-    @functools.wraps(dict_labeler)
+def stream_labeler(stream, attr='label'):
+    """Returns a labeler backed by an iterable containing key-value tuples.
+    Assuming the iterable yields labels in the same order they are requested,
+    iter_labeler requires no extra memory. If this assumption is violated,
+    label are cached as needed.
+    """
+    cache = {}
+    @functools.wraps(stream_labeler)
     def _labeler(name):
-        return {attr: values[name]}
+        if name in cache:
+            return {attr: cache.pop(name)}
+        for key, value in stream:
+            if key == name:
+                return {attr: value}
+            else:
+                cache[key] = value
+        raise KeyError(name)
     return _labeler
 
 
-def string_labeler(data, delim=' ', attr='label'):
-    """Builds a dict labeler from a data stream. Each line in the data should
-    contain a single name/label pair, separated by the given delimiter and the
-    label is string.
+def string_labeler(data, attr='label', delim='\t'):
+    """Returns an iter_labeler from a data stream. Each line in the data should
+    contain a name/label pair, separated by a delimiter, with the value being a
+    string.
     """
-    labels = dict(line.strip().split(delim, 1) for line in data)
-    return dict_labeler(labels, attr)
+    stream = (line.rstrip(os.linesep).split(delim, 1) for line in data)
+    return stream_labeler(stream, attr)
 
 
-def float_labeler(data, delim=' ', attr='label'):
-    """Builds a dict labeler from a data stream. Each line in the data should
-    contain a single name/value pair, separated by the given delimiter, and the
-    value is parsable as a float.
+def float_labeler(data, attr='label', delim='\t'):
+    """Returns an iter_labeler from a data stream. Each line in the data should
+    contain a single name/value pair, separated a delimiter, with the value
+    being parsable as a float.
     """
-    labels = dict(line.strip().split(delim, 1) for line in data)
-    labels = {name: float(value) for name, value in labels.items()}
-    return dict_labeler(labels, attr)
+    stream = (line.rstrip(os.linesep).split(delim, 1) for line in data)
+    stream = ((key, float(value)) for key, value in stream)
+    return stream_labeler(stream, attr)
 
 
-def multistring_labeler(data, delim=' ', attr='labels'):
-    """Builds a dict labeler from a data stream which maps each name to
-    multiple values. Each line in the data should contain a single name/label
-    pair, separated by the given delimiter. In order to associate a single name
-    with multiple string labels, multiple lines are needed. Missing names
-    default to an empty list.
+def list_labeler(data, attr='label', delim='\t', sep=','):
+    """Returns an iter_labeler from a data stream. Each line in the data should
+    contain a key/value pair, separated by a delimiter, with the value being a
+    list of string retrieved by spliting on a separator.
     """
-    labels = collections.defaultdict(list)
-    for line in data:
-        name, value = line.strip().split(delim, 1)
-        labels[name].append(value)
-    return dict_labeler(labels, attr)
+    stream = (line.rstrip(os.linesep).split(delim, 1) for line in data)
+    stream = ((key, value.split(sep)) for key, value in stream)
+    return stream_labeler(stream, attr)
 
 
 def composite_labeler(*labelers):

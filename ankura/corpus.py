@@ -14,7 +14,7 @@ def _path(name):
     return os.path.join(download_dir, name)
 
 
-base_url = 'https://github.com/jlund3/data/raw/data2/' # pylint: disable=invalid-name
+base_url = 'https://github.com/jlund3/data/raw/data2' # pylint: disable=invalid-name
 
 def _url(name):
     return os.path.join(base_url, name)
@@ -77,11 +77,11 @@ def bible():
             )
         ),
         ankura.pipeline.composite_labeler(
-            ankura.pipeline.title_labeler(),
-            ankura.pipeline.multistring_labeler(
+            ankura.pipeline.title_labeler('verse'),
+            ankura.pipeline.list_labeler(
                 open_download('bible/xref.txt'),
-                attr='xref',
-            )
+                'xref',
+            ),
         ),
         ankura.pipeline.keep_filterer(),
     )
@@ -106,7 +106,7 @@ def newsgroups():
             r'^(.{0,2}|.{15,})$', # remove any token t for which 2<len(t)<=15
         ),
         ankura.pipeline.composite_labeler(
-            ankura.pipeline.title_labeler(),
+            ankura.pipeline.title_labeler('id'),
             ankura.pipeline.dir_labeler('newsgroup'),
         ),
         ankura.pipeline.length_filterer(),
@@ -130,7 +130,7 @@ def amazon():
             ankura.pipeline.title_labeler('id'),
             ankura.pipeline.float_labeler(
                 open_download('amazon/amazon.stars'),
-                delim='\t', attr='rating',
+                'rating',
             ),
         ),
         ankura.pipeline.length_filterer(),
