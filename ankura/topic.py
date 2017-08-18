@@ -1,11 +1,12 @@
 """Functions for using and displaying topics"""
 
-import numpy
+import collections
 import functools
 import random
-import collections
-import scipy.spatial
 import sys
+
+import numpy
+import scipy.spatial
 
 import ankura.util
 

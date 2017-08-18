@@ -402,6 +402,46 @@ class VocabBuilder(object):
         return [TokenLoc(self[t.token], t.loc) for t in tokens]
 
 
+class DocumentStream(object):
+    """A file-backed document stream for large document collections"""
+
+    def __init__(self, filename):
+        self._path = filename
+        self._file = open(filename, 'wb')
+        self._size = 0
+        self._flushed = True
+
+    def append(self, doc):
+        """Writes the document to the backing file."""
+        if self._file is None:
+            self._file = open(self._path, 'ab')
+
+        pickle.dump(doc, self._file)
+        self._size += 1
+        self._flushed = False
+
+    def __iter__(self):
+        self._flush()
+
+        with open(self._path, 'rb') as docs:
+            for _ in range(self._size):
+                yield pickle.load(docs)
+
+    def __getstate__(self):
+        self._flush()
+        return (self._path, self._size)
+
+    def __setstate__(self, state):
+        self._path, self._size = state
+        self._file = None
+        self._flushed = False
+
+    def _flush(self):
+        if self._file is not None and not self._flushed:
+            self._file.flush()
+            self._flushed = True
+
+
 class Pipeline(object):
     """Pipeline describes the process of importing a Corpus"""
 
@@ -413,12 +453,13 @@ class Pipeline(object):
         self.labeler = labeler
         self.filterer = filterer
 
-    def run(self, pickle_path=None):
+    def run(self, pickle_path=None, docs_path=None):
         """Creates a new Corpus using the Pipeline"""
         if pickle_path and os.path.exists(pickle_path):
             return pickle.load(open(pickle_path, 'rb'))
 
         documents = []
+        documents = DocumentStream(docs_path) if docs_path else []
         vocab = VocabBuilder()
         for docfile in self.inputer():
             for text in self.extractor(docfile):

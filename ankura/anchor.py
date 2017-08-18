@@ -10,7 +10,26 @@ import ankura.util
 
 def build_cooccurrence(corpus):
     """Constructs a cooccurrence matrix from a Corpus"""
-    return build_pseudo_cooccurrence(corpus, labeled_docs={})[0]
+    # return build_pseudo_cooccurrence(corpus, labeled_docs=[])[0]
+    V = len(corpus.vocabulary)
+    Q = numpy.zeros((V, V))
+
+    D = 0
+    for doc in range(corpus.documents):
+        n_d = len(doc.tokens)
+        if n_d <= 1:
+            continue
+        D += 1
+
+        norm = 1 / (n_d * (n_d - 1))
+        for i, w_i in enumerate(doc.tokens):
+            for j, w_j in enumerate(doc.tokens):
+                if i == j:
+                    continue
+                Q[w_i.token, w_j.token] += norm
+
+    return Q / D
+
 
 
 def build_supervised_cooccurrence(corpus, attr_name='label', labeled_docs=None):
