@@ -10,12 +10,11 @@ import ankura.util
 
 def build_cooccurrence(corpus):
     """Constructs a cooccurrence matrix from a Corpus"""
-    # return build_pseudo_cooccurrence(corpus, labeled_docs=[])[0]
     V = len(corpus.vocabulary)
     Q = numpy.zeros((V, V))
 
     D = 0
-    for doc in range(corpus.documents):
+    for doc in corpus.documents:
         n_d = len(doc.tokens)
         if n_d <= 1:
             continue
@@ -31,136 +30,55 @@ def build_cooccurrence(corpus):
     return Q / D
 
 
-
-def build_supervised_cooccurrence(corpus, attr_name='label', labeled_docs=None):
-    """Constructs a cooccurrence matrix from a labeled Corpus, according to
-    supervised anchor words.
-
-    To find the label associated with a given document, this function looks at
-    the document's metadata attribute for the value associated with the
-    attr_name key. Thus, this function is for classification tasks, not
-    regression.
-
-    When labeled_docs is None or empty, all documents with attr_name as a key
-    in their metadata are considered labeled; for semisupervised learning,
-    specify only the documents you want labeled as an iterable of integers.
-    Note that you should not include documents whose length is 0 or 1 in the
-    labeled_docs set.
-    """
-    if labeled_docs is None:
-        labeled_docs = (i for i, d in enumerate(corpus.documents)
-                        if len(d.tokens) > 1)
-    labeled_docs = set(labeled_docs)
-
-    # account only for labels found in labeled set [via set comprehension]
-    label_set = {corpus.documents[i].metadata[attr_name] for i in labeled_docs}
-    label_types = {v: i for i, v in enumerate(sorted(label_set))}
-
-    label_cols = numpy.zeros((len(corpus.vocabulary), len(label_types)))
-
-    for i in labeled_docs:
-        label = corpus.documents[i].metadata[attr_name]
-        for token in corpus.documents[i].tokens:
-            label_cols[token.token, label_types[label]] += 1
-
-    # row normalize, zeroing out nan from division by zero caused by a word not
-    # appearing in any labeled documents
-    label_cols = label_cols / label_cols.sum(axis=1, keepdims=True)
-    label_cols[numpy.isnan(label_cols)] = 0
-
-    # row normalize, zeroing out nan from division by zero caused by a word in
-    # the vocabulary not appearing in any document
-    q_bar = build_cooccurrence(corpus)
-    q_bar = q_bar / q_bar.sum(axis=1, keepdims=True)
-    q_bar[numpy.isnan(q_bar)] = 0
-
-    return numpy.append(q_bar, label_cols, axis=1), label_types
-
-
-# pylint: disable=too-many-locals
-def build_pseudo_cooccurrence(corpus, attr_name='label', labeled_docs=None,
-                              label_weight=1, smoothing=1e-7):
-    """Constructs a cooccurrence matrix from a labeled Corpus, counting labels
-    as pseudo-words.
-
-    To find the label associated with a given document, this function looks at
-    the document's metadata attribute for the value associated with the
-    attr_name key. Thus, this function is for classification tasks, not
-    regression.
-
-    When labeled_docs is None or empty, all documents with attr_name as a key
-    in their metadata are considered labeled; for semisupervised learning,
-    specify only the documents you want labeled as an iterable of integers.
-
-    To specify how many label pseudo-words are counted in a labeled document,
-    set label_weight accordingly. label_weight must be greater than zero.
-
-    In the case of unlabeled documents, equal likelihood is given to all known
-    classes, equal to smoothing. smoothing must be greater than zero.
-
-    Returns cooccurrence matrix and a mapping from the label to its index
-    """
-    assert label_weight > 0, 'label_weight must be greater than zero'
-    assert smoothing > 0, 'smoothing must be greater than zero'
-
-    if labeled_docs is None:
-        labeled_docs = (i for i, d in enumerate(corpus.documents)
-                        if len(d.tokens) > 1)
-    labeled_docs = set(labeled_docs)
-
-    # account only for labels found in labeled set [via set comprehension]
+def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
+                               label_weight=1, smoothing=1e-7):
+    """Constructs a cooccurrence matrix from a Corpus"""
     V = len(corpus.vocabulary)
-    label_set = {corpus.documents[i].metadata[attr_name] for i in labeled_docs}
-    label_types = {v: i+V for i, v in enumerate(sorted(label_set))}
 
-    data, row, col = [], [], []
-    H_hat = numpy.zeros(V + len(label_types))
+    label_set = set()
+    for d, doc in enumerate(corpus.documents):
+        if d in labeled_docs:
+            label_set.add(doc.metadata[attr_name])
+    label_set = {l: V + i for i, l in enumerate(label_set)}
+
+    K = len(label_set)
+    Q = numpy.zeros((V+K, V+K))
+
     D = 0
-
-    for i, doc in enumerate(corpus.documents):
+    for d, doc in enumerate(corpus.documents):
         n_d = len(doc.tokens)
-
-        # skipping documents that are too short, as they cause divide be zeros
-        # if the document is unlabeled.
         if n_d <= 1:
             continue
-
-        # Add in pseudo word counts to n_d for free classifier
-        if i in labeled_docs:
-            n_d += label_weight
-        # Norms used in H_tilde construction
-        norm = 1 / (n_d * (n_d - 1))
-        sqrt_norm = numpy.sqrt(norm)
-
-        # Add in counts for words as per Arora et al. 2012
-        for token in doc.tokens:
-            data.append(sqrt_norm)
-            row.append(token.token)
-            col.append(D) # D in case we skipped an empty document
-            H_hat[token.token] += norm
-
-        # Add in pseudo counts for labels as per free classifer
-        # This is a noop if there are no labels
-        if i in labeled_docs:
-            cur_type = label_types[corpus.documents[i].metadata[attr_name]]
-            data.append(sqrt_norm * label_weight)
-            row.append(cur_type)
-            col.append(D) # D in case we skipped an empty document
-            H_hat[cur_type] += norm * label_weight
-        else:
-            for cur_type in label_types.values():
-                data.append(sqrt_norm * smoothing)
-                row.append(cur_type)
-                col.append(D) # D in case we skipped an empty document
-                H_hat[cur_type] += norm * smoothing
-
         D += 1
 
-    # duplicate entries are summed together when coo_matrix is constructed
-    H_tilde = scipy.sparse.coo_matrix((data, (row, col)),
-                                      (V + len(label_types), D)).tocsc()
-    Q = H_tilde * H_tilde.T - numpy.diag(H_hat)
-    return numpy.array(Q / D), label_types
+        if d in labeled_docs:
+            norm = 1 / 1
+            index = label_set[doc.metadata[attr_name]]
+            for i, w_i in enumerate(doc.tokens):
+                for j, w_j in enumerate(doc.tokens):
+                    if i == j:
+                        continue
+                    Q[w_i.token, w_j.token] += norm
+                Q[w_i.token, index] += label_weight * norm
+                Q[index, w_i.token] += label_weight * norm
+            Q[index, index] += label_weight * (label_weight - 1) * norm
+        else:
+            norm = 1 / (n_d * (n_d + 2 * K * smoothing - 1) + K * (K * smoothing - smoothing))
+            for i, w_i in enumerate(doc.tokens):
+                for j, w_j in enumerate(doc.tokens):
+                    if i == j:
+                        continue
+                    Q[w_i.token, w_j.token] += norm
+                for j in label_set.values():
+                    Q[w_i.token, j] += norm * smoothing
+                    Q[j, w_i.token] += norm * smoothing
+            for i in label_set.values():
+                for j in label_set.values():
+                    if i == j:
+                        continue
+                    Q[i, j] += norm * smoothing ** 2
+
+    return Q / D
 
 
 # pylint: disable=too-many-locals

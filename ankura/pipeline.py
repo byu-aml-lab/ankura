@@ -429,8 +429,8 @@ class DocumentStream(object):
     def __init__(self, filename):
         self._path = filename
         self._file = open(filename, 'wb')
-        self._size = 0
         self._flushed = True
+        self._size = 0
 
     def append(self, doc):
         """Writes the document to the backing file."""
@@ -462,6 +462,9 @@ class DocumentStream(object):
             self._file.flush()
             self._flushed = True
 
+    def __len__(self):
+        return self._size
+
 
 class Pipeline(object):
     """Pipeline describes the process of importing a Corpus"""
@@ -479,7 +482,6 @@ class Pipeline(object):
         if pickle_path and os.path.exists(pickle_path):
             return pickle.load(open(pickle_path, 'rb'))
 
-        documents = []
         documents = DocumentStream(docs_path) if docs_path else []
         vocab = VocabBuilder()
         for docfile in self.inputer():
