@@ -10,5 +10,5 @@ setup(
     author='Jeffrey Lund',
     author_email='jefflund@gmail.com',
     url='https://github.com/jlund3/ankura',
-    packages=['ankura']
+    packages=['ankura', 'ankura.validate']
 )
