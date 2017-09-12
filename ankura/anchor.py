@@ -78,11 +78,11 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
                         continue
                     Q[i, j] += norm * smoothing ** 2
 
-    return Q / D
+    return Q / D, sorted(label_set, key=label_set.get)
 
 
 # pylint: disable=too-many-locals
-def gram_schmidt(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
+def gram_schmidt_anchorS(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors."""
     # Find candidate anchors
     counts = collections.Counter()

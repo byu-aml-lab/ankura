@@ -58,7 +58,7 @@ def predict_topics(doc, topics, alpha=.01, num_iters=10):
     for _ in range(num_iters):
         for n, w_n in enumerate(doc.tokens):
             counts[z[n]] -= 1
-            cond = [alpha + counts[t] * topics[w_n, t] for t in range(T)]
+            cond = [alpha + counts[t] * topics[w_n.token, t] for t in range(T)]
             z[n] = ankura.util.sample_categorical(cond)
             counts[z[n]] += 1
 
@@ -103,10 +103,21 @@ def cross_reference(corpus, doc=None, n=sys.maxsize, threshold=1):
 
 
 def free_classifier(topics, Q, labels):
-    """ASDF"""
-    A_f = topics[:, -len(labels):]
-    Q_L = Q[:]
+    """There is no free lunch, but this classifier is free"""
+    K = len(labels)
+    V = Q.shape[0] - K
+
+    A_f = topics[-K:]
+    A_f /= A_f.sum(axis=0, keepdims=True) # column-normalize A_f
+
+    Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q
+    Q_L = Q[-K:, :V]
+
     @functools.wraps(free_classifier)
     def _classifier(doc):
-        return labels[numpy.argmax(A_f.dot(doc.theta) + Q_L.dot(doc.H))]
+        H = numpy.zeros(V)
+        for w_d in doc.tokens:
+            H[w_d.token] += 1
+        H /= H.sum()
+        return labels[numpy.argmax(A_f.dot(doc.theta) + Q_L.dot(H))]
     return _classifier
