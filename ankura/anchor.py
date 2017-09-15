@@ -82,13 +82,14 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
 
 
 # pylint: disable=too-many-locals
-def gram_schmidt_anchorS(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
+def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors."""
     # Find candidate anchors
     counts = collections.Counter()
     for doc in corpus.documents:
         counts.update(set(t.token for t in doc.tokens))
     candidates = [tid for tid, count in counts.items() if count > doc_threshold]
+    k = min(k, len(candidates))
 
     # Row-normalize and project Q, preserving the original Q
     Q_orig = Q
@@ -134,7 +135,7 @@ def gram_schmidt_anchorS(corpus, Q, k, doc_threshold=500, project_dim=1000, **kw
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
     # If requested, just return the indicies instead of anchor vectors
-    if kwargs.get('return_indices'):
+    if kwargs.get('return_indicies'):
         return indices
 
     # Use the original Q to extract anchor vectors using the anchor indices
