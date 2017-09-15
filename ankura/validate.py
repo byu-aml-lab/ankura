@@ -25,6 +25,17 @@ class Contingency(object):
             raise KeyError('cannot set a sum')
         self.table[gold][pred] = value
 
+    def accuracy(self):
+        """Computes accuracy"""
+        correct = 0
+        total = 0
+        for gold, row in self.table.items():
+            for pred, count in row.items():
+                if gold == pred:
+                    correct += count
+                total += count
+        return correct / total
+
     def precision(self, gold=True, pred=None):
         """Computes precision for a contingency table.
 
