@@ -4,7 +4,9 @@ import collections
 
 
 class Contingency(object):
-    """Contingency"""
+    """Contingency is a table which gives the multivariate frequency
+    distribution across known (or gold) labels and predicted labels.
+    """
 
     def __init__(self):
         self.table = collections.defaultdict(dict)
@@ -26,7 +28,7 @@ class Contingency(object):
         self.table[gold][pred] = value
 
     def accuracy(self):
-        """Computes accuracy"""
+        """Computes accuracy for a contingency table."""
         correct = 0
         total = 0
         for gold, row in self.table.items():
