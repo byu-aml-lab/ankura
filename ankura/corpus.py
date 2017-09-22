@@ -93,6 +93,29 @@ def newsgroups():
     """Gets a Corpus containing roughly 20,000 usenet postings from 20
     different newsgroups in the early 1990's
     """
+    coarse_mapping = {
+        'comp.graphics': 'computer',
+        'comp.os.ms-windows.misc': 'comp',
+        'comp.sys.ibm.pc.hardware': 'comp',
+        'comp.sys.mac.hardware': 'comp',
+        'comp.windows.x': 'computer',
+        'rec.autos': 'rec',
+        'rec.motorcycles': 'rec',
+        'rec.sport.baseball': 'rec',
+        'rec.sport.hockey': 'rec',
+        'sci.crypt': 'sci',
+        'sci.electronics': 'sci',
+        'sci.med': 'sci',
+        'sci.space': 'sci',
+        'misc.forsale': 'misc',
+        'talk.politics.misc': 'politics',
+        'talk.politics.guns': 'politics',
+        'talk.politics.mideast': 'politics',
+        'talk.religion.misc' : 'religion',
+        'alt.atheism' : 'religion',
+        'soc.religion.christian' : 'religion',
+    }
+
     pipeline = ankura.pipeline.Pipeline(
         download_inputer('newsgroups/newsgroups.tar.gz'),
         ankura.pipeline.targz_extractor(
@@ -108,6 +131,7 @@ def newsgroups():
         ankura.pipeline.composite_labeler(
             ankura.pipeline.title_labeler('id'),
             ankura.pipeline.dir_labeler('newsgroup'),
+            lambda n: {'coarse_newsgroup': coarse_mapping[os.path.dirname(n)]},
         ),
         ankura.pipeline.length_filterer(),
     )
