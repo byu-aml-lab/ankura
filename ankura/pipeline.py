@@ -12,6 +12,7 @@ import string
 import tarfile
 
 import bs4
+import scipy.sparse
 
 # POD types used throughout the pipeline process
 
@@ -498,5 +499,20 @@ class Pipeline(object):
         return corpus
 
 
-# TODO Replace shelve with better performing persistant storage
-# Could use shelve or sqlite3, especially if we disallow random access for docs
+def build_docwords(corpus, V=None):
+    """Constructs a sparse docwords matrix from a corpus.
+
+    The resulting DxV matrix will be in csc format, with each row encoding the
+    word counts for a document. The vocabulary size V defaults to the length of
+    the corpus vocabulary list, but can optionally be explicitly set.
+    """
+    D = len(corpus.documents)
+    if V is None:
+        V = len(corpus.vocabulary)
+
+    docwords = scipy.sparse.lil_matrix((D, V))
+    for d, doc in enumerate(corpus.documents):
+        for tl in doc.tokens:
+            docwords[d, tl.token] += 1
+
+    return docwords.tocsc()
