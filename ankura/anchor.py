@@ -1,4 +1,4 @@
-"""Implementation of the anchor algorithm by Arora et al. 2013"""
+"""Implementation of the anchor algorithm and various anchor extensions"""
 
 import collections
 import numpy
@@ -6,6 +6,12 @@ import scipy.sparse
 import scipy.stats
 
 import ankura.util
+
+def anchor_algorithm(corpus, k, doc_threshold=500, project_dim=1000):
+    """Implementation of the anchor algorithm by Arora et al. 2013"""
+    Q = build_cooccurrence(corpus)
+    anchors = gram_schmidt_anchors(corpus, Q, k, doc_threshold, project_dim)
+    return recover_topics(Q, anchors)
 
 
 def build_cooccurrence(corpus):
@@ -237,7 +243,7 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
     return alpha
 
 
-def recover_topics(Q, anchors, epsilon=2e-7):
+def recover_topics(Q, anchors, epsilon=2e-6):
     """Recovers topics given a cooccurence matrix and a set of anchor vectors"""
     # dont modify original Q
     Q = Q.copy()
