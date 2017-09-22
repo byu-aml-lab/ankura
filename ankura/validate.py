@@ -1,6 +1,9 @@
 """Functionality for evaluating topic models"""
 
 import collections
+import itertools
+
+import numpy
 
 
 class Contingency(object):
@@ -10,6 +13,30 @@ class Contingency(object):
 
     def __init__(self):
         self.table = collections.defaultdict(dict)
+
+    @staticmethod
+    def from_cross_reference(corpus, xrefs, xref_attr='xref', title_attr='title'):
+        """Generates a contingency table for evaluating cross references"""
+        contingency = Contingency()
+        for doc in corpus.documents:
+            gold = set(doc.metadata[xref_attr])
+            pred = set(doc.metadata[title_attr] for doc in xrefs[doc])
+            TP = len(pred.intersection(gold))
+            FP = len(pred - gold)
+            FN = len(gold - pred)
+            TN = len(corpus.documents) - TP - FP - FN
+            contingency[True, True] += TP
+            contingency[False, True] += FP
+            contingency[True, False] += FN
+            contingency[False, False] += TN
+        return contingency
+
+    @staticmethod
+    def from_classifier(corpus, classifier, label_attr='label'):
+        contingency = Contingency()
+        for doc in corpus.documents:
+            contingency[doc.metadata[label_attr], classifier(doc)] += 1
+        return contingency
 
     def __getitem__(self, gold_pred):
         gold, pred = gold_pred
@@ -115,26 +142,33 @@ class Contingency(object):
         return gsums, psums, total
 
 
-def cross_reference(corpus, xrefs, xref_attr='xref', title_attr='title'):
-    """Generates a contingency table for evaluating topical cross references"""
-    contingency = Contingency()
-    for doc in corpus.documents:
-        gold = set(doc.metadata[xref_attr])
-        pred = set(doc.metadata[title_attr] for doc in xrefs[doc])
-        TP = len(pred.intersection(gold))
-        FP = len(pred - gold)
-        FN = len(gold - pred)
-        TN = len(corpus.documents) - TP - FP - FN
-        contingency[True, True] += TP
-        contingency[False, True] += FP
-        contingency[True, False] += FN
-        contingency[False, False] += TN
-    return contingency
+def coherence(reference_corpus, topic_summary, epsilon=1e-2):
+    """Computes topic coherence following Mimno et al., 2011 using pairwise log
+    conditional probability taken from a reference corpus.
 
+    Note that this is not the same as the NPMI based coherence proposed by
+    Lau et al., 2014. Mimno et al., proposed using using the topic-modelled
+    datadata, but one can optionally use an external corpus (e.g., Wikipedia)
+    as proposed by Lau et al.
 
-def free_classifier(corpus, predictions, cls_attr='class'):
-    """Generate a contingency table for evaluating classifier performance"""
-    contingency = Contingency()
-    for doc, pred in zip(corpus.documents, predictions):
-        contingency[doc.metadata[cls_attr], pred] += 1
-    return contingency
+    The topic summary should be an array with each row giving the token types
+    of the top words of each topic.
+    """
+    word_set = set(topic_summary.flatten())
+    counts = collections.Counter()
+    pair_counts = collections.Counter()
+    for doc in reference_corpus.documents:
+        doc_set = set(tl.token for tl in doc.tokens).intersection(word_set)
+        counts.update(doc_set)
+        pair_counts.update(itertools.product(doc_set, doc_set))
+
+    scores = []
+    for topic in topic_summary:
+        score = 0
+        for i in topic:
+            for j in topic:
+                pair_count = pair_counts[(i, j)]
+                count = counts[j]
+                score += numpy.log((pair_count + epsilon) / count)
+        scores.append(scores)
+    return numpy.array(scores)
