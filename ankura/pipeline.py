@@ -269,7 +269,7 @@ def frequency_tokenizer(pipeline, rare=None, common=None):
         elif common:
             keep = lambda n: n <= common
         else:
-            return tokenizer
+            return pipeline_tokenizer
 
         counts = collections.defaultdict(int)
         for docfile in pipeline_inputer():
