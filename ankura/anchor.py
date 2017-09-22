@@ -87,6 +87,9 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
     return Q / D, sorted(label_set, key=label_set.get)
 
 
+# TODO Add QuickQ
+
+
 # pylint: disable=too-many-locals
 def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors."""
