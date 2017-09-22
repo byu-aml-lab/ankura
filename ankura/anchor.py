@@ -88,9 +88,9 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
 
 
 # TODO Add QuickQ
+# TODO Add SupAnk
 
 
-# pylint: disable=too-many-locals
 def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
     """Uses stabalized Gram-Schmidt decomposition to find k anchors."""
     # Find candidate anchors
@@ -172,7 +172,6 @@ def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
 
 
 def _exponentiated_gradient(Y, X, XX, epsilon):
-    # pylint: disable=invalid-name
     _C1 = 1e-4
     _C2 = .75
 

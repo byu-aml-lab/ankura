@@ -31,7 +31,7 @@ def sample_categorical(counts):
     raise ValueError(counts)
 
 
-class memoize(object): # pylint: disable=invalid-name
+class memoize(object):
     """Decorator for memoizing a function"""
 
     def __init__(self, func):

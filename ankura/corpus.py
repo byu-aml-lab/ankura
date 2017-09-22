@@ -8,13 +8,13 @@ import urllib.request
 import ankura
 
 
-download_dir = os.path.join(os.getenv('HOME'), '.ankura') # pylint: disable=invalid-name
+download_dir = os.path.join(os.getenv('HOME'), '.ankura')
 
 def _path(name):
     return os.path.join(download_dir, name)
 
 
-base_url = 'https://github.com/jlund3/data/raw/data2' # pylint: disable=invalid-name
+base_url = 'https://github.com/jlund3/data/raw/data2'
 
 def _url(name):
     return os.path.join(base_url, name)

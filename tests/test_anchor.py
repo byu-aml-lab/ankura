@@ -6,8 +6,6 @@ import pytest
 
 from ankura import pipeline, anchor
 
-# pylint: disable=invalid-name
-
 
 @pytest.mark.skip(reason='test implementation missing')
 def test_gram_schmidt():

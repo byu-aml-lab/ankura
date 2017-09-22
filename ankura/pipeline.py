@@ -469,7 +469,6 @@ class DocumentStream(object):
 class Pipeline(object):
     """Pipeline describes the process of importing a Corpus"""
 
-    # pylint: disable=too-many-arguments
     def __init__(self, inputer, extractor, tokenizer, labeler, filterer):
         self.inputer = inputer
         self.extractor = extractor

@@ -2,7 +2,6 @@
 
 import pytest
 
-# pylint: disable=wildcard-import,unused-wildcard-import
 from ankura.validate import *
 
 
