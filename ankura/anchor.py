@@ -273,7 +273,7 @@ def recover_topics(Q, anchors, epsilon=2e-6):
             alpha = numpy.ones(K) / K
         A[word, :] = alpha
 
-    # Use Bayes rule to compute topic matri
+    # Use Bayes rule to compute topic matrix
     A = numpy.dot(P_w, A)
     for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()

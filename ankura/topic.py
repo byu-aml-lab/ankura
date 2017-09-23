@@ -105,22 +105,30 @@ def cross_reference(corpus, doc=None, n=sys.maxsize, threshold=1):
 
 
 # XXX This seems to be broken!
-def free_classifier(topics, Q, labels):
+def free_classifier(topics, Q, labels, epsilon=1e-7):
     """There is no free lunch, but this classifier is free"""
     K = len(labels)
     V = Q.shape[0] - K
 
-    A_f = topics[-K:]
-    A_f /= A_f.sum(axis=0, keepdims=True) # column-normalize A_f
+    # Smooth and column normalize class-topic weights
+    A_f = topics[-K:] + epsilon
+    A_f /= A_f.sum(axis=0)
 
-    Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q
+    # class_given_word
+    Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
     Q_L = Q[-K:, :V]
 
     @functools.wraps(free_classifier)
-    def _classifier(doc):
+    def _classifier(doc, theta):
         H = numpy.zeros(V)
         for w_d in doc.tokens:
             H[w_d.token] += 1
-        H /= H.sum()
-        return labels[numpy.argmax(A_f.dot(doc.theta) + Q_L.dot(H))]
+
+        topic_score = A_f.dot(theta)
+        topic_score /= topic_score.sum(axis=0)
+
+        word_score = Q_L.dot(H)
+        word_score /= word_score.sum(axis=0)
+
+        return labels[numpy.argmax(topic_score + word_score)]
     return _classifier
