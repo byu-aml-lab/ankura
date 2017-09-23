@@ -1,4 +1,15 @@
-"""Provides access to some standard datasets"""
+"""Provides access to some standard downloadable datasets.
+
+The available datasets (and corresponding import functions) include:
+    * bible
+    * newsgroups
+    * amazon
+These imports depend on two module variables which can be mutated to change the
+download behavior of these imports. Downloaded and pickled data will be stored
+in the path given by `download_dir`, and data will be downloaded from
+`base_url`. By default, `download_dir` will be '$HOME/.ankura' while base_url
+will point at a GitHub repo designed for use with ankura.
+"""
 
 import functools
 import itertools
@@ -6,7 +17,6 @@ import os
 import urllib.request
 
 import ankura
-
 
 download_dir = os.path.join(os.getenv('HOME'), '.ankura')
 
@@ -64,7 +74,7 @@ def download_inputer(*names):
 
 def bible():
     """Gets a Corpus containing the King James version of the Bible with over
-    250,000 cross references
+    250,000 cross references.
     """
     pipeline = ankura.pipeline.Pipeline(
         download_inputer('bible/bible.txt'),
@@ -91,7 +101,7 @@ def bible():
 
 def newsgroups():
     """Gets a Corpus containing roughly 20,000 usenet postings from 20
-    different newsgroups in the early 1990's
+    different newsgroups in the early 1990's.
     """
     coarse_mapping = {
         'comp.graphics': 'computer',

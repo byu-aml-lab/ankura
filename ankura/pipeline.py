@@ -1,4 +1,15 @@
-"""Functionality for creating import pipelines"""
+"""Functionality for importing datasets for use with ankura.
+
+A typical import includes the following pieces:
+    * Inputer - callable which generates files to be read by the pipeline
+    * Extractor - callable which generates Text to be processed from a file
+    * Tokenizer - converts a Text into TokenLoc with string tokens
+    * Labeler - returns metadata from a Text name
+    * Filterer - return True if a Document should be included in a Corpus
+These pieces form a Pipeline, which can then be run to import a Corpus which is
+usable throughout ankura. See `ankura.corpus` for examples of how these
+Pipeline can be used to import data.
+"""
 
 import collections
 import functools
@@ -21,7 +32,7 @@ TokenLoc = collections.namedtuple('TokenLoc', 'token loc')
 Document = collections.namedtuple('Document', 'text tokens metadata')
 Corpus = collections.namedtuple('Corpus', 'documents vocabulary')
 
-# Inputers are callables which generate the filenames a Pipeline should read.
+# Inputers are callables which generate the files a Pipeline should read.
 # The files should be opened in binary read mode. The caller is reponsible for
 # closing the file objects, although garbage collection should handle this as
 # soon as the caller is finished with the file object.
