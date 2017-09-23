@@ -1,21 +1,56 @@
-"""Implementation of the anchor algorithm and various anchor extensions"""
+"""Implementation of the anchor algorithm and various anchor extensions.
+
+This class of algorithms was first described by Arora et al. 2013, but has been
+modified and extended by various other authors.  Generally speaking, the
+process of recovering topics using anchor words is as follows:
+    * Construct a cooccurrence matrix, possibly with build_cooccurrence
+    * Choose anchor words, possibly with gram_schmidt_anchors
+    * Call recover_topics using a cooccurrence matrix and anchors
+Variants of the anchor algorithm generally work by changing how the cooccurrence
+matrix is constructed and/or how the anchor words are chosen.
+"""
 
 import collections
 import numpy
 import scipy.sparse
 import scipy.stats
+import multiprocessing.dummy
 
 import ankura.util
 
+
 def anchor_algorithm(corpus, k, doc_threshold=500, project_dim=1000):
-    """Implementation of the anchor algorithm by Arora et al. 2013"""
+    """Implementation of the anchor algorithm by Arora et al. 2013.
+
+    This call builds a cooccurrence matrix from the given corpus, extracts k
+    anchor words using the Gram-Schmidt process, and then recovers the
+    topic-word distributions. The doc_threshold (default: 500) is how many
+    documents a word must appear in to be considered as a potential anchor
+    word, and project_dim (default: 1000, can be None) is the number of
+    dimensions the Gram-Schmidt process should be performed under.
+
+    This function is mostly for convenience, but is also a general guide for
+    how to recover topics with this module.
+    """
     Q = build_cooccurrence(corpus)
     anchors = gram_schmidt_anchors(corpus, Q, k, doc_threshold, project_dim)
     return recover_topics(Q, anchors)
 
 
 def build_cooccurrence(corpus):
-    """Constructs a cooccurrence matrix from a Corpus"""
+    """Constructs a cooccurrence matrix from a Corpus.
+
+    The cooccurrence matrix is constructed following Anandkumar et al., 2012 in
+    such a way that the cooccurrences of each document are given equal weight.
+    We use a formulation of this process that allows us to consider each
+    document individually, so that we can handle an arbitrarily large corpora.
+
+    This cooccurrence matrix encodes the joint probabilities of observing two
+    words together. Since the matrix is a joint distribution, it sums to 1.
+    Note that if we row normalize this matrix, we would instead have
+    conditional probabilities of observing a  word given we have already
+    observed another word.
+    """
     V = len(corpus.vocabulary)
     Q = numpy.zeros((V, V))
 
@@ -38,7 +73,19 @@ def build_cooccurrence(corpus):
 
 def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
                                label_weight=1, smoothing=1e-7):
-    """Constructs a cooccurrence matrix from a Corpus"""
+    """Constructs a cooccurrence matrix from a Corpus with labels.
+
+    In addition to a corpus, this method requires that a label attribute name
+    be given along with a set of labeled documents. For each label value, an
+    invented pseudoword is included. The label_weight determines how many such
+    pseudowords are added to each labeled document. Unlabeled documents are
+    given a smoothing term for each label.
+
+    Note that this algorithm must pass over the data twice. The first pass is
+    to determine the set of label values, and the second pass actually
+    constructs the cooccurrence matrix. However, since each document is
+    considered individually, we can handle arbitrarily large corpora.
+    """
     V = len(corpus.vocabulary)
 
     label_set = set()
@@ -92,7 +139,23 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
 
 
 def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
-    """Uses stabalized Gram-Schmidt decomposition to find k anchors."""
+    """Uses stabilized Gram-Schmidt decomposition to find k anchors.
+
+    Each row of Q represents a word embedded in V-dimensional space, with each
+    dimensions encoding a cooccurrence probability. We first pick the two most
+    extreme points to serve as a new origin and basis. We then iteratively add
+    new points to our basis by selecting the point which is furthest away after
+    projecting it onto the current span.
+
+    We do this until we have selected k anchor words. However, only words which
+    occur in at least doc_threshold (default: 500) documents will be
+    considered. For computational efficiency, we first project our points in to
+    project_dim (default: 1000, optionally None) dimensional space.
+
+    The rows of the cooccurrence matrix Q corresponding to the selected anchor
+    words are returned. If the keyword argument 'return_indices' is True, we
+    return the row indices instead of the rows themselves.
+    """
     # Find candidate anchors
     counts = collections.Counter()
     for doc in corpus.documents:
@@ -143,8 +206,8 @@ def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kw
                 indices[j + 1] = i
                 basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
 
-    # If requested, just return the indicies instead of anchor vectors
-    if kwargs.get('return_indicies'):
+    # If requested, just return the indices instead of anchor vectors
+    if kwargs.get('return_indices'):
         return indices
 
     # Use the original Q to extract anchor vectors using the anchor indices
@@ -152,7 +215,13 @@ def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kw
 
 
 def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
-    """Creates pseudoword anchors from user provided anchor facets"""
+    """Creates pseudoword anchors from user provided anchor facets.
+
+    The anchors should be a list of list of row indices. Each list of indices
+    is a multiword anchor which is constructed by taking the harmonic mean of
+    the indexed rows. To avoid zero weights, an epsilon (default: 1e-10) is
+    added to each anchor vector.
+    """
     if corpus:
         anchor_indices = []
         for anchor in anchors:
@@ -246,8 +315,16 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
 
 
 def recover_topics(Q, anchors, epsilon=2e-6):
-    """Recovers topics given a cooccurence matrix and a set of anchor vectors"""
-    # dont modify original Q
+    """Recovers topics given a cooccurrence matrix and a set of anchor vectors.
+
+    We represent each word (rows of the cooccurrence matrix Q) as a convex
+    combination of the anchors. Each convex combination is computed using
+    exponentiated gradient descent. These combination weights gives us the
+    inverse conditioning we need, so we multiply the weights with the prior
+    probabilities of each word to obtain a topic-word matrix which gives
+    probabilities of word given topic.
+    """
+    # Don't modify original Q
     Q = Q.copy()
 
     V = Q.shape[0]
@@ -267,6 +344,7 @@ def recover_topics(Q, anchors, epsilon=2e-6):
     X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
     XX = numpy.dot(X, X.transpose())
 
+    # TODO Add parallelism option using multiprocessing.pool.ThreadPool
     for word in range(V):
         alpha = _exponentiated_gradient(Q[word, :], X, XX, epsilon)
         if numpy.isnan(alpha).any():
