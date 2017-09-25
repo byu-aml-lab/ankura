@@ -4,8 +4,11 @@ import numpy
 
 
 def random_projection(A, k):
-    """Randomly projects the points of A into k-dimensions, following the
-    method given by Achlioptas 2001.
+    """Randomly projects the points (rows) of A into k-dimensions.
+
+    We follow the method given by Achlioptas 2001 which guarantees that
+    pairwise distances will be preserved within some epsilon, and is more
+    efficient than projections involving sampling from Gaussians.
     """
     R = numpy.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
     return numpy.dot(A, R * numpy.sqrt(3))
@@ -32,7 +35,7 @@ def sample_categorical(counts):
 
 
 class memoize(object):
-    """Decorator for memoizing a function"""
+    """Decorator for memoizing a function."""
 
     def __init__(self, func):
         self.func = func

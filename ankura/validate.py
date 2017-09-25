@@ -170,5 +170,5 @@ def coherence(reference_corpus, topic_summary, epsilon=1e-2):
                 pair_count = pair_counts[(i, j)]
                 count = counts[j]
                 score += numpy.log((pair_count + epsilon) / count)
-        scores.append(scores)
+        scores.append(score)
     return numpy.array(scores)
