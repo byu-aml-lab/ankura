@@ -5,11 +5,84 @@ import functools
 import random
 import sys
 
+<<<<<<< HEAD
 import numpy
 import scipy.spatial
 
 import ankura.util
 
+=======
+import numba
+
+from .pipeline import Dataset, filter_empty_words
+from .util import sample_categorical
+
+
+@numba.jit(nopython=True)
+def logsum_exp(y):
+    """Computes the sum of y in log space"""
+    ymax = y.max()
+    return ymax + numpy.log((numpy.exp(y - ymax)).sum())
+
+
+
+@numba.jit(nopython=True)
+def exponentiated_gradient(Y, X, XX, epsilon):
+    """Solves an exponentied gradient problem with L2 divergence"""
+    _C1 = 1e-4
+    _C2 = .75
+
+    XY = numpy.dot(X, Y)
+    YY = numpy.dot(Y, Y)
+
+    alpha = numpy.ones(X.shape[0]) / X.shape[0]
+    old_alpha = numpy.copy(alpha)
+    log_alpha = numpy.log(alpha)
+    old_log_alpha = numpy.copy(log_alpha)
+
+    AXX = numpy.dot(alpha, XX)
+    AXY = numpy.dot(alpha, XY)
+    AXXA = numpy.dot(AXX, alpha.transpose())
+
+    grad = 2 * (AXX - XY)
+    old_grad = numpy.copy(grad)
+
+    new_obj = AXXA - 2 * AXY + YY
+
+    # Initialize book keeping
+    stepsize = 1
+    decreased = False
+    convergence = numpy.inf
+
+    while convergence >= epsilon:
+        old_obj = new_obj
+        old_alpha = numpy.copy(alpha)
+        old_log_alpha = numpy.copy(log_alpha)
+        if new_obj == 0 or stepsize == 0:
+            break
+
+        # Add the gradient and renormalize in logspace, then exponentiate
+        log_alpha -= stepsize * grad
+        log_alpha -= logsum_exp(log_alpha)
+        alpha = numpy.exp(log_alpha)
+
+        # Precompute quantities needed for adaptive stepsize
+        AXX = numpy.dot(alpha, XX)
+        AXY = numpy.dot(alpha, XY)
+        AXXA = numpy.dot(AXX, alpha.transpose())
+
+        # See if stepsize should decrease
+        old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
+        offset = _C1 * stepsize * numpy.dot(grad, alpha - old_alpha)
+        new_obj_threshold = old_obj + offset
+        if new_obj >= new_obj_threshold:
+            stepsize /= 2.0
+            alpha = old_alpha
+            log_alpha = old_log_alpha
+            new_obj = old_obj
+            decreased = True
+            continue
+>>>>>>> master
 
 def topic_summary(topics, corpus=None, n=10):
     """Gets the top n tokens per topic.
@@ -35,12 +108,43 @@ DocumentTheta = collections.namedtuple('DocumentTheta',
                                        'text tokens metadata theta')
 
 
+<<<<<<< HEAD
 def predict_topics(doc, topics, alpha=.01, num_iters=10):
     """Predicts token level topic assignments for a document
 
     Inference is performed using Gibbs sampling with Latent Dirichlet
     Allocation and fixed topics. A symetric Dirichlet prior over the
     document-topic distribution is used.
+=======
+    # compute normalized anchors X, and precompute X * X.T
+    X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
+    XX = numpy.dot(X, X.transpose())
+
+    P_w = numpy.diag(Q.sum(axis=1))
+    for word in range(V):
+        if numpy.isnan(P_w[word, word]):
+            P_w[word, word] = 1e-16
+        # use normalized row of Q
+        alpha = exponentiated_gradient(Q[word, :] / Q[word, :].sum(), X, XX, epsilon)
+        if numpy.isnan(alpha).any():
+            alpha = numpy.ones(K) / K
+        A[word, :] = alpha
+
+    # Use Bayes rule to compute topic matri
+    # TODO(jeff) is this matrix conversion needed?
+    A = numpy.matrix(P_w) * numpy.matrix(A)
+    for k in range(K):
+        A[:, k] = A[:, k] / A[:, k].sum()
+
+    return numpy.array(A)
+
+
+def predict_topics(topics, tokens, alpha=.01, num_iters=10):
+    """Produces topic assignments for a sequence tokens given a set of topics
+
+    Inference is performed using Gibbs sampling. A uniform Dirichlet prior over
+    the document topic distribution is used in the computation.
+>>>>>>> master
     """
     T = topics.shape[1]
 

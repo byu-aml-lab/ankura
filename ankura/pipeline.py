@@ -20,10 +20,122 @@ TokenLoc = collections.namedtuple('TokenLoc', 'token loc')
 Document = collections.namedtuple('Document', 'text tokens metadata')
 Corpus = collections.namedtuple('Corpus', 'documents vocabulary')
 
+<<<<<<< HEAD
 # Inputers are callables which generate the filenames a Pipeline should read.
 # The files should be opened in binary read mode. The caller is reponsible for
 # closing the file objects, although garbage collection should handle this as
 # soon as the caller is finished with the file object.
+=======
+    The dataset should be considered immutable. Consequently, dataset
+    attributes are accessible only through properties which have no setters.
+    The docwords matrix will be a sparse scipy matrix of uint. The vocab and
+    titles will both be lists of str. The cooccurrences matrix will be a numpy
+    array of float.
+    """
+    def __init__(self, docwords, vocab, titles, metadata=None):
+        self._docwords = docwords
+        self._vocab = vocab
+        self._titles = titles
+        self._metadata = metadata
+        self._cooccurrences = None
+        self._tokens = {}
+
+        # TODO Why are titles special? Should they just be stored in metadata?
+
+    @property
+    def M(self):
+        """Gets the sparse docwords matrix"""
+        return self._docwords
+
+    @property
+    def docwords(self):
+        """Gets the sparse docwords matrix"""
+        return self.M
+
+    @property
+    def vocab(self):
+        """Gets the list of vocabulary items"""
+        return self._vocab
+
+    @property
+    def titles(self):
+        """Gets the titles of each document"""
+        return self._titles
+
+    @property
+    def metadata(self):
+        """Gets the metadata of each document, if there is any"""
+        return self._metadata
+
+    @property
+    def Q(self):
+        """Gets the word cooccurrence matrix"""
+        # TODO(nozomu) add ways to augment Q with additional labeled data
+        if self._cooccurrences is None:
+            self.compute_cooccurrences()
+        return self._cooccurrences
+
+    @property
+    def cooccurrences(self):
+        """Gets the word cooccurrence matrix"""
+        return self.Q
+
+    def compute_cooccurrences(self, epsilon=1e-15):
+        """Computes the cooccurrence matrix for the dataset"""
+        # See supplementary 4.1 of Aurora et. al. 2012 for information on these
+        vocab_size, num_docs = self.M.shape
+        H_tilde = scipy.sparse.csc_matrix(self.M.copy(), dtype=float)
+        H_hat = numpy.zeros(vocab_size)
+
+        # Construct H_tilde and H_hat
+        for j in range(H_tilde.indptr.size - 1):
+            # get indices of column j
+            col_start = H_tilde.indptr[j]
+            col_end = H_tilde.indptr[j + 1]
+            row_indices = H_tilde.indices[col_start: col_end]
+
+            # get count of tokens in column (document) and compute norm
+            count = numpy.sum(H_tilde.data[col_start: col_end])
+            norm = count * (count - 1)
+
+            # update H_hat and H_tilde (see supplementary)
+            if norm != 0:
+                H_hat[row_indices] += H_tilde.data[col_start: col_end] / norm
+                H_tilde.data[col_start: col_end] /= numpy.sqrt(norm)
+
+        # construct and store normalized Q
+        Q = H_tilde * H_tilde.transpose() - numpy.diag(H_hat)
+        self._cooccurrences = numpy.array(Q / num_docs)
+
+        # squash precision errors to 0
+        self._cooccurrences[(-epsilon < self._cooccurrences) & (self._cooccurrences < 0)] = 0
+
+    @property
+    def vocab_size(self):
+        """Gets the size of the dataset vocabulary"""
+        return self._docwords.shape[0]
+
+    @property
+    def num_docs(self):
+        """Gets the number of documents in the dataset"""
+        return self._docwords.shape[1]
+
+    def doc_tokens(self, doc_id, rng=random):
+        """Converts a document from counts to a sequence of token ids
+
+        The conversion for any one document is only computed once, and the
+        resultant tokens are shuffled. However, the computations are performed
+        lazily.
+        """
+        if doc_id in self._tokens:
+            return self._tokens[doc_id]
+
+        token_ids, _, counts = scipy.sparse.find(self._docwords[:, doc_id])
+        tokens = []
+        for token_id, count in zip(token_ids, counts):
+            tokens.extend([token_id] * count)
+        rng.shuffle(tokens)
+>>>>>>> master
 
 
 def file_inputer(*filenames):
