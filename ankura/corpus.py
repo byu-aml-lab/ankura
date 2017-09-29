@@ -1,4 +1,15 @@
-"""Provides access to some standard datasets"""
+"""Provides access to some standard downloadable datasets.
+
+The available datasets (and corresponding import functions) include:
+    * bible
+    * newsgroups
+    * amazon
+These imports depend on two module variables which can be mutated to change the
+download behavior of these imports. Downloaded and pickled data will be stored
+in the path given by `download_dir`, and data will be downloaded from
+`base_url`. By default, `download_dir` will be '$HOME/.ankura' while base_url
+will point at a GitHub repo designed for use with ankura.
+"""
 
 import functools
 import itertools
@@ -7,14 +18,13 @@ import urllib.request
 
 import ankura
 
-
-download_dir = os.path.join(os.getenv('HOME'), '.ankura') # pylint: disable=invalid-name
+download_dir = os.path.join(os.getenv('HOME'), '.ankura')
 
 def _path(name):
     return os.path.join(download_dir, name)
 
 
-base_url = 'https://github.com/jlund3/data/raw/data2' # pylint: disable=invalid-name
+base_url = 'https://github.com/jlund3/data/raw/data2'
 
 def _url(name):
     return os.path.join(base_url, name)
@@ -64,7 +74,7 @@ def download_inputer(*names):
 
 def bible():
     """Gets a Corpus containing the King James version of the Bible with over
-    250,000 cross references
+    250,000 cross references.
     """
     pipeline = ankura.pipeline.Pipeline(
         download_inputer('bible/bible.txt'),
@@ -91,8 +101,31 @@ def bible():
 
 def newsgroups():
     """Gets a Corpus containing roughly 20,000 usenet postings from 20
-    different newsgroups in the early 1990's
+    different newsgroups in the early 1990's.
     """
+    coarse_mapping = {
+        'comp.graphics': 'computer',
+        'comp.os.ms-windows.misc': 'comp',
+        'comp.sys.ibm.pc.hardware': 'comp',
+        'comp.sys.mac.hardware': 'comp',
+        'comp.windows.x': 'computer',
+        'rec.autos': 'rec',
+        'rec.motorcycles': 'rec',
+        'rec.sport.baseball': 'rec',
+        'rec.sport.hockey': 'rec',
+        'sci.crypt': 'sci',
+        'sci.electronics': 'sci',
+        'sci.med': 'sci',
+        'sci.space': 'sci',
+        'misc.forsale': 'misc',
+        'talk.politics.misc': 'politics',
+        'talk.politics.guns': 'politics',
+        'talk.politics.mideast': 'politics',
+        'talk.religion.misc' : 'religion',
+        'alt.atheism' : 'religion',
+        'soc.religion.christian' : 'religion',
+    }
+
     pipeline = ankura.pipeline.Pipeline(
         download_inputer('newsgroups/newsgroups.tar.gz'),
         ankura.pipeline.targz_extractor(
@@ -108,6 +141,7 @@ def newsgroups():
         ankura.pipeline.composite_labeler(
             ankura.pipeline.title_labeler('id'),
             ankura.pipeline.dir_labeler('newsgroup'),
+            lambda n: {'coarse_newsgroup': coarse_mapping[os.path.dirname(n)]},
         ),
         ankura.pipeline.length_filterer(),
     )

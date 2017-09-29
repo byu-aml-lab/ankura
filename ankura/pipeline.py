@@ -1,4 +1,15 @@
-"""Functionality for creating import pipelines"""
+"""Functionality for importing datasets for use with ankura.
+
+A typical import includes the following pieces:
+    * Inputer - callable which generates files to be read by the pipeline
+    * Extractor - callable which generates Text to be processed from a file
+    * Tokenizer - converts a Text into TokenLoc with string tokens
+    * Labeler - returns metadata from a Text name
+    * Filterer - return True if a Document should be included in a Corpus
+These pieces form a Pipeline, which can then be run to import a Corpus which is
+usable throughout ankura. See `ankura.corpus` for examples of how these
+Pipeline can be used to import data.
+"""
 
 import collections
 import functools
@@ -12,6 +23,7 @@ import string
 import tarfile
 
 import bs4
+import scipy.sparse
 
 # POD types used throughout the pipeline process
 
@@ -20,7 +32,7 @@ TokenLoc = collections.namedtuple('TokenLoc', 'token loc')
 Document = collections.namedtuple('Document', 'text tokens metadata')
 Corpus = collections.namedtuple('Corpus', 'documents vocabulary')
 
-# Inputers are callables which generate the filenames a Pipeline should read.
+# Inputers are callables which generate the files a Pipeline should read.
 # The files should be opened in binary read mode. The caller is reponsible for
 # closing the file objects, although garbage collection should handle this as
 # soon as the caller is finished with the file object.
@@ -269,7 +281,7 @@ def frequency_tokenizer(pipeline, rare=None, common=None):
         elif common:
             keep = lambda n: n <= common
         else:
-            return tokenizer
+            return pipeline_tokenizer
 
         counts = collections.defaultdict(int)
         for docfile in pipeline_inputer():
@@ -469,7 +481,6 @@ class DocumentStream(object):
 class Pipeline(object):
     """Pipeline describes the process of importing a Corpus"""
 
-    # pylint: disable=too-many-arguments
     def __init__(self, inputer, extractor, tokenizer, labeler, filterer):
         self.inputer = inputer
         self.extractor = extractor
@@ -499,5 +510,20 @@ class Pipeline(object):
         return corpus
 
 
-# TODO Replace shelve with better performing persistant storage
-# Could use shelve or sqlite3, especially if we disallow random access for docs
+def build_docwords(corpus, V=None):
+    """Constructs a sparse docwords matrix from a corpus.
+
+    The resulting DxV matrix will be in csc format, with each row encoding the
+    word counts for a document. The vocabulary size V defaults to the length of
+    the corpus vocabulary list, but can optionally be explicitly set.
+    """
+    D = len(corpus.documents)
+    if V is None:
+        V = len(corpus.vocabulary)
+
+    docwords = scipy.sparse.lil_matrix((D, V))
+    for d, doc in enumerate(corpus.documents):
+        for tl in doc.tokens:
+            docwords[d, tl.token] += 1
+
+    return docwords.tocsc()
