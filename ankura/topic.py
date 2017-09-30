@@ -29,12 +29,17 @@ def topic_summary(topics, corpus=None, n=10):
     return numpy.array(summary)
 
 
-def token_topics(doc, topics, alpha=.01, num_iters=10):
+def token_topics(doc, topics, alpha=.01, num_iters=10, **kwargs):
     """Predicts token level topic assignments for a document.
 
     Inference is performed using Gibbs sampling with Latent Dirichlet
     AllocationAllocation and fixed topics. A symetrics Dirichlet prior over the
     document-topic distribution is used.
+
+    By default, the topic assignments are returned. However, if the keyword
+    argument 'return_theta' is True, we return the topic distribution for the
+    document instead. If 'return_both' is True, then the topic assignments and
+    the topic distribution is returned as a tuple.
     """
     if not doc.tokens:
         return []
@@ -52,6 +57,11 @@ def token_topics(doc, topics, alpha=.01, num_iters=10):
             cond = [alpha + counts[t] * topics[w_n.token, t] for t in range(T)]
             z[n] = ankura.util.sample_categorical(cond)
             counts[z[n]] += 1
+
+    if kwargs.get('return_both'):
+        return z, counts / counts.sum()
+    elif kwargs.get('return_theta'):
+        return counts / counts.sum()
 
     return z
 
