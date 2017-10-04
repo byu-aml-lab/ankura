@@ -435,6 +435,24 @@ class VocabBuilder(object):
         return [TokenLoc(self[t.token], t.loc) for t in tokens]
 
 
+class HashedVocabBuilder(VocabBuilder):
+    """Augments VocabBuilder to include feature hashing"""
+
+    def __init__(self, size):
+        self.size = size
+        self.inverse = [collections.defaultdict(int) for _ in range(size)]
+
+    def __getitem__(self, token):
+        index = hash(token) % self.size
+        self.inverse[index][token] += 1
+        return index
+
+    @property
+    def tokens(self):
+        """Gets a list of buckets, representing each bucket by the most frequent token"""
+        return [max(c, key=c.get, default='') for c in self.inverse]
+
+
 class DocumentStream(object):
     """A file-backed document stream for large document collections"""
 
@@ -488,13 +506,13 @@ class Pipeline(object):
         self.labeler = labeler
         self.filterer = filterer
 
-    def run(self, pickle_path=None, docs_path=None):
+    def run(self, pickle_path=None, docs_path=None, hash_size=None):
         """Creates a new Corpus using the Pipeline"""
         if pickle_path and os.path.exists(pickle_path):
             return pickle.load(open(pickle_path, 'rb'))
 
         documents = DocumentStream(docs_path) if docs_path else []
-        vocab = VocabBuilder()
+        vocab = HashedVocabBuilder(hash_size) if hash_size else VocabBuilder()
         for docfile in self.inputer():
             for text in self.extractor(docfile):
                 tokens = self.tokenizer(text.data)
