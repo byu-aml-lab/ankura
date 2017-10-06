@@ -12,9 +12,8 @@ matrix is constructed and/or how the anchor words are chosen.
 
 import collections
 import numpy
-import scipy.sparse
 import scipy.stats
-import multiprocessing.dummy
+import multiprocessing.pool
 
 import ankura.util
 
@@ -311,10 +310,12 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
         decreased = False
         convergence = numpy.dot(alpha, grad - grad.min())
 
+    if numpy.isnan(alpha).any():
+        alpha = numpy.ones(X.shape[0]) / X.shape[0]
     return alpha
 
 
-def recover_topics(Q, anchors, epsilon=2e-6):
+def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
     """Recovers topics given a cooccurrence matrix and a set of anchor vectors.
 
     We represent each word (rows of the cooccurrence matrix Q) as a convex
@@ -323,37 +324,49 @@ def recover_topics(Q, anchors, epsilon=2e-6):
     inverse conditioning we need, so we multiply the weights with the prior
     probabilities of each word to obtain a topic-word matrix which gives
     probabilities of word given topic.
+
+    Since the computation of the convex combinations for each word is
+    embarassingly parallel, it can be faster to use multiprocessing. The
+    keyword argument parallelism can used to specify the number of threads
+    used. The keyword argument chunksize can also be given to specify the
+    approximate number of words sent to a thread to work on at a time.
     """
     # Don't modify original Q
     Q = Q.copy()
 
+    # Get dimensions of topic matrix
     V = Q.shape[0]
     K = len(anchors)
-    A = numpy.zeros((V, K))
 
+    # Compute prior probability of each word with row sums of Q.
     P_w = numpy.diag(Q.sum(axis=1))
     for word in range(V):
         if numpy.isnan(P_w[word, word]):
             P_w[word, word] = 1e-16
 
-    # normalize the rows of Q to get Q_prime
+    # Normalize the rows of Q to get Q_prime
     for word in range(V):
         Q[word, :] = Q[word, :] / Q[word, :].sum()
 
-    # compute normalized anchors X, and precompute X * X.T
+    # Compute normalized anchors X, and precompute X * X.T
     X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
     XX = numpy.dot(X, X.transpose())
 
-    # TODO Add parallelism option using multiprocessing.pool.ThreadPool
-    for word in range(V):
-        alpha = _exponentiated_gradient(Q[word, :], X, XX, epsilon)
-        if numpy.isnan(alpha).any():
-            alpha = numpy.ones(K) / K
-        A[word, :] = alpha
+    # Represent each word as a convex combination of anchors.
+    parallelism = kwargs.get('parallelism')
+    if parallelism:
+        worker = lambda word: _exponentiated_gradient(Q[word], X, XX, epsilon)
+        chunksize = kwargs.get('chunksize', V // parallelism)
+        with multiprocessing.pool.ThreadPool(parallelism) as pool:
+            A = pool.map(worker, range(V), chunksize)
+        A = numpy.array(A)
+    else:
+        A = numpy.zeros((V, K))
+        for word in range(V):
+            A[word] = _exponentiated_gradient(Q[word], X, XX, epsilon)
 
     # Use Bayes rule to compute topic matrix
     A = numpy.dot(P_w, A)
     for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()
-
-    return numpy.array(A)
+    return A
