@@ -439,18 +439,30 @@ class HashedVocabBuilder(VocabBuilder):
     """Augments VocabBuilder to include feature hashing"""
 
     def __init__(self, size):
+        self.buckets = []
+        self.types = {}
+
         self.size = size
-        self.inverse = [collections.defaultdict(int) for _ in range(size)]
+        self.indices = {}
 
     def __getitem__(self, token):
-        index = hash(token) % self.size
-        self.inverse[index][token] += 1
-        return index
+        if token not in self.types:
+            key = hash(token) % self.size
+            if key not in self.indices:
+                self.indices[key] = len(self.buckets)
+                self.buckets.append(collections.defaultdict(int))
+            self.types[token] = self.indices[key]
+
+        tid = self.types[token]
+        self.buckets[tid][token] += 1
+        return tid
 
     @property
     def tokens(self):
-        """Gets a list of buckets, representing each bucket by the most frequent token"""
-        return [max(c, key=c.get, default='') for c in self.inverse]
+        """Gets a list of tokens by representing each bucket by its most
+        frequenly used token.
+        """
+        return [max(b, key=b.get) for b in self.buckets]
 
 
 class DocumentStream(object):
