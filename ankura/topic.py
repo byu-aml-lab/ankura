@@ -75,24 +75,36 @@ def sampling_assign(corpus_or_doc, topics, alpha=.01, num_iters=10, **kwargs):
     return theta
 
 
-def document_topics(corpus_or_docwords, topics):
-    """Predicts document-topic distributions for each document in a corpus.
+def variational_assign(data, topics):
+    """Predicts topic assignments for a corpus, document or docwords matrix.
 
-    The input data can either be a corpus or a docwords matrix. If a corpus is
-    given, a docwords matrix is constructed from that corpus. The
-    document-topic distributions are given as a DxK matrix, with each row
-    giving the topic distribution for a document.
+    If a corpus or document is given, a sparse docwords matrix is computed. The
+    computed or given docwords matrix is then used to compute document topic
+    distributions using online variational Bayes with Latent Dirichlet
+    Allocation and fixed topics.
     """
     V, K = topics.shape
     try:
-        docwords = ankura.pipeline.build_docwords(corpus_or_docwords, V)
+        docwords = ankura.pipeline.build_docwords(data, V)
+        out_shape = None
     except AttributeError:
-        docwords = corpus_or_docwords
+        try:
+            docwords = scipy.sparse.lil_matrix((1, V))
+            for tl in data.tokens:
+                docwords[0, tl.token] += 1
+            out_shape = [K]
+        except AttributeError:
+            docwords = data
+            out_shape = None
 
     lda = sklearn.decomposition.LatentDirichletAllocation(K)
     lda.components_ = topics.T
     lda._init_latent_vars(V)
-    return lda.transform(docwords)
+    theta = lda.transform(docwords)
+
+    if out_shape:
+        return theta.reshape(out_shape)
+    return theta
 
 
 # TODO This now expects non-existant data type
