@@ -29,25 +29,12 @@ def topic_summary(topics, corpus=None, n=10):
     return numpy.array(summary)
 
 
-def token_topics(doc, topics, alpha=.01, num_iters=10, **kwargs):
-    """Predicts token level topic assignments for a document.
-
-    Inference is performed using Gibbs sampling with Latent Dirichlet
-    AllocationAllocation and fixed topics. A symetrics Dirichlet prior over the
-    document-topic distribution is used.
-
-    By default, the topic assignments are returned. However, if the keyword
-    argument 'return_theta' is True, we return the topic distribution for the
-    document instead. If 'return_both' is True, then the topic assignments and
-    the topic distribution is returned as a tuple.
-    """
+def _sample_doc(doc, topics, T, alpha, num_iters):
     if not doc.tokens:
-        return []
+        return [], numpy.ones(T) / T
 
-    T = topics.shape[1]
-    z = numpy.random.randint(T, size=len(doc.tokens), dtype='uint')
-
-    counts = numpy.zeros(T, dtype='uint')
+    z = numpy.random.randint(T, size=len(doc.tokens), dtype=int)
+    counts = numpy.zeros(T, dtype=int)
     for z_n in z:
         counts[z_n] += 1
 
@@ -58,12 +45,34 @@ def token_topics(doc, topics, alpha=.01, num_iters=10, **kwargs):
             z[n] = ankura.util.sample_categorical(cond)
             counts[z[n]] += 1
 
-    if kwargs.get('return_both'):
-        return z, counts / counts.sum()
-    elif kwargs.get('return_theta'):
-        return counts / counts.sum()
+    return z, counts / counts.sum()
 
-    return z
+
+def sampling_assign(corpus_or_doc, topics, alpha=.01, num_iters=10, **kwargs):
+    """Predicts topic assignments for a corpus or document.
+
+    Inference is performed using Gibbs sampling with Latent Dirichlet
+    Allocation and fixed topics. A symetric Dirichlet prior over the
+    document-topic distribution is used.
+
+    By default, the topic distribution or distributions are returned. However,
+    if the keyword argument 'return_z' is True, the token level topic
+    assignments are returned instead. If the keyword argument 'return_both' is
+    True, then both the token level topic assignments and the document topic
+    distributions are returned in that order.
+    """
+    T = topics.shape[1]
+    try:
+        z, theta = zip(*(_sample_doc(d, topics, T, alpha, num_iters) for d in corpus_or_doc.documents))
+    except AttributeError:
+        z, theta = _sample_doc(corpus_or_doc, topics, T, alpha, num_iters)
+
+    if kwargs.get('return_both'):
+        return z, theta
+    elif kwargs.get('return_z'):
+        return z
+
+    return theta
 
 
 def document_topics(corpus_or_docwords, topics):
