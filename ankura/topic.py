@@ -60,12 +60,22 @@ def sampling_assign(corpus_or_doc, topics, alpha=.01, num_iters=10, **kwargs):
     assignments are returned instead. If the keyword argument 'return_both' is
     True, then both the token level topic assignments and the document topic
     distributions are returned in that order.
+
+    Additionally, if the keyword argument 'metadata_attr' is true, then the
+    document topic distributions are added to the metadata of each document
+    using the given metadata attribute name. However, this does require that
+    the input be a corpus instead of a single document.
     """
     T = topics.shape[1]
     try:
         z, theta = zip(*(_sample_doc(d, topics, T, alpha, num_iters) for d in corpus_or_doc.documents))
     except AttributeError:
         z, theta = _sample_doc(corpus_or_doc, topics, T, alpha, num_iters)
+
+    attr = kwargs.get('metadata_attr')
+    if attr:
+        for doc, theta_d in zip(corpus_or_doc.documents, theta):
+            doc.metadata[attr] = theta_d
 
     if kwargs.get('return_both'):
         return z, theta
@@ -75,13 +85,18 @@ def sampling_assign(corpus_or_doc, topics, alpha=.01, num_iters=10, **kwargs):
     return theta
 
 
-def variational_assign(data, topics):
+def variational_assign(data, topics, **kwargs):
     """Predicts topic assignments for a corpus, document or docwords matrix.
 
     If a corpus or document is given, a sparse docwords matrix is computed. The
     computed or given docwords matrix is then used to compute document topic
     distributions using online variational Bayes with Latent Dirichlet
-    Allocation and fixed topics.
+    Allocation and fixed topics following Hoffman et al., 2010.
+
+    Additionally, if the keyword argument 'metadata_attr' is true, then the
+    document topic distributions are added to the metadata of each document
+    using the given metadata attribute name. However, this does require that
+    the input be a corpus isntead of a single document.
     """
     V, K = topics.shape
     try:
@@ -102,30 +117,40 @@ def variational_assign(data, topics):
     lda._init_latent_vars(V)
     theta = lda.transform(docwords)
 
+    attr = kwargs.get('metadata_attr')
+    if attr:
+        for doc, theta_d in zip(data.documents, theta):
+            doc.metadata[attr] = theta_d
+
     if out_shape:
         return theta.reshape(out_shape)
     return theta
 
 
-# TODO This now expects non-existant data type
-def cross_reference(corpus, doc=None, n=sys.maxsize, threshold=1):
+def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
     """Finds the nearest documents by topic similarity.
+
+    The documents of the corpus must include a metadata value giving a vector
+    representation of the document. Typically, this is a topic distribution
+    obtained with an assign function and a metadata_attr. The vector
+    representation is then used to compute distances between documents.
 
     If a document is given, then a list of references is returned for that
     document. Otherwise, cross references for each document in a corpus are
-    given in a dict keyed by the documents. Consequently, the documents must be
-    hashable.
+    given in a dict keyed by the documents. Consequently, the documents of the
+    corpus must be hashable.
 
     The closest n documents will be returned (default=sys.maxsize). Documents
     whose similarity is behond the threshold (default=1) will not be returned.
     A threshold of 1 indicates that no filtering should be done, while a 0
-    indicates that only exact topical matches should be returned. Note that
-    the corpus must use DocumentTheta (obtained with topic_transform).
+    indicates that only exact matches should be returned.
     """
     def _xrefs(doc):
-        dists = numpy.array([scipy.spatial.distance.cosine(doc.theta, d.theta)
-                             if doc is not d else float('nan')
-                             for d in corpus.documents])
+        doc_theta = doc.metadata[attr]
+        dists = [scipy.spatial.distance.cosine(doc_theta, d.metadata[attr])
+                 if doc is not d else float('nan')
+                 for d in corpus.documents]
+        dists = numpy.array(dists)
         return list(corpus.documents[i] for i in dists.argsort()[:n]
                     if dists[i] <= threshold)
 
@@ -135,7 +160,6 @@ def cross_reference(corpus, doc=None, n=sys.maxsize, threshold=1):
         return {doc: _xrefs(doc) for doc in corpus.documents}
 
 
-# XXX This seems to be broken!
 def free_classifier(topics, Q, labels, epsilon=1e-7):
     """There is no free lunch, but this classifier is free"""
     K = len(labels)
