@@ -30,7 +30,7 @@ import scipy.sparse
 Text = collections.namedtuple('Text', 'name data')
 TokenLoc = collections.namedtuple('TokenLoc', 'token loc')
 Document = collections.namedtuple('Document', 'text tokens metadata')
-Corpus = collections.namedtuple('Corpus', 'documents vocabulary')
+Corpus = collections.namedtuple('Corpus', 'documents vocabulary metadata')
 
 # Inputers are callables which generate the files a Pipeline should read.
 # The files should be opened in binary read mode. The caller is reponsible for
@@ -413,8 +413,57 @@ def length_filterer(threshold=1):
     return _filterer
 
 
+# Informer are callables which take an entire Corpus as input and compute a
+# statistic about that Corpus. Pipeline then add this Corpus level metadata to
+# the Corpus.
+
+
+def num_docs_informer(attr='num_docs'):
+    """Gets the number of documents in the corpus."""
+    @functools.wraps(num_docs_informer)
+    def _informer(corpus):
+        return {attr: len(corpus.documents)}
+    return _informer
+
+
+def vocab_size_informer(attr='vocab_size'):
+    """Gets the size of the corpus vocabulary."""
+    @functools.wraps(vocab_size_informer)
+    def _informer(corpus):
+        return {attr: len(corpus.vocabulary)}
+    return _informer
+
+
+def docwords_informer(attr='docwords'):
+    """Uses build_docwords to pre-compute a sparse docwords matrix."""
+    @functools.wraps(docwords_informer)
+    def _informer(corpus):
+        return {attr: build_docwords(corpus)}
+    return _informer
+
+
+def kwargs_informer(**kwargs):
+    """Returns an informer which simply passes through keyword arguments."""
+    @functools.wraps(kwargs_informer)
+    def _informer(corpus):
+        return kwargs
+    return _informer
+
+
+def composite_informer(*informers):
+    """Returns an informer with the merged results of several informers."""
+    @functools.wraps(composite_informer)
+    def _informer(corpus):
+        metadata = {}
+        for informer in informers:
+            metadata.update(informer(corpus))
+        return metadata
+    return _informer
+
+
 # Pipeline describes the process of importing a Corpus. It consists of an
-# inputer, extractor, tokenizer, and labeler.
+# inputer, extractor, tokenizer, and labeler. Optionally, it may also include
+# an informer.
 
 
 class VocabBuilder(object):
@@ -433,6 +482,36 @@ class VocabBuilder(object):
     def convert(self, tokens):
         """Converts a sequence of TokenLoc to use types"""
         return [TokenLoc(self[t.token], t.loc) for t in tokens]
+
+
+class HashedVocabBuilder(VocabBuilder):
+    """Augments VocabBuilder to include feature hashing"""
+
+    def __init__(self, size):
+        self.buckets = []
+        self.types = {}
+
+        self.size = size
+        self.indices = {}
+
+    def __getitem__(self, token):
+        if token not in self.types:
+            key = hash(token) % self.size
+            if key not in self.indices:
+                self.indices[key] = len(self.buckets)
+                self.buckets.append(collections.defaultdict(int))
+            self.types[token] = self.indices[key]
+
+        tid = self.types[token]
+        self.buckets[tid][token] += 1
+        return tid
+
+    @property
+    def tokens(self):
+        """Gets a list of tokens by representing each bucket by its most
+        frequenly used token.
+        """
+        return [max(b, key=b.get) for b in self.buckets]
 
 
 class DocumentStream(object):
@@ -481,20 +560,21 @@ class DocumentStream(object):
 class Pipeline(object):
     """Pipeline describes the process of importing a Corpus"""
 
-    def __init__(self, inputer, extractor, tokenizer, labeler, filterer):
+    def __init__(self, inputer, extractor, tokenizer, labeler, filterer, informer=None):
         self.inputer = inputer
         self.extractor = extractor
         self.tokenizer = tokenizer
         self.labeler = labeler
         self.filterer = filterer
+        self.informer = informer
 
-    def run(self, pickle_path=None, docs_path=None):
+    def run(self, pickle_path=None, docs_path=None, hash_size=None):
         """Creates a new Corpus using the Pipeline"""
         if pickle_path and os.path.exists(pickle_path):
             return pickle.load(open(pickle_path, 'rb'))
 
         documents = DocumentStream(docs_path) if docs_path else []
-        vocab = VocabBuilder()
+        vocab = HashedVocabBuilder(hash_size) if hash_size else VocabBuilder()
         for docfile in self.inputer():
             for text in self.extractor(docfile):
                 tokens = self.tokenizer(text.data)
@@ -504,7 +584,10 @@ class Pipeline(object):
                 if self.filterer(document):
                     documents.append(document)
 
-        corpus = Corpus(documents, vocab.tokens)
+        corpus = Corpus(documents, vocab.tokens, {})
+        if self.informer:
+            corpus.metadata.update(self.informer(corpus))
+
         if pickle_path:
             pickle.dump(corpus, open(pickle_path, 'wb'))
         return corpus

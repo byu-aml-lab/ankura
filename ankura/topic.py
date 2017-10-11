@@ -7,8 +7,7 @@ import numpy
 import scipy.spatial
 import sklearn.decomposition
 
-from . import pipeline
-from . import util
+from . import pipeline, util
 
 
 def topic_summary(topics, corpus=None, n=10):
@@ -29,72 +28,101 @@ def topic_summary(topics, corpus=None, n=10):
     return numpy.array(summary)
 
 
-def token_topics(doc, topics, alpha=.01, num_iters=10):
-    """Predicts token level topic assignments for a document.
+def sampling_assign(corpus, topics, theta_attr=None, z_attr=None, alpha=.01, num_iters=10):
+    """Predicts topic assignments for a corpus.
 
-    Inference is performed using Gibbs sampling with Latent Dirichlet
-    AllocationAllocation and fixed topics. A symetrics Dirichlet prior over the
-    document-topic distribution is used.
+    Topic inference is done using Gibbs sampling with Latent Dirichlet
+    Allocation and fixed topics following Griffiths and Steyvers 2004. The
+    parameter alpha specifies a symetric Dirichlet prior over the document
+    topic distributions. The parameter num_iters controlls how many iterations
+    of sampling should be performed.
+
+    If theta_attr is given, each document is given a metadata value describing
+    the document-topic distribution as an array. If the z_attr is given, each
+    document is given a metadata value describing the token level topic
+    assignments. At east one of the attribute names must be given.
+
     """
-    if not doc.tokens:
-        return []
+    if not theta_attr and not z_attr:
+        raise ValueError('Either theta_attr or z_attr must be given')
 
     T = topics.shape[1]
-    z = numpy.random.randint(T, size=len(doc.tokens), dtype='uint')
 
-    counts = numpy.zeros(T, dtype='uint')
-    for z_n in z:
-        counts[z_n] += 1
+    c = numpy.zeros((len(corpus.documents), T))
+    z = [numpy.random.randint(T, size=len(d.tokens)) for d in corpus.documents]
+    for d, z_d in enumerate(z):
+        for z_dn in z_d:
+            c[d, z_dn] += 1
 
     for _ in range(num_iters):
-        for n, w_n in enumerate(doc.tokens):
-            counts[z[n]] -= 1
-            cond = [alpha + counts[t] * topics[w_n.token, t] for t in range(T)]
-            z[n] = util.sample_categorical(cond)
-            counts[z[n]] += 1
+        for d, (doc, z_d) in enumerate(zip(corpus.documents, z)):
+            for n, w_dn in enumerate(doc.tokens):
+                c[d, z_d[n]] -= 1
+                cond = [alpha + c[d, t] * topics[w_dn.token, t] for t in range(T)]
+                z_d[n] = util.sample_categorical(cond)
+                c[d, z_d[n]] += 1
 
-    return z
+    if theta_attr:
+        for doc, c_d in zip(corpus.documents, c):
+            doc.metadata[theta_attr] = c_d / c_d.sum()
+    if z_attr:
+        for doc, z_d in zip(corpus.documents, z):
+            doc.metadata[z_attr] = z.tolist()
 
 
-def document_topics(corpus_or_docwords, topics):
-    """Predicts document-topic distributions for each document in a corpus.
+def variational_assign(corpus, topics, theta_attr, docwords_attr=None):
+    """Predicts topic assignments for a corpus.
 
-    The input data can either be a corpus or a docwords matrix. If a corpus is
-    given, a docwords matrix is constructed from that corpus. The
-    document-topic distributions are given as a DxK matrix, with each row
-    giving the topic distribution for a document.
+    Topic inference is done using online variational inference with Latent
+    Dirichlet Allocation and fixed topics following Hoffman et al., 2010. Each
+    document is given a metadata value named by theta_attr corresponding to the
+    its predicted topic distribution.
+
+    If docwords_attr is given, then the corpus metadata with that name is
+    assumed to contain a pre-computed sparse docwords matrix. Otherwise, this
+    docwords matrix will be recomputed.
     """
     V, K = topics.shape
-    try:
-        docwords = pipeline.build_docwords(corpus_or_docwords, V)
-    except AttributeError:
-        docwords = corpus_or_docwords
+    if docwords_attr:
+        docwords = corpus.metadata[docwords_attr]
+        if docwords.shape[1] != V:
+            raise ValueError('Mismatch between topics and docwords shape')
+    else:
+        docwords = pipeline.build_docwords(corpus, V)
 
     lda = sklearn.decomposition.LatentDirichletAllocation(K)
     lda.components_ = topics.T
     lda._init_latent_vars(V)
-    return lda.transform(docwords)
+    theta = lda.transform(docwords)
+
+    for doc, theta_d in zip(corpus.documents, theta):
+        doc.metadata[theta_attr] = theta_d
 
 
-# TODO This now expects non-existant data type
-def cross_reference(corpus, doc=None, n=sys.maxsize, threshold=1):
+def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
     """Finds the nearest documents by topic similarity.
+
+    The documents of the corpus must include a metadata value giving a vector
+    representation of the document. Typically, this is a topic distribution
+    obtained with an assign function and a metadata_attr. The vector
+    representation is then used to compute distances between documents.
 
     If a document is given, then a list of references is returned for that
     document. Otherwise, cross references for each document in a corpus are
-    given in a dict keyed by the documents. Consequently, the documents must be
-    hashable.
+    given in a dict keyed by the documents. Consequently, the documents of the
+    corpus must be hashable.
 
     The closest n documents will be returned (default=sys.maxsize). Documents
     whose similarity is behond the threshold (default=1) will not be returned.
     A threshold of 1 indicates that no filtering should be done, while a 0
-    indicates that only exact topical matches should be returned. Note that
-    the corpus must use DocumentTheta (obtained with topic_transform).
+    indicates that only exact matches should be returned.
     """
     def _xrefs(doc):
-        dists = numpy.array([scipy.spatial.distance.cosine(doc.theta, d.theta)
-                             if doc is not d else float('nan')
-                             for d in corpus.documents])
+        doc_theta = doc.metadata[attr]
+        dists = [scipy.spatial.distance.cosine(doc_theta, d.metadata[attr])
+                 if doc is not d else float('nan')
+                 for d in corpus.documents]
+        dists = numpy.array(dists)
         return list(corpus.documents[i] for i in dists.argsort()[:n]
                     if dists[i] <= threshold)
 
@@ -104,7 +132,6 @@ def cross_reference(corpus, doc=None, n=sys.maxsize, threshold=1):
         return {doc: _xrefs(doc) for doc in corpus.documents}
 
 
-# XXX This seems to be broken!
 def free_classifier(topics, Q, labels, epsilon=1e-7):
     """There is no free lunch, but this classifier is free"""
     K = len(labels)
