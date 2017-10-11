@@ -2,6 +2,14 @@
 
 import numpy
 
+try:
+    import numba
+    import functools
+    
+    jit = functools.partial(numba.jit, nopython=True)
+except ImportError:
+    jit = lambda x:x
+
 
 def random_projection(A, k):
     """Randomly projects the points (rows) of A into k-dimensions.
@@ -14,6 +22,7 @@ def random_projection(A, k):
     return numpy.dot(A, R * numpy.sqrt(3))
 
 
+@jit
 def logsumexp(y):
     """Computes the log of the sum of exponentials of y in a numerically stable
     way. Useful for computing sums in log space.

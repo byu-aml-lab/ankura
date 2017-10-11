@@ -7,8 +7,8 @@ import numpy
 import scipy.spatial
 import sklearn.decomposition
 
-import ankura.pipeline
-import ankura.util
+from . import pipeline
+from . import util
 
 
 def topic_summary(topics, corpus=None, n=10):
@@ -50,7 +50,7 @@ def token_topics(doc, topics, alpha=.01, num_iters=10):
         for n, w_n in enumerate(doc.tokens):
             counts[z[n]] -= 1
             cond = [alpha + counts[t] * topics[w_n.token, t] for t in range(T)]
-            z[n] = ankura.util.sample_categorical(cond)
+            z[n] = util.sample_categorical(cond)
             counts[z[n]] += 1
 
     return z
@@ -66,7 +66,7 @@ def document_topics(corpus_or_docwords, topics):
     """
     V, K = topics.shape
     try:
-        docwords = ankura.pipeline.build_docwords(corpus_or_docwords, V)
+        docwords = pipeline.build_docwords(corpus_or_docwords, V)
     except AttributeError:
         docwords = corpus_or_docwords
 

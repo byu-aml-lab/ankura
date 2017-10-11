@@ -16,7 +16,7 @@ import scipy.sparse
 import scipy.stats
 import multiprocessing.dummy
 
-import ankura.util
+from . import util
 
 
 def anchor_algorithm(corpus, k, doc_threshold=500, project_dim=1000):
@@ -167,7 +167,7 @@ def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kw
     Q_orig = Q
     Q = Q / Q.sum(axis=1, keepdims=True)
     if project_dim:
-        Q = ankura.util.random_projection(Q, project_dim)
+        Q = util.random_projection(Q, project_dim)
 
     # Setup book keeping
     indices = numpy.zeros(k, dtype=numpy.int)
@@ -239,13 +239,13 @@ def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
         basis[i] = scipy.stats.hmean(Q[anchor, :] + epsilon, axis=0)
     return basis
 
-
+@util.jit
 def _exponentiated_gradient(Y, X, XX, epsilon):
     _C1 = 1e-4
     _C2 = .75
 
     XY = numpy.dot(X, Y)
-    YY = float(numpy.dot(Y, Y))
+    YY = numpy.dot(Y, Y)
 
     alpha = numpy.ones(X.shape[0]) / X.shape[0]
     old_alpha = numpy.copy(alpha)
@@ -253,8 +253,8 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
     old_log_alpha = numpy.copy(log_alpha)
 
     AXX = numpy.dot(alpha, XX)
-    AXY = float(numpy.dot(alpha, XY))
-    AXXA = float(numpy.dot(AXX, alpha.transpose()))
+    AXY = numpy.dot(alpha, XY)
+    AXXA = numpy.dot(AXX, alpha.transpose())
 
     grad = 2 * (AXX - XY)
     old_grad = numpy.copy(grad)
@@ -264,7 +264,7 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
     # Initialize book keeping
     stepsize = 1
     decreased = False
-    convergence = float('inf')
+    convergence = numpy.inf
 
     while convergence >= epsilon:
         old_obj = new_obj
@@ -275,13 +275,13 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
 
         # Add the gradient and renormalize in logspace, then exponentiate
         log_alpha -= stepsize * grad
-        log_alpha -= ankura.util.logsumexp(log_alpha)
+        log_alpha -= util.logsumexp(log_alpha)
         alpha = numpy.exp(log_alpha)
 
         # Precompute quantities needed for adaptive stepsize
         AXX = numpy.dot(alpha, XX)
-        AXY = float(numpy.dot(alpha, XY))
-        AXXA = float(numpy.dot(AXX, alpha.transpose()))
+        AXY = numpy.dot(alpha, XY)
+        AXXA = numpy.dot(AXX, alpha.transpose())
 
         # See if stepsize should decrease
         old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
