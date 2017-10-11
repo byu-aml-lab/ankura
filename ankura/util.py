@@ -5,7 +5,6 @@ import numpy
 try:
     import numba
     import functools
-    
     jit = functools.partial(numba.jit, nopython=True)
 except ImportError:
     jit = lambda x:x

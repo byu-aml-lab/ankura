@@ -67,7 +67,7 @@ def sampling_assign(corpus, topics, theta_attr=None, z_attr=None, alpha=.01, num
             doc.metadata[theta_attr] = c_d / c_d.sum()
     if z_attr:
         for doc, z_d in zip(corpus.documents, z):
-            doc.metadata[z_attr] = z.tolist()
+            doc.metadata[z_attr] = z_d.tolist()
 
 
 def variational_assign(corpus, topics, theta_attr, docwords_attr=None):

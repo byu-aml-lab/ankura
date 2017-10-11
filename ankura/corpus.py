@@ -8,7 +8,7 @@ These imports depend on two module variables which can be mutated to change the
 download behavior of these imports. Downloaded and pickled data will be stored
 in the path given by `download_dir`, and data will be downloaded from
 `base_url`. By default, `download_dir` will be '$HOME/.ankura' while base_url
-will point at a GitHub repo designed for use with ankura.
+will point at a GitHub repo designed for use with 
 """
 
 import functools
@@ -16,7 +16,7 @@ import itertools
 import os
 import urllib.request
 
-import ankura
+from . import pipeline
 
 download_dir = os.path.join(os.getenv('HOME'), '.ankura')
 
@@ -24,7 +24,7 @@ def _path(name):
     return os.path.join(download_dir, name)
 
 
-base_url = 'https://github.com/wfearn/data/raw/data2'
+base_url = 'https://github.com/jefflund/data/raw/data2'
 
 def _url(name):
     return os.path.join(base_url, name)
@@ -76,27 +76,27 @@ def bible():
     """Gets a Corpus containing the King James version of the Bible with over
     250,000 cross references.
     """
-    pipeline = ankura.pipeline.Pipeline(
+    p= pipeline.Pipeline(
         download_inputer('bible/bible.txt'),
-        ankura.pipeline.line_extractor(),
-        ankura.pipeline.stopword_tokenizer(
-            ankura.pipeline.default_tokenizer(),
+        pipeline.line_extractor(),
+        pipeline.stopword_tokenizer(
+            pipeline.default_tokenizer(),
             itertools.chain(
                 open_download('stopwords/english.txt'),
                 open_download('stopwords/jacobean.txt'),
             )
         ),
-        ankura.pipeline.composite_labeler(
-            ankura.pipeline.title_labeler('verse'),
-            ankura.pipeline.list_labeler(
+        pipeline.composite_labeler(
+            pipeline.title_labeler('verse'),
+            pipeline.list_labeler(
                 open_download('bible/xref.txt'),
                 'xref',
             ),
         ),
-        ankura.pipeline.keep_filterer(),
+        pipeline.keep_filterer(),
     )
-    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 2)
-    return pipeline.run(_path('bible.pickle'))
+    p.tokenizer = pipeline.frequency_tokenizer(p, 2)
+    return p.run(_path('bible.pickle'))
 
 
 def newsgroups():
@@ -126,49 +126,49 @@ def newsgroups():
         'soc.religion.christian' : 'religion',
     }
 
-    pipeline = ankura.pipeline.Pipeline(
+    p = pipeline.Pipeline(
         download_inputer('newsgroups/newsgroups.tar.gz'),
-        ankura.pipeline.targz_extractor(
-            ankura.pipeline.skip_extractor(errors='replace'),
+        pipeline.targz_extractor(
+            pipeline.skip_extractor(errors='replace'),
         ),
-        ankura.pipeline.remove_tokenizer(
-            ankura.pipeline.stopword_tokenizer(
-                ankura.pipeline.default_tokenizer(),
+        pipeline.remove_tokenizer(
+            pipeline.stopword_tokenizer(
+                pipeline.default_tokenizer(),
                 itertools.chain(open_download('stopwords/english.txt'),
                                 open_download('stopwords/newsgroups.txt'))
             ),
             r'^(.{0,2}|.{15,})$', # remove any token t for which 2<len(t)<=15
         ),
-        ankura.pipeline.composite_labeler(
-            ankura.pipeline.title_labeler('id'),
-            ankura.pipeline.dir_labeler('newsgroup'),
+        pipeline.composite_labeler(
+            pipeline.title_labeler('id'),
+            pipeline.dir_labeler('newsgroup'),
             lambda n: {'coarse_newsgroup': coarse_mapping[os.path.dirname(n)]},
         ),
-        ankura.pipeline.length_filterer(),
+        pipeline.length_filterer(),
     )
-    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 100, 2000)
-    return pipeline.run(_path('newsgroups.pickle'))
+    p.tokenizer = pipeline.frequency_tokenizer(p, 100, 2000)
+    return p.run(_path('newsgroups.pickle'))
 
 
 def amazon():
     """Gets a Corpus containing roughly 40,000 Amazon product reviews, with
     star ratings.
     """
-    pipeline = ankura.pipeline.Pipeline(
+    p = pipeline.Pipeline(
         download_inputer('amazon/amazon.txt'),
-        ankura.pipeline.line_extractor('\t'),
-        ankura.pipeline.stopword_tokenizer(
-            ankura.pipeline.default_tokenizer(),
+        pipeline.line_extractor('\t'),
+        pipeline.stopword_tokenizer(
+            pipeline.default_tokenizer(),
             open_download('stopwords/english.txt'),
         ),
-        ankura.pipeline.composite_labeler(
-            ankura.pipeline.title_labeler('id'),
-            ankura.pipeline.float_labeler(
+        pipeline.composite_labeler(
+            pipeline.title_labeler('id'),
+            pipeline.float_labeler(
                 open_download('amazon/amazon.stars'),
                 'rating',
             ),
         ),
-        ankura.pipeline.length_filterer(),
+        pipeline.length_filterer(),
     )
-    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 50)
-    return pipeline.run(_path('amazon.pickle'))
+    p.tokenizer = pipeline.frequency_tokenizer(p, 50)
+    return p.run(_path('amazon.pickle'))
