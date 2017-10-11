@@ -24,7 +24,7 @@ def _path(name):
     return os.path.join(download_dir, name)
 
 
-base_url = 'https://github.com/jlund3/data/raw/data2'
+base_url = 'https://github.com/wfearn/data/raw/data2'
 
 def _url(name):
     return os.path.join(base_url, name)
@@ -134,7 +134,8 @@ def newsgroups():
         ankura.pipeline.remove_tokenizer(
             ankura.pipeline.stopword_tokenizer(
                 ankura.pipeline.default_tokenizer(),
-                open_download('stopwords/english.txt'),
+                itertools.chain(open_download('stopwords/english.txt'),
+                                open_download('stopwords/newsgroups.txt'))
             ),
             r'^(.{0,2}|.{15,})$', # remove any token t for which 2<len(t)<=15
         ),
@@ -145,7 +146,7 @@ def newsgroups():
         ),
         ankura.pipeline.length_filterer(),
     )
-    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 50, 2000)
+    pipeline.tokenizer = ankura.pipeline.frequency_tokenizer(pipeline, 100, 2000)
     return pipeline.run(_path('newsgroups.pickle'))
 
 

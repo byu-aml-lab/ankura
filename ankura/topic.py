@@ -99,7 +99,6 @@ def variational_assign(corpus, topics, theta_attr, docwords_attr=None):
         doc.metadata[theta_attr] = theta_d
 
 
-
 def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
     """Finds the nearest documents by topic similarity.
 
