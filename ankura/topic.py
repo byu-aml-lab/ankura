@@ -7,8 +7,7 @@ import numpy
 import scipy.spatial
 import sklearn.decomposition
 
-import ankura.pipeline
-import ankura.util
+from . import pipeline, util
 
 
 def topic_summary(topics, corpus=None, n=10):
@@ -29,102 +28,76 @@ def topic_summary(topics, corpus=None, n=10):
     return numpy.array(summary)
 
 
-def _sample_doc(doc, topics, T, alpha, num_iters):
-    if not doc.tokens:
-        return [], numpy.ones(T) / T
+def sampling_assign(corpus, topics, theta_attr=None, z_attr=None, alpha=.01, num_iters=10):
+    """Predicts topic assignments for a corpus.
 
-    z = numpy.random.randint(T, size=len(doc.tokens), dtype=int)
-    counts = numpy.zeros(T, dtype=int)
-    for z_n in z:
-        counts[z_n] += 1
+    Topic inference is done using Gibbs sampling with Latent Dirichlet
+    Allocation and fixed topics following Griffiths and Steyvers 2004. The
+    parameter alpha specifies a symetric Dirichlet prior over the document
+    topic distributions. The parameter num_iters controlls how many iterations
+    of sampling should be performed.
+
+    If theta_attr is given, each document is given a metadata value describing
+    the document-topic distribution as an array. If the z_attr is given, each
+    document is given a metadata value describing the token level topic
+    assignments. At east one of the attribute names must be given.
+
+    """
+    if not theta_attr and not z_attr:
+        raise ValueError('Either theta_attr or z_attr must be given')
+
+    T = topics.shape[1]
+
+    c = numpy.zeros((len(corpus.documents), T))
+    z = [numpy.random.randint(T, size=len(d.tokens)) for d in corpus.documents]
+    for d, z_d in enumerate(z):
+        for z_dn in z_d:
+            c[d, z_dn] += 1
 
     for _ in range(num_iters):
-        for n, w_n in enumerate(doc.tokens):
-            counts[z[n]] -= 1
-            cond = [alpha + counts[t] * topics[w_n.token, t] for t in range(T)]
-            z[n] = ankura.util.sample_categorical(cond)
-            counts[z[n]] += 1
+        for d, (doc, z_d) in enumerate(zip(corpus.documents, z)):
+            for n, w_dn in enumerate(doc.tokens):
+                c[d, z_d[n]] -= 1
+                cond = [alpha + c[d, t] * topics[w_dn.token, t] for t in range(T)]
+                z_d[n] = util.sample_categorical(cond)
+                c[d, z_d[n]] += 1
 
-    return z, counts / counts.sum()
-
-
-def sampling_assign(corpus_or_doc, topics, alpha=.01, num_iters=10, **kwargs):
-    """Predicts topic assignments for a corpus or document.
-
-    Inference is performed using Gibbs sampling with Latent Dirichlet
-    Allocation and fixed topics. A symetric Dirichlet prior over the
-    document-topic distribution is used.
-
-    By default, the topic distribution or distributions are returned. However,
-    if the keyword argument 'return_z' is True, the token level topic
-    assignments are returned instead. If the keyword argument 'return_both' is
-    True, then both the token level topic assignments and the document topic
-    distributions are returned in that order.
-
-    Additionally, if the keyword argument 'metadata_attr' is true, then the
-    document topic distributions are added to the metadata of each document
-    using the given metadata attribute name. However, this does require that
-    the input be a corpus instead of a single document.
-    """
-    T = topics.shape[1]
-    try:
-        z, theta = zip(*(_sample_doc(d, topics, T, alpha, num_iters) for d in corpus_or_doc.documents))
-    except AttributeError:
-        z, theta = _sample_doc(corpus_or_doc, topics, T, alpha, num_iters)
-
-    attr = kwargs.get('metadata_attr')
-    if attr:
-        for doc, theta_d in zip(corpus_or_doc.documents, theta):
-            doc.metadata[attr] = theta_d
-
-    if kwargs.get('return_both'):
-        return z, theta
-    elif kwargs.get('return_z'):
-        return z
-
-    return theta
+    if theta_attr:
+        for doc, c_d in zip(corpus.documents, c):
+            doc.metadata[theta_attr] = c_d / c_d.sum()
+    if z_attr:
+        for doc, z_d in zip(corpus.documents, z):
+            doc.metadata[z_attr] = z.tolist()
 
 
-def variational_assign(data, topics, **kwargs):
-    """Predicts topic assignments for a corpus, document or docwords matrix.
+def variational_assign(corpus, topics, theta_attr, docwords_attr=None):
+    """Predicts topic assignments for a corpus.
 
-    If a corpus or document is given, a sparse docwords matrix is computed. The
-    computed or given docwords matrix is then used to compute document topic
-    distributions using online variational Bayes with Latent Dirichlet
-    Allocation and fixed topics following Hoffman et al., 2010.
+    Topic inference is done using online variational inference with Latent
+    Dirichlet Allocation and fixed topics following Hoffman et al., 2010. Each
+    document is given a metadata value named by theta_attr corresponding to the
+    its predicted topic distribution.
 
-    Additionally, if the keyword argument 'metadata_attr' is true, then the
-    document topic distributions are added to the metadata of each document
-    using the given metadata attribute name. However, this does require that
-    the input be a corpus isntead of a single document.
+    If docwords_attr is given, then the corpus metadata with that name is
+    assumed to contain a pre-computed sparse docwords matrix. Otherwise, this
+    docwords matrix will be recomputed.
     """
     V, K = topics.shape
-    try:
-        docwords = ankura.pipeline.build_docwords(data, V)
-        out_shape = None
-    except AttributeError:
-        try:
-            docwords = scipy.sparse.lil_matrix((1, V))
-            for tl in data.tokens:
-                docwords[0, tl.token] += 1
-            out_shape = [K]
-        except AttributeError:
-            docwords = data
-            out_shape = None
+    if docwords_attr:
+        docwords = corpus.metadata[docwords_attr]
+        if docwords.shape[1] != V:
+            raise ValueError('Mismatch between topics and docwords shape')
+    else:
+        docwords = pipeline.build_docwords(corpus, V)
 
     lda = sklearn.decomposition.LatentDirichletAllocation(K)
     lda.components_ = topics.T
     lda._init_latent_vars(V)
     theta = lda.transform(docwords)
 
-    attr = kwargs.get('metadata_attr')
-    if attr:
-        for doc, theta_d in zip(data.documents, theta):
-            doc.metadata[attr] = theta_d
+    for doc, theta_d in zip(corpus.documents, theta):
+        doc.metadata[theta_attr] = theta_d
 
-    if out_shape:
-        return theta.reshape(out_shape)
-    return theta
 
 
 def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
