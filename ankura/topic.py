@@ -146,12 +146,12 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
     Q_L = Q[-K:, :V]
 
     @functools.wraps(free_classifier)
-    def _classifier(doc, theta):
+    def _classifier(doc, attr):
         H = numpy.zeros(V)
         for w_d in doc.tokens:
             H[w_d.token] += 1
 
-        topic_score = A_f.dot(theta)
+        topic_score = A_f.dot(doc.metadata[attr])
         topic_score /= topic_score.sum(axis=0)
 
         word_score = Q_L.dot(H)

@@ -181,8 +181,7 @@ def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kw
             indices[0] = i
 
     # Translate all points to the new origin
-    for i in candidates:
-        Q[i] = Q[i] - Q[indices[0]]
+    Q[candidates] -= Q[indices[0]]
 
     # Find the farthest point from origin
     max_dist = 0
