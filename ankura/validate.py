@@ -3,7 +3,7 @@
 import collections
 import itertools
 
-import numpy
+import numpy as np
 
 
 class Contingency(object):
@@ -169,6 +169,6 @@ def coherence(reference_corpus, topic_summary, epsilon=1e-2):
             for j in topic:
                 pair_count = pair_counts[(i, j)]
                 count = counts[j]
-                score += numpy.log((pair_count + epsilon) / count)
+                score += np.log((pair_count + epsilon) / count)
         scores.append(score)
-    return numpy.array(scores)
+    return np.array(scores)

@@ -1,6 +1,8 @@
 __pycache__
 *.pickle
 .cache/
+.idea/
+.vscode/
 
 .coverage
 htmlcov

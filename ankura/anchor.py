@@ -11,7 +11,7 @@ matrix is constructed and/or how the anchor words are chosen.
 """
 
 import collections
-import numpy
+import numpy as np
 import scipy.stats
 import multiprocessing.pool
 
@@ -51,7 +51,7 @@ def build_cooccurrence(corpus):
     observed another word.
     """
     V = len(corpus.vocabulary)
-    Q = numpy.zeros((V, V))
+    Q = np.zeros((V, V))
 
     D = 0
     for doc in corpus.documents:
@@ -94,7 +94,7 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
     label_set = {l: V + i for i, l in enumerate(label_set)}
 
     K = len(label_set)
-    Q = numpy.zeros((V+K, V+K))
+    Q = np.zeros((V+K, V+K))
 
     D = 0
     for d, doc in enumerate(corpus.documents):
@@ -169,13 +169,13 @@ def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kw
         Q = util.random_projection(Q, project_dim)
 
     # Setup book keeping
-    indices = numpy.zeros(k, dtype=numpy.int)
-    basis = numpy.zeros((k-1, Q.shape[1]))
+    indices = np.zeros(k, dtype=np.int)
+    basis = np.zeros((k-1, Q.shape[1]))
 
     # Find the farthest point from the origin
     max_dist = 0
     for i in candidates:
-        dist = numpy.linalg.norm(Q[i])
+        dist = np.linalg.norm(Q[i])
         if dist > max_dist:
             max_dist = dist
             indices[0] = i
@@ -186,7 +186,7 @@ def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kw
     # Find the farthest point from origin
     max_dist = 0
     for i in candidates:
-        dist = numpy.linalg.norm(Q[i])
+        dist = np.linalg.norm(Q[i])
         if dist > max_dist:
             max_dist = dist
             indices[1] = i
@@ -197,12 +197,12 @@ def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kw
         # Project all the points onto the basis and find the farthest point
         max_dist = 0
         for i in candidates:
-            Q[i] = Q[i] - numpy.dot(Q[i], basis[j-1]) * basis[j - 1]
-            dist = numpy.dot(Q[i], Q[i])
+            Q[i] = Q[i] - np.dot(Q[i], basis[j-1]) * basis[j - 1]
+            dist = np.dot(Q[i], Q[i])
             if dist > max_dist:
                 max_dist = dist
                 indices[j + 1] = i
-                basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
+        basis[j] = Q[j + 1] / np.sqrt(max_dist))
 
     # If requested, just return the indices instead of anchor vectors
     if kwargs.get('return_indices'):
@@ -232,7 +232,7 @@ def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
             anchor_indices.append(anchor_index)
         anchors = anchor_indices
 
-    basis = numpy.zeros((len(anchors), Q.shape[1]))
+    basis = np.zeros((len(anchors), Q.shape[1]))
     for i, anchor in enumerate(anchors):
         basis[i] = scipy.stats.hmean(Q[anchor, :] + epsilon, axis=0)
     return basis
@@ -242,49 +242,49 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
     _C1 = 1e-4
     _C2 = .75
 
-    XY = numpy.dot(X, Y)
-    YY = numpy.dot(Y, Y)
+    XY = np.dot(X, Y)
+    YY = np.dot(Y, Y)
 
-    alpha = numpy.ones(X.shape[0]) / X.shape[0]
-    old_alpha = numpy.copy(alpha)
-    log_alpha = numpy.log(alpha)
-    old_log_alpha = numpy.copy(log_alpha)
+    alpha = np.ones(X.shape[0]) / X.shape[0]
+    old_alpha = np.copy(alpha)
+    log_alpha = np.log(alpha)
+    old_log_alpha = np.copy(log_alpha)
 
-    AXX = numpy.dot(alpha, XX)
-    AXY = numpy.dot(alpha, XY)
-    AXXA = numpy.dot(AXX, alpha.transpose())
+    AXX = np.dot(alpha, XX)
+    AXY = np.dot(alpha, XY)
+    AXXA = np.dot(AXX, alpha.transpose())
 
     grad = 2 * (AXX - XY)
-    old_grad = numpy.copy(grad)
+    old_grad = np.copy(grad)
 
     new_obj = AXXA - 2 * AXY + YY
 
     # Initialize book keeping
     stepsize = 1
     decreased = False
-    convergence = numpy.inf
+    convergence = np.inf
 
     while convergence >= epsilon:
         old_obj = new_obj
-        old_alpha = numpy.copy(alpha)
-        old_log_alpha = numpy.copy(log_alpha)
+        old_alpha = np.copy(alpha)
+        old_log_alpha = np.copy(log_alpha)
         if new_obj == 0 or stepsize == 0:
             break
 
         # Add the gradient and renormalize in logspace, then exponentiate
         log_alpha -= stepsize * grad
         log_alpha -= util.logsumexp(log_alpha)
-        alpha = numpy.exp(log_alpha)
+        alpha = np.exp(log_alpha)
 
         # Precompute quantities needed for adaptive stepsize
-        AXX = numpy.dot(alpha, XX)
-        AXY = numpy.dot(alpha, XY)
-        AXXA = numpy.dot(AXX, alpha.transpose())
+        AXX = np.dot(alpha, XX)
+        AXY = np.dot(alpha, XY)
+        AXXA = np.dot(AXX, alpha.transpose())
 
         # See if stepsize should decrease
         old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
         if new_obj >= (
-                old_obj + _C1 * stepsize * numpy.dot(grad, alpha - old_alpha)):
+                old_obj + _C1 * stepsize * np.dot(grad, alpha - old_alpha)):
             stepsize /= 2.0
             alpha = old_alpha
             log_alpha = old_log_alpha
@@ -296,8 +296,8 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
         old_grad, grad = grad, 2 * (AXX - XY)
 
         # See if stepsize should increase
-        if not decreased and numpy.dot(grad, alpha - old_alpha) < (
-                _C2 * numpy.dot(old_grad, alpha - old_alpha)):
+        if not decreased and np.dot(grad, alpha - old_alpha) < (
+                _C2 * np.dot(old_grad, alpha - old_alpha)):
             stepsize *= 2.0
             alpha = old_alpha
             log_alpha = old_log_alpha
@@ -307,10 +307,10 @@ def _exponentiated_gradient(Y, X, XX, epsilon):
 
         # Update book keeping
         decreased = False
-        convergence = numpy.dot(alpha, grad - grad.min())
+        convergence = np.dot(alpha, grad - grad.min())
 
-    if numpy.isnan(alpha).any():
-        alpha = numpy.ones(X.shape[0]) / X.shape[0]
+    if np.isnan(alpha).any():
+        alpha = np.ones(X.shape[0]) / X.shape[0]
     return alpha
 
 
@@ -338,9 +338,9 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
     K = len(anchors)
 
     # Compute prior probability of each word with row sums of Q.
-    P_w = numpy.diag(Q.sum(axis=1))
+    P_w = np.diag(Q.sum(axis=1))
     for word in range(V):
-        if numpy.isnan(P_w[word, word]):
+        if np.isnan(P_w[word, word]):
             P_w[word, word] = 1e-16
 
     # Normalize the rows of Q to get Q_prime
@@ -348,8 +348,8 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
         Q[word, :] = Q[word, :] / Q[word, :].sum()
 
     # Compute normalized anchors X, and precompute X * X.T
-    X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
-    XX = numpy.dot(X, X.transpose())
+    X = anchors / anchors.sum(axis=1)[:, np.newaxis]
+    XX = np.dot(X, X.transpose())
 
     # Represent each word as a convex combination of anchors.
     parallelism = kwargs.get('parallelism')
@@ -358,14 +358,14 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
         chunksize = kwargs.get('chunksize', V // parallelism)
         with multiprocessing.pool.ThreadPool(parallelism) as pool:
             A = pool.map(worker, range(V), chunksize)
-        A = numpy.array(A)
+        A = np.array(A)
     else:
-        A = numpy.zeros((V, K))
+        A = np.zeros((V, K))
         for word in range(V):
             A[word] = _exponentiated_gradient(Q[word], X, XX, epsilon)
 
     # Use Bayes rule to compute topic matrix
-    A = numpy.dot(P_w, A)
+    A = np.dot(P_w, A)
     for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()
     return A

@@ -3,7 +3,7 @@
 import functools
 import sys
 
-import numpy
+import numpy as np
 import scipy.spatial
 import sklearn.decomposition
 
@@ -18,14 +18,14 @@ def topic_summary(topics, corpus=None, n=10):
     summary = []
     for k in range(topics.shape[1]):
         index = []
-        for word in numpy.argsort(topics[:, k])[-n:][::-1]:
+        for word in np.argsort(topics[:, k])[-n:][::-1]:
             index.append(word)
         summary.append(index)
 
     if corpus:
         summary = [[corpus.vocabulary[w] for w in topic] for topic in summary]
 
-    return numpy.array(summary)
+    return np.array(summary)
 
 
 def sampling_assign(corpus, topics, theta_attr=None, z_attr=None, alpha=.01, num_iters=10):
@@ -48,8 +48,8 @@ def sampling_assign(corpus, topics, theta_attr=None, z_attr=None, alpha=.01, num
 
     T = topics.shape[1]
 
-    c = numpy.zeros((len(corpus.documents), T))
-    z = [numpy.random.randint(T, size=len(d.tokens)) for d in corpus.documents]
+    c = np.zeros((len(corpus.documents), T))
+    z = [np.random.randint(T, size=len(d.tokens)) for d in corpus.documents]
     for d, z_d in enumerate(z):
         for z_dn in z_d:
             c[d, z_dn] += 1
@@ -122,7 +122,7 @@ def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
         dists = [scipy.spatial.distance.cosine(doc_theta, d.metadata[attr])
                  if doc is not d else float('nan')
                  for d in corpus.documents]
-        dists = numpy.array(dists)
+        dists = np.array(dists)
         return list(corpus.documents[i] for i in dists.argsort()[:n]
                     if dists[i] <= threshold)
 
@@ -147,7 +147,7 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
 
     @functools.wraps(free_classifier)
     def _classifier(doc, attr):
-        H = numpy.zeros(V)
+        H = np.zeros(V)
         for w_d in doc.tokens:
             H[w_d.token] += 1
 
@@ -157,5 +157,5 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
         word_score = Q_L.dot(H)
         word_score /= word_score.sum(axis=0)
 
-        return labels[numpy.argmax(topic_score + word_score)]
+        return labels[np.argmax(topic_score + word_score)]
     return _classifier

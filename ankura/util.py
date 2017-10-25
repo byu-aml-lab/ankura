@@ -1,6 +1,6 @@
 """A collection of utility functions used throughout Ankura"""
 
-import numpy
+import numpy as np
 
 try:
     import numba
@@ -17,8 +17,8 @@ def random_projection(A, k):
     pairwise distances will be preserved within some epsilon, and is more
     efficient than projections involving sampling from Gaussians.
     """
-    R = numpy.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
-    return numpy.dot(A, R * numpy.sqrt(3))
+    R = np.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
+    return np.dot(A, R * np.sqrt(3))
 
 
 @jit
@@ -27,14 +27,14 @@ def logsumexp(y):
     way. Useful for computing sums in log space.
     """
     ymax = y.max()
-    return ymax + numpy.log((numpy.exp(y - ymax)).sum())
+    return ymax + np.log((np.exp(y - ymax)).sum())
 
 
 def sample_categorical(counts):
     """Samples from a categorical distribution parameterized by unnormalized
     counts. The index of the sampled category is returned.
     """
-    sample = numpy.random.uniform(0, sum(counts))
+    sample = np.random.uniform(0, sum(counts))
     for key, count in enumerate(counts):
         if sample < count:
             return key
