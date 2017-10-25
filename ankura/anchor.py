@@ -202,7 +202,7 @@ def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kw
             if dist > max_dist:
                 max_dist = dist
                 indices[j + 1] = i
-        basis[j] = Q[j + 1] / np.sqrt(max_dist))
+        basis[j] = Q[indices[j + 1]] / np.sqrt(max_dist))
 
     # If requested, just return the indices instead of anchor vectors
     if kwargs.get('return_indices'):
