@@ -17,6 +17,7 @@ import os
 import urllib.request
 
 from . import pipeline
+import posixpath
 
 download_dir = os.path.join(os.getenv('HOME'), '.ankura')
 
@@ -27,7 +28,7 @@ def _path(name):
 base_url = 'https://github.com/jefflund/data/raw/data2'
 
 def _url(name):
-    return os.path.join(base_url, name)
+    return posixpath.join(base_url, name)
 
 
 def _ensure_dir(path):
