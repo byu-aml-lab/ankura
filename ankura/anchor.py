@@ -220,6 +220,7 @@ def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
     the indexed rows. To avoid zero weights, an epsilon (default: 1e-10) is
     added to each anchor vector.
     """
+    # TODO document why the corpus is here...
     if corpus:
         anchor_indices = []
         for anchor in anchors:

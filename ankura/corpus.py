@@ -104,11 +104,11 @@ def newsgroups():
     different newsgroups in the early 1990's.
     """
     coarse_mapping = {
-        'comp.graphics': 'computer',
+        'comp.graphics': 'comp',
         'comp.os.ms-windows.misc': 'comp',
         'comp.sys.ibm.pc.hardware': 'comp',
         'comp.sys.mac.hardware': 'comp',
-        'comp.windows.x': 'computer',
+        'comp.windows.x': 'comp',
         'rec.autos': 'rec',
         'rec.motorcycles': 'rec',
         'rec.sport.baseball': 'rec',

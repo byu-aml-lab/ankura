@@ -70,7 +70,7 @@ def sampling_assign(corpus, topics, theta_attr=None, z_attr=None, alpha=.01, num
             doc.metadata[z_attr] = z_d.tolist()
 
 
-def variational_assign(corpus, topics, theta_attr, docwords_attr=None):
+def variational_assign(corpus, topics, theta_attr='theta', docwords_attr=None):
     """Predicts topic assignments for a corpus.
 
     Topic inference is done using online variational inference with Latent
@@ -146,7 +146,7 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
     Q_L = Q[-K:, :V]
 
     @functools.wraps(free_classifier)
-    def _classifier(doc, attr):
+    def _classifier(doc, attr='theta'):
         H = np.zeros(V)
         for w_d in doc.tokens:
             H[w_d.token] += 1
