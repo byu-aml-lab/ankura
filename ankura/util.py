@@ -1,10 +1,12 @@
 """A collection of utility functions used throughout Ankura"""
 
 import numpy as np
+import pickle
+import functools
+import os
 
 try:
     import numba
-    import functools
     jit = functools.partial(numba.jit, nopython=True)
 except ImportError:
     jit = lambda x:x
@@ -53,3 +55,17 @@ class memoize(object):
         if args not in self.cache:
             self.cache[args] = self.func(*args)
         return self.cache[args]
+
+
+def pickle_cache(pickle_path):
+    """Decorating for caching a parameterless function to disk via pickle"""
+    def _decorator(data_func):
+        @functools.wraps(data_func)
+        def _wrapper():
+            if os.path.exists(pickle_path):
+                return pickle.load(open(pickle_path, 'rb'))
+            data = data_func()
+            pickle.dump(data, open(pickle_path, 'wb'))
+            return data
+        return _wrapper
+    return _decorator
