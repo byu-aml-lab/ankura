@@ -24,6 +24,7 @@ import tarfile
 
 import bs4
 import scipy.sparse
+import numpy as np
 
 # POD types used throughout the pipeline process
 
@@ -610,3 +611,19 @@ def build_docwords(corpus, V=None):
             docwords[d, tl.token] += 1
 
     return docwords.tocsc()
+
+
+def test_train_split(corpus, num_train=None, num_test=None, **kwargs):
+    if not num_train:
+        num_train = int(len(corpus.documents) * .8)
+    if not num_test:
+        num_test = len(corpus.documents) - num_train
+
+    doc_ids = np.random.permutation(len(corpus.documents))
+    train_ids, test_ids = doc_ids[:num_train], doc_ids[num_train: num_train+num_test]
+    train = Corpus([corpus.documents[d] for d in train_ids], corpus.vocabulary, corpus.metadata)
+    test = Corpus([corpus.documents[d] for d in test_ids], corpus.vocabulary, corpus.metadata)
+
+    if kwargs.get('return_ids'):
+        return (train_ids, train), (test_ids, test)
+    return train, test

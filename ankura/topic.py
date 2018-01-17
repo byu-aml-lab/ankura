@@ -24,8 +24,7 @@ def topic_summary(topics, corpus=None, n=10):
 
     if corpus:
         summary = [[corpus.vocabulary[w] for w in topic] for topic in summary]
-
-    return np.array(summary)
+    return summary
 
 
 def sampling_assign(corpus, topics, theta_attr=None, z_attr=None, alpha=.01, num_iters=10):
@@ -129,11 +128,11 @@ def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
     if doc:
         return _xrefs(doc)
     else:
-        return {doc: _xrefs(doc) for doc in corpus.documents}
+        return [_xrefs(doc) for doc in corpus.documents]
 
 
 def free_classifier(topics, Q, labels, epsilon=1e-7):
-    """There is no free lunch, but this classifier is free"""
+    """Creates a topic-based linear classifier. Details forthcoming..."""
     K = len(labels)
     V = Q.shape[0] - K
 
