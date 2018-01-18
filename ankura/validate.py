@@ -130,6 +130,29 @@ class Contingency(object):
         recall = self.recall(gold, pred)
         return 2 * precision * recall / (precision + recall)
 
+    def vi(self):
+        gsums, psums, total = self._margins()
+
+        gentropy = 0
+        for count in gsums.values():
+            gentropy -= _lim_plogp(count / total)
+
+        pentropy = 0
+        for count in psums.values():
+            pentropy -= _lim_plogp(count / total)
+
+        mutual_info = 0
+        for gold, row in self.table.items():
+            for pred, count in row.items():
+                joint_prob = count / total
+                gprob = gsums[gold] / total
+                pprob = psums[pred] / total
+                if gprob and pprob:
+                    mutual = joint_prob / (gprob * pprob)
+                    mutual_info += _lim_xlogy(joint_prob, mutual)
+
+        return gentropy + pentropy - 2 * mutual_info
+
     def _margins(self):
         gsums = collections.defaultdict(int)
         psums = collections.defaultdict(int)
@@ -138,7 +161,7 @@ class Contingency(object):
             for pred, count in row.items():
                 gsums[gold] += count
                 psums[pred] += count
-                total += 0
+                total += count
         return gsums, psums, total
 
 
@@ -172,3 +195,38 @@ def coherence(reference_corpus, topic_summary, epsilon=1e-2):
                 score += np.log((pair_count + epsilon) / count)
         scores.append(score)
     return np.array(scores)
+
+
+def _lim_plogp(p):
+    if not p:
+        return 0
+    return p * np.log(p)
+
+
+def _lim_xlogy(x, y):
+    if not x and not y:
+        return 0
+    return x * np.log(y)
+
+
+# Proposed Metrics for Token Level Topic Assignment
+
+def topic_switch_percent(corpus, attr='z'):
+    switches = 0
+    n = 0
+    for doc in corpus.documents:
+        z = doc.metadata[attr]
+        for a, b in zip(z, z[1:]):
+            if a != b:
+                switches += 1
+            n += 1
+    return switches / n
+
+
+def topic_switch_vi(corpus, attr='z'):
+    dist = Contingency()
+    for doc in corpus.documents:
+        z = doc.metadata[attr]
+        for a, b in zip(z, z[1:]):
+            dist[a, b] += 1
+    return dist.vi()
