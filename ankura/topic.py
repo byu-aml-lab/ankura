@@ -91,6 +91,7 @@ def variational_assign(corpus, topics, theta_attr='theta', docwords_attr=None):
 
     lda = sklearn.decomposition.LatentDirichletAllocation(K)
     lda.components_ = topics.T
+    lda._check_params()
     lda._init_latent_vars(V)
     theta = lda.transform(docwords)
 
