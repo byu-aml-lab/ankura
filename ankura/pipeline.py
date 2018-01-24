@@ -623,8 +623,6 @@ def test_train_split(corpus, num_train=None, num_test=None, **kwargs):
     elif not num_test:
         num_test = len(corpus.documents) - num_train
 
-    print("Splitting test and train")
-
     try:
         
         doc_ids = np.random.permutation(len(corpus.documents))
@@ -632,7 +630,7 @@ def test_train_split(corpus, num_train=None, num_test=None, **kwargs):
         train = Corpus([corpus.documents[d] for d in train_ids], corpus.vocabulary, corpus.metadata)
         test = Corpus([corpus.documents[d] for d in test_ids], corpus.vocabulary, corpus.metadata)
 
-    #This occurs when your corpus is a doc stream instead of a list of documents.
+    #This occurs when your doesn't support random indexing.
     except TypeError:
 
         sample_size = num_train + num_test
