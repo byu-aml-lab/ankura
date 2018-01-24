@@ -1,206 +1,161 @@
-"""Functions for recovering anchor based topics from a coocurrence matrix"""
+"""Functions for using and displaying topics"""
 
-import scipy.sparse
-import numpy
-import random
+import functools
+import sys
 
-import numba
+import numpy as np
+import scipy.spatial
+import sklearn.decomposition
 
-from .pipeline import Dataset, filter_empty_words
-from .util import sample_categorical
-
-
-@numba.jit(nopython=True)
-def logsum_exp(y):
-    """Computes the sum of y in log space"""
-    ymax = y.max()
-    return ymax + numpy.log((numpy.exp(y - ymax)).sum())
+from . import pipeline, util
 
 
+def topic_summary(topics, corpus=None, n=10):
+    """Gets the top n tokens per topic.
 
-@numba.jit(nopython=True)
-def exponentiated_gradient(Y, X, XX, epsilon):
-    """Solves an exponentied gradient problem with L2 divergence"""
-    _C1 = 1e-4
-    _C2 = .75
-
-    XY = numpy.dot(X, Y)
-    YY = numpy.dot(Y, Y)
-
-    alpha = numpy.ones(X.shape[0]) / X.shape[0]
-    old_alpha = numpy.copy(alpha)
-    log_alpha = numpy.log(alpha)
-    old_log_alpha = numpy.copy(log_alpha)
-
-    AXX = numpy.dot(alpha, XX)
-    AXY = numpy.dot(alpha, XY)
-    AXXA = numpy.dot(AXX, alpha.transpose())
-
-    grad = 2 * (AXX - XY)
-    old_grad = numpy.copy(grad)
-
-    new_obj = AXXA - 2 * AXY + YY
-
-    # Initialize book keeping
-    stepsize = 1
-    decreased = False
-    convergence = numpy.inf
-
-    while convergence >= epsilon:
-        old_obj = new_obj
-        old_alpha = numpy.copy(alpha)
-        old_log_alpha = numpy.copy(log_alpha)
-        if new_obj == 0 or stepsize == 0:
-            break
-
-        # Add the gradient and renormalize in logspace, then exponentiate
-        log_alpha -= stepsize * grad
-        log_alpha -= logsum_exp(log_alpha)
-        alpha = numpy.exp(log_alpha)
-
-        # Precompute quantities needed for adaptive stepsize
-        AXX = numpy.dot(alpha, XX)
-        AXY = numpy.dot(alpha, XY)
-        AXXA = numpy.dot(AXX, alpha.transpose())
-
-        # See if stepsize should decrease
-        old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
-        offset = _C1 * stepsize * numpy.dot(grad, alpha - old_alpha)
-        new_obj_threshold = old_obj + offset
-        if new_obj >= new_obj_threshold:
-            stepsize /= 2.0
-            alpha = old_alpha
-            log_alpha = old_log_alpha
-            new_obj = old_obj
-            decreased = True
-            continue
-
-        # compute the new gradient
-        old_grad, grad = grad, 2 * (AXX - XY)
-
-        # See if stepsize should increase
-        if numpy.dot(grad, alpha - old_alpha) < _C2 * numpy.dot(old_grad, alpha - old_alpha) and not decreased:
-            stepsize *= 2.0
-            alpha = old_alpha
-            log_alpha = old_log_alpha
-            grad = old_grad
-            new_obj = old_obj
-            continue
-
-        # Update book keeping
-        decreased = False
-        convergence = numpy.dot(alpha, grad - grad.min())
-
-    return alpha
-
-
-def recover_topics(dataset, anchors, epsilon=2e-7):
-    """Recovers topics given a cooccurence matrix and a set of anchor vectors"""
-    # dont modify original Q
-    Q = dataset.Q.copy()
-
-    V = Q.shape[0]
-    K = len(anchors)
-    A = numpy.zeros((V, K))
-
-    # compute normalized anchors X, and precompute X * X.T
-    X = anchors / anchors.sum(axis=1)[:, numpy.newaxis]
-    XX = numpy.dot(X, X.transpose())
-
-    P_w = numpy.diag(Q.sum(axis=1))
-    for word in range(V):
-        if numpy.isnan(P_w[word, word]):
-            P_w[word, word] = 1e-16
-        # use normalized row of Q
-        alpha = exponentiated_gradient(Q[word, :] / Q[word, :].sum(), X, XX, epsilon)
-        if numpy.isnan(alpha).any():
-            alpha = numpy.ones(K) / K
-        A[word, :] = alpha
-
-    # Use Bayes rule to compute topic matri
-    # TODO(jeff) is this matrix conversion needed?
-    A = numpy.matrix(P_w) * numpy.matrix(A)
-    for k in range(K):
-        A[:, k] = A[:, k] / A[:, k].sum()
-
-    return numpy.array(A)
-
-
-def predict_topics(topics, tokens, alpha=.01, num_iters=10):
-    """Produces topic assignments for a sequence tokens given a set of topics
-
-    Inference is performed using Gibbs sampling. A uniform Dirichlet prior over
-    the document topic distribution is used in the computation.
+    If a vocabulary is provided, the tokens are returned instead of the types.
     """
-    T = topics.shape[1]
-    z = numpy.zeros(len(tokens), dtype='uint')
-    counts = numpy.zeros(T)
-
-    # init topics and topic counts
-    for n in range(len(tokens)):
-        z_n = random.randrange(T)
-        z[n] = z_n
-        counts[z_n] += 1
-
-    def _prob(w_n, t):
-        return (alpha + counts[t]) * topics[w_n, t]
-
-    for _ in range(num_iters):
-        for n, w_n in enumerate(tokens):
-            counts[z[n]] -= 1
-            z[n] = sample_categorical([_prob(w_n, t) for t in range(T)])
-            counts[z[n]] += 1
-
-    return counts.astype('uint'), z
-
-
-def topic_transform(topics, dataset, alpha=.01):
-    """Transforms a dataset to use topic assignments instead of tokens"""
-    T = topics.shape[1]
-    Z = numpy.zeros((T, dataset.num_docs), dtype='uint')
-    for doc in range(dataset.num_docs):
-        tokens = dataset.doc_tokens(doc)
-        Z[:, doc], _ = predict_topics(topics, tokens, alpha)
-    Z = scipy.sparse.csc_matrix(Z)
-    vocab = [str(i) for i in range(T)]
-    return Dataset(Z, vocab, dataset.titles, dataset.metadata)
-
-
-def topic_combine(topics, dataset, alpha=.01):
-    """Transforms a dataset to use token-topic features instead of tokens"""
-    T = topics.shape[1]
-    data = numpy.zeros((T*dataset.vocab_size, dataset.num_docs), dtype='uint')
-    for doc in range(dataset.num_docs):
-        tokens = dataset.doc_tokens(doc)
-        _, assignments = predict_topics(topics, tokens, alpha)
-        for token, topic in zip(tokens, assignments):
-            index = token * T + topic
-            data[index, doc] += 1
-
-    data = scipy.sparse.csc_matrix(data)
-    vocab = ['{}-{}'.format(w, t) for w in dataset.vocab for t in range(T)]
-    dataset = Dataset(data, vocab, dataset.titles, dataset.metadata)
-    dataset = filter_empty_words(dataset)
-    return dataset
-
-
-def topic_summary_indices(topics, n=10):
-    """Returns a list of the indices of the top n tokens per topic"""
-    indices = []
+    summary = []
     for k in range(topics.shape[1]):
         index = []
-        for word in numpy.argsort(topics[:, k])[-n:][::-1]:
+        for word in np.argsort(topics[:, k])[-n:][::-1]:
             index.append(word)
-        indices.append(index)
-    return indices
+        summary.append(index)
+
+    if corpus:
+        summary = [[corpus.vocabulary[w] for w in topic] for topic in summary]
+    return summary
 
 
-def topic_summary_tokens(topics, dataset, n=10):
-    """Returns a list of top n tokens per topic"""
-    summaries = []
-    for index in topic_summary_indices(topics, n):
-        summary = []
-        for word in index:
-            summary.append(dataset.vocab[word])
-        summaries.append(summary)
-    return summaries
+def sampling_assign(corpus, topics, theta_attr=None, z_attr=None, alpha=.01, num_iters=10):
+    """Predicts topic assignments for a corpus.
+
+    Topic inference is done using Gibbs sampling with Latent Dirichlet
+    Allocation and fixed topics following Griffiths and Steyvers 2004. The
+    parameter alpha specifies a symetric Dirichlet prior over the document
+    topic distributions. The parameter num_iters controlls how many iterations
+    of sampling should be performed.
+
+    If theta_attr is given, each document is given a metadata value describing
+    the document-topic distribution as an array. If the z_attr is given, each
+    document is given a metadata value describing the token level topic
+    assignments. At east one of the attribute names must be given.
+
+    """
+    if not theta_attr and not z_attr:
+        raise ValueError('Either theta_attr or z_attr must be given')
+
+    T = topics.shape[1]
+
+    c = np.zeros((len(corpus.documents), T))
+    z = [np.random.randint(T, size=len(d.tokens)) for d in corpus.documents]
+    for d, z_d in enumerate(z):
+        for z_dn in z_d:
+            c[d, z_dn] += 1
+
+    for _ in range(num_iters):
+        for d, (doc, z_d) in enumerate(zip(corpus.documents, z)):
+            for n, w_dn in enumerate(doc.tokens):
+                c[d, z_d[n]] -= 1
+                cond = [alpha + c[d, t] * topics[w_dn.token, t] for t in range(T)]
+                z_d[n] = util.sample_categorical(cond)
+                c[d, z_d[n]] += 1
+
+    if theta_attr:
+        for doc, c_d in zip(corpus.documents, c):
+            doc.metadata[theta_attr] = c_d / c_d.sum()
+    if z_attr:
+        for doc, z_d in zip(corpus.documents, z):
+            doc.metadata[z_attr] = z_d.tolist()
+
+
+def variational_assign(corpus, topics, theta_attr='theta', docwords_attr=None):
+    """Predicts topic assignments for a corpus.
+
+    Topic inference is done using online variational inference with Latent
+    Dirichlet Allocation and fixed topics following Hoffman et al., 2010. Each
+    document is given a metadata value named by theta_attr corresponding to the
+    its predicted topic distribution.
+
+    If docwords_attr is given, then the corpus metadata with that name is
+    assumed to contain a pre-computed sparse docwords matrix. Otherwise, this
+    docwords matrix will be recomputed.
+    """
+    V, K = topics.shape
+    if docwords_attr:
+        docwords = corpus.metadata[docwords_attr]
+        if docwords.shape[1] != V:
+            raise ValueError('Mismatch between topics and docwords shape')
+    else:
+        docwords = pipeline.build_docwords(corpus, V)
+
+    lda = sklearn.decomposition.LatentDirichletAllocation(K)
+    lda.components_ = topics.T
+    lda._check_params()
+    lda._init_latent_vars(V)
+    theta = lda.transform(docwords)
+
+    for doc, theta_d in zip(corpus.documents, theta):
+        doc.metadata[theta_attr] = theta_d
+
+
+def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
+    """Finds the nearest documents by topic similarity.
+
+    The documents of the corpus must include a metadata value giving a vector
+    representation of the document. Typically, this is a topic distribution
+    obtained with an assign function and a metadata_attr. The vector
+    representation is then used to compute distances between documents.
+
+    If a document is given, then a list of references is returned for that
+    document. Otherwise, cross references for each document in a corpus are
+    given in a dict keyed by the documents. Consequently, the documents of the
+    corpus must be hashable.
+
+    The closest n documents will be returned (default=sys.maxsize). Documents
+    whose similarity is behond the threshold (default=1) will not be returned.
+    A threshold of 1 indicates that no filtering should be done, while a 0
+    indicates that only exact matches should be returned.
+    """
+    def _xrefs(doc):
+        doc_theta = doc.metadata[attr]
+        dists = [scipy.spatial.distance.cosine(doc_theta, d.metadata[attr])
+                 if doc is not d else float('nan')
+                 for d in corpus.documents]
+        dists = np.array(dists)
+        return list(corpus.documents[i] for i in dists.argsort()[:n]
+                    if dists[i] <= threshold)
+
+    if doc:
+        return _xrefs(doc)
+    else:
+        return [_xrefs(doc) for doc in corpus.documents]
+
+
+def free_classifier(topics, Q, labels, epsilon=1e-7):
+    """Creates a topic-based linear classifier. Details forthcoming..."""
+    K = len(labels)
+    V = Q.shape[0] - K
+
+    # Smooth and column normalize class-topic weights
+    A_f = topics[-K:] + epsilon
+    A_f /= A_f.sum(axis=0)
+
+    # class_given_word
+    Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
+    Q_L = Q[-K:, :V]
+
+    @functools.wraps(free_classifier)
+    def _classifier(doc, attr='theta'):
+        H = np.zeros(V)
+        for w_d in doc.tokens:
+            H[w_d.token] += 1
+
+        topic_score = A_f.dot(doc.metadata[attr])
+        topic_score /= topic_score.sum(axis=0)
+
+        word_score = Q_L.dot(H)
+        word_score /= word_score.sum(axis=0)
+
+        return labels[np.argmax(topic_score + word_score)]
+    return _classifier
