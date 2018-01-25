@@ -21,7 +21,6 @@ import pickle
 import re
 import string
 import tarfile
-import random
 
 import bs4
 import scipy.sparse
@@ -624,27 +623,23 @@ def test_train_split(corpus, num_train=None, num_test=None, **kwargs):
         num_test = len(corpus.documents) - num_train
 
     try:
-        
         doc_ids = np.random.permutation(len(corpus.documents))
         train_ids, test_ids = doc_ids[:num_train], doc_ids[num_train: num_train+num_test]
         train = Corpus([corpus.documents[d] for d in train_ids], corpus.vocabulary, corpus.metadata)
         test = Corpus([corpus.documents[d] for d in test_ids], corpus.vocabulary, corpus.metadata)
-
-    #This occurs when your doesn't support random indexing.
-    except TypeError:
-
+    except TypeError: # corpus doesn't support random indexing
         sample_size = num_train + num_test
         sample = []
         doc_ids = []
 
-        #reservoir sampling
+        # reservoir sampling
         for i, doc in enumerate(corpus.documents):
             if i < sample_size:
                 sample.append(doc)
                 doc_ids.append(i)
 
-            elif random.random() < (sample_size / i):
-                replace_index = random.randint(0, len(sample))
+            elif np.random.random() < (sample_size / i):
+                replace_index = np.random.randint(len(sample))
                 sample[replace_index] = doc
                 doc_ids[replace_index] = i
 
