@@ -644,7 +644,7 @@ def test_train_split(corpus, num_train=None, num_test=None, **kwargs):
                 doc_ids.append(i)
 
             elif random.random() < (sample_size / i):
-                replace_index = random.randint(0, len(sample))
+                replace_index = random.randint( 0, (len(sample) - 1) )
                 sample[replace_index] = doc
                 doc_ids[replace_index] = i
 
