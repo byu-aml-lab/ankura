@@ -135,7 +135,7 @@ def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
 def free_classifier(topics, Q, labels, epsilon=1e-7):
     """Creates a topic-based linear classifier. Details forthcoming..."""
     model = "original"
-    #EH: model is a variable that distinguishes which model we want to run, options: original, revised...
+    # model is a variable that distinguishes which model we want to run, options: original, revised...
 
     K = len(labels)
     V = Q.shape[0] - K
@@ -148,7 +148,7 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
     if model=="original":
         Q_L = Q[-K:, :V]
-    #EH: get the right section of the Q matrix
+    # Q_L is now the bottom section of the Q matrix (rather than the right section)
     elif model == "revised":
         Q_L = Q[:V, -K:]
 
@@ -159,7 +159,7 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
         for w_d in doc.tokens:
             H[w_d.token] += 1
 
-        #EH: normalize H
+        # normalize H
         if model=="revised":
             H = H / H.sum(axis=0)
 
@@ -168,7 +168,7 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
 
         if model=="original":
             word_score = Q_L.dot(H)
-        #EH: makes the dimensions correct for computing the dot product
+        # makes the dimensions correct for computing the dot product
         elif model=="revised":
             word_score = H.dot(Q_L)
         word_score /= word_score.sum(axis=0)
