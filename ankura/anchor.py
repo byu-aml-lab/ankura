@@ -358,15 +358,16 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
         worker = lambda word: _exponentiated_gradient(Q[word], X, XX, epsilon)
         chunksize = kwargs.get('chunksize', V // parallelism)
         with multiprocessing.pool.ThreadPool(parallelism) as pool:
-            A = pool.map(worker, range(V), chunksize)
-        A = np.array(A)
+            C = pool.map(worker, range(V), chunksize)
+        C = np.array(A)
     else:
-        A = np.zeros((V, K))
+        C = np.zeros((V, K))
         for word in range(V):
-            A[word] = _exponentiated_gradient(Q[word], X, XX, epsilon)
+            C[word] = _exponentiated_gradient(Q[word], X, XX, epsilon)
 
     # Use Bayes rule to compute topic matrix
-    A = np.dot(P_w, A)
+    A = np.dot(P_w, C)
     for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()
-    return A
+
+    return A;

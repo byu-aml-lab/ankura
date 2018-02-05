@@ -134,9 +134,6 @@ def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
 
 def free_classifier(topics, Q, labels, epsilon=1e-7):
     """Creates a topic-based linear classifier. Details forthcoming..."""
-    model = "original"
-    # model is a variable that distinguishes which model we want to run, options: original, revised...
-
     K = len(labels)
     V = Q.shape[0] - K
 
@@ -146,11 +143,35 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
 
     # class_given_word
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
-    if model=="original":
-        Q_L = Q[-K:, :V]
-    # Q_L is now the bottom section of the Q matrix (rather than the right section)
-    elif model == "revised":
-        Q_L = Q[:V, -K:]
+    Q_L = Q[-K:, :V]
+
+    @functools.wraps(free_classifier)
+    def _classifier(doc, attr='theta'):
+        H = np.zeros(V)
+        for w_d in doc.tokens:
+            H[w_d.token] += 1
+
+        topic_score = A_f.dot(doc.metadata[attr])
+        topic_score /= topic_score.sum(axis=0)
+
+        word_score = Q_L.dot(H)
+        word_score /= word_score.sum(axis=0)
+
+        return labels[np.argmax(topic_score + word_score)]
+    return _classifier
+
+def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
+    """same as function above, with a few minor math fixes"""
+    K = len(labels)
+    V = Q.shape[0] - K
+
+    # Smooth and column normalize class-topic weights
+    A_f = topics[-K:] + epsilon
+    A_f /= A_f.sum(axis=0)
+
+    # class_given_word
+    Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
+    Q_L = Q[:V, -K:] # Q_L is now the bottom section of the Q matrix (rather than the right section)
 
 
     @functools.wraps(free_classifier)
@@ -160,17 +181,12 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
             H[w_d.token] += 1
 
         # normalize H
-        if model=="revised":
-            H = H / H.sum(axis=0)
+        H = H / H.sum(axis=0)
 
         topic_score = A_f.dot(doc.metadata[attr])
         topic_score /= topic_score.sum(axis=0)
 
-        if model=="original":
-            word_score = Q_L.dot(H)
-        # makes the dimensions correct for computing the dot product
-        elif model=="revised":
-            word_score = H.dot(Q_L)
+        word_score = H.dot(Q_L) # changed from original to make the dimensions correct for the dot product
         word_score /= word_score.sum(axis=0)
 
         return labels[np.argmax(topic_score + word_score)]
