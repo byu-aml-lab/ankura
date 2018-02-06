@@ -616,7 +616,7 @@ def build_docwords(corpus, V=None):
 def test_train_split(corpus, num_train=None, num_test=None, **kwargs):
     if not num_train and not num_test:
         num_train = int(len(corpus.documents) * .8)
-        num_test = len(corpus) - num_train
+        num_test = len(corpus.documents) - num_train
     elif not num_train:
         num_train = len(corpus.documents) - num_test
     elif not num_test:
