@@ -3,6 +3,7 @@
 import collections
 import itertools
 
+import scipy.stats
 import numpy as np
 
 
@@ -230,3 +231,18 @@ def topic_switch_vi(corpus, attr='z'):
         for a, b in zip(z, z[1:]):
             dist[a, b] += 1
     return dist.vi()
+
+
+def topic_word_divergence(corpus, topics, attr='z'):
+    entropy = 0
+    for doc in corpus.documents:
+        if not doc.tokens:
+            continue
+        p = np.mean(topics[:, doc.metadata[attr]], axis=1)
+        q = np.zeros_like(p)
+        for t in doc.tokens:
+            q[t.token] += 1
+        q /= np.sum(q)
+        m = (p + q) / 2
+        entropy += scipy.stats.entropy(p, m) + scipy.stats.entropy(q, m)
+    return entropy / 2 / len(corpus.documents)
