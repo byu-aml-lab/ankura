@@ -160,6 +160,7 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
         return labels[np.argmax(topic_score + word_score)]
     return _classifier
 
+
 def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
     """same as function above, with a few minor math fixes"""
     K = len(labels)
@@ -171,8 +172,7 @@ def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
 
     # class_given_word
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
-    Q_L = Q[:V, -K:] # Q_L is now the bottom section of the Q matrix (rather than the right section)
-
+    Q_L = Q[:V, -K:]
 
     @functools.wraps(free_classifier)
     def _classifier(doc, attr='theta'):
@@ -186,7 +186,7 @@ def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
         topic_score = A_f.dot(doc.metadata[attr])
         topic_score /= topic_score.sum(axis=0)
 
-        word_score = H.dot(Q_L) # changed from original to make the dimensions correct for the dot product
+        word_score = H.dot(Q_L)
         word_score /= word_score.sum(axis=0)
 
         return labels[np.argmax(topic_score + word_score)]
