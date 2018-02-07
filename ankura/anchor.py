@@ -370,4 +370,9 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
     for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()
 
-    return A;
+    # EH: I added get_c so that I could return the C matrix
+    get_c = kwargs.get('get_c')
+    if get_c:
+        return C, A
+    else:
+        return A
