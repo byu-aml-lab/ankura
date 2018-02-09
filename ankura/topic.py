@@ -1,11 +1,13 @@
 """Functions for using and displaying topics"""
 
+import collections
 import functools
 import sys
 
 import numpy as np
 import scipy.spatial
 import sklearn.decomposition
+import gensim
 
 from . import pipeline, util
 
@@ -99,6 +101,43 @@ def variational_assign(corpus, topics, theta_attr='theta', docwords_attr=None):
         doc.metadata[theta_attr] = theta_d
 
 
+def gensim_assign(corpus, topics, theta_attr=None, z_attr=None):
+    if not theta_attr and not z_attr:
+        raise ValueError('Either theta_attr or z_attr must be given')
+
+    # Convert corpus to gensim bag-of-words format
+    bows = []
+    for doc in corpus.documents:
+        bow = collections.defaultdict(int)
+        for t in doc.tokens:
+            bow[t.token] += 1
+        bows.append(bow)
+    bows = [list(bow.items()) for bow in bows]
+
+    # Build lda with fixed topics
+    _, K = topics.shape
+    lda = gensim.models.LdaModel(
+        num_topics=K,
+        id2word=dict(enumerate(corpus.vocabulary)),
+    )
+    lda.state.sstats = topics.astype(lda.dtype).T
+    lda.sync_state()
+
+    # Make topic assignments
+    doc_topics = lda.get_document_topics(bows, per_word_topics=True)
+    for doc, (sparse_theta, sparse_z, _) in zip(corpus.documents, doc_topics):
+        if theta_attr:
+            theta = np.zeros(K)
+            for topic, prob in sparse_theta:
+                theta[topic] = prob
+            theta /= theta.sum()
+            doc.metadata[theta_attr] = theta
+        if z_attr:
+            sparse_z= {word: topics[0] for word, topics in sparse_z}
+            z = [sparse_z[t.token] for t in doc.tokens]
+            doc.metadata[z_attr] = z
+
+
 def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
     """Finds the nearest documents by topic similarity.
 
@@ -160,6 +199,7 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
         return labels[np.argmax(topic_score + word_score)]
     return _classifier
 
+
 def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
     """same as function above, with a few minor math fixes"""
     K = len(labels)
@@ -171,8 +211,7 @@ def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
 
     # class_given_word
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
-    Q_L = Q[:V, -K:] # Q_L is now the bottom section of the Q matrix (rather than the right section)
-
+    Q_L = Q[:V, -K:]
 
     @functools.wraps(free_classifier)
     def _classifier(doc, attr='theta'):
@@ -186,7 +225,7 @@ def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
         topic_score = A_f.dot(doc.metadata[attr])
         topic_score /= topic_score.sum(axis=0)
 
-        word_score = H.dot(Q_L) # changed from original to make the dimensions correct for the dot product
+        word_score = H.dot(Q_L)
         word_score /= word_score.sum(axis=0)
 
         return labels[np.argmax(topic_score + word_score)]
