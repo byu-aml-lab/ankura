@@ -1,11 +1,13 @@
 """Functions for using and displaying topics"""
 
+import collections
 import functools
 import sys
 
 import numpy as np
 import scipy.spatial
 import sklearn.decomposition
+import gensim
 
 from . import pipeline, util
 
@@ -97,6 +99,43 @@ def variational_assign(corpus, topics, theta_attr='theta', docwords_attr=None):
 
     for doc, theta_d in zip(corpus.documents, theta):
         doc.metadata[theta_attr] = theta_d
+
+
+def gensim_assign(corpus, topics, theta_attr=None, z_attr=None):
+    if not theta_attr and not z_attr:
+        raise ValueError('Either theta_attr or z_attr must be given')
+
+    # Convert corpus to gensim bag-of-words format
+    bows = []
+    for doc in corpus.documents:
+        bow = collections.defaultdict(int)
+        for t in doc.tokens:
+            bow[t.token] += 1
+        bows.append(bow)
+    bows = [list(bow.items()) for bow in bows]
+
+    # Build lda with fixed topics
+    _, K = topics.shape
+    lda = gensim.models.LdaModel(
+        num_topics=K,
+        id2word=dict(enumerate(corpus.vocabulary)),
+    )
+    lda.state.sstats = topics.astype(lda.dtype).T
+    lda.sync_state()
+
+    # Make topic assignments
+    doc_topics = lda.get_document_topics(bows, per_word_topics=True)
+    for doc, (sparse_theta, sparse_z, _) in zip(corpus.documents, doc_topics):
+        if theta_attr:
+            theta = np.zeros(K)
+            for topic, prob in sparse_theta:
+                theta[topic] = prob
+            theta /= theta.sum()
+            doc.metadata[theta_attr] = theta
+        if z_attr:
+            sparse_z= {word: topics[0] for word, topics in sparse_z}
+            z = [sparse_z[t.token] for t in doc.tokens]
+            doc.metadata[z_attr] = z
 
 
 def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
