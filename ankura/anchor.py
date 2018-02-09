@@ -359,7 +359,7 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
         chunksize = kwargs.get('chunksize', V // parallelism)
         with multiprocessing.pool.ThreadPool(parallelism) as pool:
             C = pool.map(worker, range(V), chunksize)
-        C = np.array(A)
+        C = np.array(C)
     else:
         C = np.zeros((V, K))
         for word in range(V):
