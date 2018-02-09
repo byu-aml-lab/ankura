@@ -115,10 +115,10 @@ def gensim_assign(corpus, topics, theta_attr=None, z_attr=None):
     bows = [list(bow.items()) for bow in bows]
 
     # Build lda with fixed topics
-    _, K = topics.shape
+    V, K = topics.shape
     lda = gensim.models.LdaModel(
         num_topics=K,
-        id2word=dict(enumerate(corpus.vocabulary)),
+        id2word={i: i for i in range(V)}, # LdaModel gets V from this dict
     )
     lda.state.sstats = topics.astype(lda.dtype).T
     lda.sync_state()
