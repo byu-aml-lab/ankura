@@ -23,7 +23,6 @@ import string
 import tarfile
 
 import bs4
-import scipy.sparse
 import numpy as np
 
 # POD types used throughout the pipeline process
@@ -435,14 +434,6 @@ def vocab_size_informer(attr='vocab_size'):
     return _informer
 
 
-def docwords_informer(attr='docwords'):
-    """Uses build_docwords to pre-compute a sparse docwords matrix."""
-    @functools.wraps(docwords_informer)
-    def _informer(corpus):
-        return {attr: build_docwords(corpus)}
-    return _informer
-
-
 def kwargs_informer(**kwargs):
     """Returns an informer which simply passes through keyword arguments."""
     @functools.wraps(kwargs_informer)
@@ -485,79 +476,6 @@ class VocabBuilder(object):
         return [TokenLoc(self[t.token], t.loc) for t in tokens]
 
 
-class HashedVocabBuilder(VocabBuilder):
-    """Augments VocabBuilder to include feature hashing"""
-
-    def __init__(self, size):
-        self.buckets = []
-        self.types = {}
-
-        self.size = size
-        self.indices = {}
-
-    def __getitem__(self, token):
-        if token not in self.types:
-            key = hash(token) % self.size
-            if key not in self.indices:
-                self.indices[key] = len(self.buckets)
-                self.buckets.append(collections.defaultdict(int))
-            self.types[token] = self.indices[key]
-
-        tid = self.types[token]
-        self.buckets[tid][token] += 1
-        return tid
-
-    @property
-    def tokens(self):
-        """Gets a list of tokens by representing each bucket by its most
-        frequenly used token.
-        """
-        return [max(b, key=b.get) for b in self.buckets]
-
-
-class DocumentStream(object):
-    """A file-backed document stream for large document collections"""
-
-    def __init__(self, filename):
-        self._path = filename
-        self._file = open(filename, 'wb')
-        self._flushed = True
-        self._size = 0
-
-    def append(self, doc):
-        """Writes the document to the backing file."""
-        if self._file is None:
-            self._file = open(self._path, 'ab')
-
-        pickle.dump(doc, self._file)
-        self._size += 1
-        self._flushed = False
-
-    def __iter__(self):
-        self._flush()
-
-        with open(self._path, 'rb') as docs:
-            for _ in range(self._size):
-                yield pickle.load(docs)
-
-    def __getstate__(self):
-        self._flush()
-        return (self._path, self._size)
-
-    def __setstate__(self, state):
-        self._path, self._size = state
-        self._file = None
-        self._flushed = False
-
-    def _flush(self):
-        if self._file is not None and not self._flushed:
-            self._file.flush()
-            self._flushed = True
-
-    def __len__(self):
-        return self._size
-
-
 class Pipeline(object):
     """Pipeline describes the process of importing a Corpus"""
 
@@ -569,13 +487,13 @@ class Pipeline(object):
         self.filterer = filterer
         self.informer = informer
 
-    def run(self, pickle_path=None, docs_path=None, hash_size=None):
+    def run(self, pickle_path=None):
         """Creates a new Corpus using the Pipeline"""
         if pickle_path and os.path.exists(pickle_path):
             return pickle.load(open(pickle_path, 'rb'))
 
-        documents = DocumentStream(docs_path) if docs_path else []
-        vocab = HashedVocabBuilder(hash_size) if hash_size else VocabBuilder()
+        documents = []
+        vocab = VocabBuilder()
         for docfile in self.inputer():
             for text in self.extractor(docfile):
                 tokens = self.tokenizer(text.data)
@@ -594,26 +512,22 @@ class Pipeline(object):
         return corpus
 
 
-def build_docwords(corpus, V=None):
-    """Constructs a sparse docwords matrix from a corpus.
-
-    The resulting DxV matrix will be in csc format, with each row encoding the
-    word counts for a document. The vocabulary size V defaults to the length of
-    the corpus vocabulary list, but can optionally be explicitly set.
-    """
-    D = len(corpus.documents)
-    if V is None:
-        V = len(corpus.vocabulary)
-
-    docwords = scipy.sparse.lil_matrix((D, V))
-    for d, doc in enumerate(corpus.documents):
-        for tl in doc.tokens:
-            docwords[d, tl.token] += 1
-
-    return docwords.tocsc()
-
-
 def test_train_split(corpus, num_train=None, num_test=None, **kwargs):
+    """Creates train and test splits of a Corpus.
+
+    By default, the split an 80/20 test/train split of the entire Corpus. If
+    num_train or num_test are given, then that number of documents will be used
+    for the train or test split respectively, with the remaining documents used
+    for the other split. Alternatively, both num_train and num_test can be
+    specified to use only a portion of a Corpus.
+
+    Normally two Corpus objects are returned with the same vocabulary and
+    metadata as the original Corpus, but containing just the documents of the
+    train/test split. Optionally, the keyword argument return_ids can be given,
+    indicating that the document ids into the original Corpus object should
+    also be given. In this case, train and test are given as tuples containing
+    the ids and the split Corpus.
+    """
     if not num_train and not num_test:
         num_train = int(len(corpus.documents) * .8)
         num_test = len(corpus.documents) - num_train
@@ -622,30 +536,10 @@ def test_train_split(corpus, num_train=None, num_test=None, **kwargs):
     elif not num_test:
         num_test = len(corpus.documents) - num_train
 
-    try:
-        doc_ids = np.random.permutation(len(corpus.documents))
-        train_ids, test_ids = doc_ids[:num_train], doc_ids[num_train: num_train+num_test]
-        train = Corpus([corpus.documents[d] for d in train_ids], corpus.vocabulary, corpus.metadata)
-        test = Corpus([corpus.documents[d] for d in test_ids], corpus.vocabulary, corpus.metadata)
-    except TypeError: # corpus doesn't support random indexing
-        sample_size = num_train + num_test
-        sample = []
-        doc_ids = []
-
-        # reservoir sampling
-        for i, doc in enumerate(corpus.documents):
-            if i < sample_size:
-                sample.append(doc)
-                doc_ids.append(i)
-
-            elif np.random.random() < (sample_size / i):
-                replace_index = np.random.randint(len(sample))
-                sample[replace_index] = doc
-                doc_ids[replace_index] = i
-
-        train_ids, test_ids = doc_ids[:num_train], doc_ids[num_train:]
-        train = Corpus(sample[:num_train], corpus.vocabulary, corpus.metadata)
-        test = Corpus(sample[num_train:], corpus.vocabulary, corpus.metadata)
+    doc_ids = np.random.permutation(len(corpus.documents))
+    train_ids, test_ids = doc_ids[:num_train], doc_ids[num_train: num_train+num_test]
+    train = Corpus([corpus.documents[d] for d in train_ids], corpus.vocabulary, corpus.metadata)
+    test = Corpus([corpus.documents[d] for d in test_ids], corpus.vocabulary, corpus.metadata)
 
     if kwargs.get('return_ids'):
         return (train_ids, train), (test_ids, test)

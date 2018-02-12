@@ -70,73 +70,6 @@ def build_cooccurrence(corpus):
     return Q / D
 
 
-def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
-                               label_weight=1, smoothing=1e-7):
-    """Constructs a cooccurrence matrix from a Corpus with labels.
-
-    In addition to a corpus, this method requires that a label attribute name
-    be given along with a set of labeled documents. For each label value, an
-    invented pseudoword is included. The label_weight determines how many such
-    pseudowords are added to each labeled document. Unlabeled documents are
-    given a smoothing term for each label.
-
-    Note that this algorithm must pass over the data twice. The first pass is
-    to determine the set of label values, and the second pass actually
-    constructs the cooccurrence matrix. However, since each document is
-    considered individually, we can handle arbitrarily large corpora.
-    """
-    V = len(corpus.vocabulary)
-
-    label_set = set()
-    for d, doc in enumerate(corpus.documents):
-        if d in labeled_docs:
-            label_set.add(doc.metadata[attr_name])
-    label_set = {l: V + i for i, l in enumerate(label_set)}
-
-    K = len(label_set)
-    Q = np.zeros((V+K, V+K))
-
-    D = 0
-    for d, doc in enumerate(corpus.documents):
-        n_d = len(doc.tokens)
-        if n_d <= 1:
-            continue
-        D += 1
-
-        if d in labeled_docs:
-            norm = 1 / 1
-            index = label_set[doc.metadata[attr_name]]
-            for i, w_i in enumerate(doc.tokens):
-                for j, w_j in enumerate(doc.tokens):
-                    if i == j:
-                        continue
-                    Q[w_i.token, w_j.token] += norm
-                Q[w_i.token, index] += label_weight * norm
-                Q[index, w_i.token] += label_weight * norm
-            Q[index, index] += label_weight * (label_weight - 1) * norm
-        else:
-            norm = 1 / (n_d * (n_d + 2 * K * smoothing - 1) + K * (K * smoothing - smoothing))
-            for i, w_i in enumerate(doc.tokens):
-                for j, w_j in enumerate(doc.tokens):
-                    if i == j:
-                        continue
-                    Q[w_i.token, w_j.token] += norm
-                for j in label_set.values():
-                    Q[w_i.token, j] += norm * smoothing
-                    Q[j, w_i.token] += norm * smoothing
-            for i in label_set.values():
-                for j in label_set.values():
-                    if i == j:
-                        continue
-                    Q[i, j] += norm * smoothing ** 2
-
-    return Q / D, sorted(label_set, key=label_set.get)
-
-
-# TODO Add QuickQ
-# TODO Add SupAnk
-
-
 def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
     """Uses stabilized Gram-Schmidt decomposition to find k anchors.
 
@@ -219,8 +152,12 @@ def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
     is a multiword anchor which is constructed by taking the harmonic mean of
     the indexed rows. To avoid zero weights, an epsilon (default: 1e-10) is
     added to each anchor vector.
+
+    Optionally, a Corpus object can be given, which means that the anchors were
+    given as a list of list of token strings. In this case, the Corpus
+    vocabulary is used to convert the given anchors to indicies. Any token
+    which is not in the Corpus vocabulary is silently ignored.
     """
-    # TODO document why the corpus is here...
     if corpus:
         anchor_indices = []
         for anchor in anchors:
@@ -370,4 +307,4 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
     for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()
 
-    return A;
+    return A

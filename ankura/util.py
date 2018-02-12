@@ -12,6 +12,7 @@ except ImportError:
     jit = lambda x:x
 
 
+@jit
 def random_projection(A, k):
     """Randomly projects the points (rows) of A into k-dimensions.
 
@@ -32,6 +33,7 @@ def logsumexp(y):
     return ymax + np.log((np.exp(y - ymax)).sum())
 
 
+@jit
 def sample_categorical(counts):
     """Samples from a categorical distribution parameterized by unnormalized
     counts. The index of the sampled category is returned.
@@ -42,6 +44,19 @@ def sample_categorical(counts):
             return key
         sample -= count
     raise ValueError(counts)
+
+@jit
+def lim_plogp(p):
+    if not p:
+        return 0
+    return p * np.log(p)
+
+
+@jit
+def lim_xlogy(x, y):
+    if not x and not y:
+        return 0
+    return x * np.log(y)
 
 
 class memoize(object):

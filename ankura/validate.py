@@ -6,6 +6,8 @@ import itertools
 import scipy.stats
 import numpy as np
 
+from . import util
+
 
 class Contingency(object):
     """Contingency is a table which gives the multivariate frequency
@@ -14,30 +16,6 @@ class Contingency(object):
 
     def __init__(self):
         self.table = collections.defaultdict(dict)
-
-    @staticmethod
-    def from_cross_reference(corpus, xrefs, xref_attr='xref', title_attr='title'):
-        """Generates a contingency table for evaluating cross references"""
-        contingency = Contingency()
-        for doc in corpus.documents:
-            gold = set(doc.metadata[xref_attr])
-            pred = set(doc.metadata[title_attr] for doc in xrefs[doc])
-            TP = len(pred.intersection(gold))
-            FP = len(pred - gold)
-            FN = len(gold - pred)
-            TN = len(corpus.documents) - TP - FP - FN
-            contingency[True, True] += TP
-            contingency[False, True] += FP
-            contingency[True, False] += FN
-            contingency[False, False] += TN
-        return contingency
-
-    @staticmethod
-    def from_classifier(corpus, classifier, label_attr='label'):
-        contingency = Contingency()
-        for doc in corpus.documents:
-            contingency[doc.metadata[label_attr], classifier(doc)] += 1
-        return contingency
 
     def __getitem__(self, gold_pred):
         gold, pred = gold_pred
@@ -136,11 +114,11 @@ class Contingency(object):
 
         gentropy = 0
         for count in gsums.values():
-            gentropy -= _lim_plogp(count / total)
+            gentropy -= util.lim_plogp(count / total)
 
         pentropy = 0
         for count in psums.values():
-            pentropy -= _lim_plogp(count / total)
+            pentropy -= util.lim_plogp(count / total)
 
         mutual_info = 0
         for gold, row in self.table.items():
@@ -150,7 +128,7 @@ class Contingency(object):
                 pprob = psums[pred] / total
                 if gprob and pprob:
                     mutual = joint_prob / (gprob * pprob)
-                    mutual_info += _lim_xlogy(joint_prob, mutual)
+                    mutual_info += util.lim_xlogy(joint_prob, mutual)
 
         return gentropy + pentropy - 2 * mutual_info
 
@@ -170,10 +148,10 @@ def coherence(reference_corpus, topic_summary, epsilon=1e-2):
     """Computes topic coherence following Mimno et al., 2011 using pairwise log
     conditional probability taken from a reference corpus.
 
-    Note that this is not the same as the NPMI based coherence proposed by
-    Lau et al., 2014. Mimno et al., proposed using using the topic-modelled
-    datadata, but one can optionally use an external corpus (e.g., Wikipedia)
-    as proposed by Lau et al.
+    Note that this is not the same as the NPMI based coherence proposed by Lau
+    et al., 2014. The earlier work by Mimno et al., proposed using using the
+    topic-modelled data, but one can optionally use an external corpus (e.g.,
+    Wikipedia) as proposed by Lau et al.
 
     The topic summary should be an array with each row giving the token types
     of the top words of each topic.
@@ -196,18 +174,6 @@ def coherence(reference_corpus, topic_summary, epsilon=1e-2):
                 score += np.log((pair_count + epsilon) / count)
         scores.append(score)
     return np.array(scores)
-
-
-def _lim_plogp(p):
-    if not p:
-        return 0
-    return p * np.log(p)
-
-
-def _lim_xlogy(x, y):
-    if not x and not y:
-        return 0
-    return x * np.log(y)
 
 
 # Proposed Metrics for Token Level Topic Assignment
