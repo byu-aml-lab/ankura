@@ -3,6 +3,7 @@
 import collections
 import functools
 import sys
+import collections
 
 import numpy as np
 import scipy.spatial
@@ -229,4 +230,41 @@ def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
         word_score /= word_score.sum(axis=0)
 
         return labels[np.argmax(topic_score + word_score)]
+    return _classifier
+
+
+def free_classifier_model1(corpus, attr_name, labeled_docs,
+                            topics, C, labels, epsilon=1e-7):
+
+    K = len(labels)
+
+    # Smooth and column normalize class-topic weights
+    A_f = topics[-K:] + epsilon
+    A_f /= A_f.sum(axis=0)
+
+    # column normalize topic-label matrix
+    C_f = C[0:, -K:]
+    C_f /= C_f.sum(axis=0)
+
+    L = np.zeros(K)
+    for d, doc in enumerate(corpus.documents):
+        if d in labeled_docs:
+            label_name = doc.metadata[attr_name];
+            i = labels.index(label_name)
+            L[i] += 1
+
+    L = L / L.sum(axis=0) # normalize L to get the label probabilities
+
+    @functools.wraps(free_classifier)
+    def _classifier(doc, attr='z'):
+        final_score = np.zeros(K)
+        for i, l in enumerate(L):
+            product = l
+            doc_topic_count = collections.Counter(doc.metadata[attr])
+            for topic, count in doc_topic_count.items():
+                product *= C_f[topic, i]**count
+
+            final_score[i] = product
+
+        return labels[np.argmax(final_score)]
     return _classifier
