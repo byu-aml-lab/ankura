@@ -6,7 +6,12 @@ import sys
 import numpy as np
 import scipy.spatial
 
-import gensim # TODO make sampling fallback so gensim is optional
+from . import util
+
+try:
+    import gensim
+except ImportError:
+    gensim = None
 
 
 def topic_summary(topics, corpus=None, n=10):
@@ -36,6 +41,9 @@ def lda_assign(corpus, topics, theta_attr=None, z_attr=None):
     """
     if not theta_attr and not z_attr:
         raise ValueError('Either theta_attr or z_attr must be given')
+    if not gensim:
+        _sampling_lda_assign(corpus, topics, theta_attr, z_attr)
+        return
 
     # Convert corpus to gensim bag-of-words format
     bows = []
@@ -68,6 +76,33 @@ def lda_assign(corpus, topics, theta_attr=None, z_attr=None):
             sparse_z= {word: topics[0] for word, topics in sparse_z}
             z = [sparse_z[t.token] for t in doc.tokens]
             doc.metadata[z_attr] = z
+
+
+def _sampling_lda_assign(corpus, topics, theta_attr=None, z_attr=None, alpha=.01, num_iters=10):
+    # Initialize counter and assignments
+    _, K = topics.shape
+    c = np.zeros((len(corpus.documents), K))
+    z = [np.random.randint(K, size=len(d.tokens)) for d in corpus.documents]
+    for d, z_d in enumerate(z):
+        for z_dn in z_d:
+            c[d, z_dn] += 1
+
+    # Collapsed LDA Gibbs sampler with fixed topics
+    for _ in range(num_iters):
+        for d, (doc, z_d) in enumerate(zip(corpus.documents, z)):
+            for n, w_dn in enumerate(doc.tokens):
+                c[d, z_d[n]] -= 1
+                cond = [alpha + c[d, t] * topics[w_dn.token, t] for t in range(K)]
+                z_d[n] = util.sample_categorical(cond)
+                c[d, z_d[n]] += 1
+
+    # Make topic assignments
+    if theta_attr:
+        for doc, c_d in zip(corpus.documents, c):
+            doc.metadata[theta_attr] = c_d / c_d.sum()
+    if z_attr:
+        for doc, z_d in zip(corpus.documents, z):
+            doc.metadata[z_attr] = z_d.tolist()
 
 
 def cross_reference(corpus, theta_attr, xref_attr, n=sys.maxsize, threshold=1):
