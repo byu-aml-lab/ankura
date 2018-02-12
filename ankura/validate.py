@@ -144,7 +144,7 @@ class Contingency(object):
         return gsums, psums, total
 
 
-def coherence(reference_corpus, topic_summary, epsilon=1e-2):
+def coherence(reference_corpus, topic_summary, epsilon=1e-2, average_fn=np.mean):
     """Computes topic coherence following Mimno et al., 2011 using pairwise log
     conditional probability taken from a reference corpus.
 
@@ -154,9 +154,9 @@ def coherence(reference_corpus, topic_summary, epsilon=1e-2):
     Wikipedia) as proposed by Lau et al.
 
     The topic summary should be an array with each row giving the token types
-    of the top words of each topic.
+    (not token strings) of the top words of each topic.
     """
-    word_set = set(topic_summary.flatten())
+    word_set = {word for topic in topic_summary for word in topic}
     counts = collections.Counter()
     pair_counts = collections.Counter()
     for doc in reference_corpus.documents:
@@ -173,6 +173,9 @@ def coherence(reference_corpus, topic_summary, epsilon=1e-2):
                 count = counts[j]
                 score += np.log((pair_count + epsilon) / count)
         scores.append(score)
+
+    if average_fn:
+        return average_fn(scores)
     return np.array(scores)
 
 

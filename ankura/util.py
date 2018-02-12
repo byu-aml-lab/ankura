@@ -13,18 +13,6 @@ except ImportError:
 
 
 @jit
-def random_projection(A, k):
-    """Randomly projects the points (rows) of A into k-dimensions.
-
-    We follow the method given by Achlioptas 2001 which guarantees that
-    pairwise distances will be preserved within some epsilon, and is more
-    efficient than projections involving sampling from Gaussians.
-    """
-    R = np.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
-    return np.dot(A, R * np.sqrt(3))
-
-
-@jit
 def logsumexp(y):
     """Computes the log of the sum of exponentials of y in a numerically stable
     way. Useful for computing sums in log space.
@@ -32,18 +20,6 @@ def logsumexp(y):
     ymax = y.max()
     return ymax + np.log((np.exp(y - ymax)).sum())
 
-
-@jit
-def sample_categorical(counts):
-    """Samples from a categorical distribution parameterized by unnormalized
-    counts. The index of the sampled category is returned.
-    """
-    sample = np.random.uniform(0, sum(counts))
-    for key, count in enumerate(counts):
-        if sample < count:
-            return key
-        sample -= count
-    raise ValueError(counts)
 
 @jit
 def lim_plogp(p):
@@ -57,6 +33,29 @@ def lim_xlogy(x, y):
     if not x and not y:
         return 0
     return x * np.log(y)
+
+
+def sample_categorical(counts):
+    """Samples from a categorical distribution parameterized by unnormalized
+    counts. The index of the sampled category is returned.
+    """
+    sample = np.random.uniform(0, sum(counts))
+    for key, count in enumerate(counts):
+        if sample < count:
+            return key
+        sample -= count
+    raise ValueError(counts)
+
+
+def random_projection(A, k):
+    """Randomly projects the points (rows) of A into k-dimensions.
+
+    We follow the method given by Achlioptas 2001 which guarantees that
+    pairwise distances will be preserved within some epsilon, and is more
+    efficient than projections involving sampling from Gaussians.
+    """
+    R = np.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
+    return np.dot(A, R * np.sqrt(3))
 
 
 class memoize(object):
