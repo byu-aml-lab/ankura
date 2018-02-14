@@ -215,3 +215,18 @@ def topic_word_divergence(corpus, topics, attr='z'):
         m = (p + q) / 2
         entropy += scipy.stats.entropy(p, m) + scipy.stats.entropy(q, m)
     return entropy / 2 / len(corpus.documents)
+
+
+def window_prob(corpus, topics, attr='z', window_size=1, epsilon=1e-20):
+    log_prob = 0
+    for doc in corpus.documents:
+        if not doc.tokens:
+            continue
+        z = doc.metadata[attr]
+        for n, t in enumerate(doc.tokens):
+            window = z[max(0, n-window_size):n+window_size+1]
+            window_prob = np.mean(topics[t.token, window] + epsilon)
+            if window_prob == 0:
+                raise ValueError(window, topics[t.token, window])
+            log_prob += np.log(window_prob)
+    return log_prob
