@@ -230,3 +230,17 @@ def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
 
         return labels[np.argmax(topic_score + word_score)]
     return _classifier
+
+
+def highlight(doc, z_attr, highlighter=lambda w, z: '{}:{}'.format(w, z)):
+    chunks = []
+    curr = 0
+
+    for token, topic in zip(doc.tokens, doc.metadata[z_attr]):
+        start, end = token.loc
+        chunks.append(doc.text[curr:start])
+        chunks.append(highlighter(doc.text[start:end], topic))
+        curr = end
+    chunks.append(doc.text[curr:])
+
+    return ''.join(chunks)

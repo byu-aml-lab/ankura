@@ -157,12 +157,12 @@ def split_tokenizer(delims=string.whitespace):
         for i, char in enumerate(data):
             if char in delims:
                 if begin >= 0:
-                    tokens.append(TokenLoc(data[begin: i], begin))
+                    tokens.append(TokenLoc(data[begin: i], (begin, i)))
                     begin = -1
             elif begin == -1:
                 begin = i
         if begin >= 0: # Last token might be at EOF
-            tokens.append(TokenLoc(data[begin:], begin))
+            tokens.append(TokenLoc(data[begin:], (begin, len(data)-1)))
         return tokens
     return _tokenizer
 
