@@ -4,11 +4,11 @@ from distutils.core import setup
 
 setup(
     name='ankura',
-    version='0.1',
-    description='Interactive anchor words implementation',
+    version='0.6',
+    description='Toolkit for analyzing text with anchor-based topic modeling',
     license='MIT License',
     author='Jeffrey Lund',
     author_email='jefflund@gmail.com',
-    url='https://github.com/jlund3/ankura',
+    url='https://github.com/jefflund/ankura',
     packages=['ankura']
 )

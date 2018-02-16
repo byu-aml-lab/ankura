@@ -1,6 +1,11 @@
-*.pyc
+__pycache__
 *.pickle
-*.swp
-venv/
-server/userData/*
-.idea
+.cache/
+.idea/
+.vscode/
+
+.coverage
+htmlcov
+scripts
+
+notes

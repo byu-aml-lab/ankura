@@ -1,174 +1,310 @@
-"""Functions for finding anchor words from a docwords matrix"""
+"""Implementation of the anchor algorithm and various anchor extensions.
 
-import numpy
+This class of algorithms was first described by Arora et al. 2013, but has been
+modified and extended by various other authors.  Generally speaking, the
+process of recovering topics using anchor words is as follows:
+    * Construct a cooccurrence matrix, possibly with build_cooccurrence
+    * Choose anchor words, possibly with gram_schmidt_anchors
+    * Call recover_topics using a cooccurrence matrix and anchors
+Variants of the anchor algorithm generally work by changing how the cooccurrence
+matrix is constructed and/or how the anchor words are chosen.
+"""
+
+import collections
+import numpy as np
 import scipy.stats
+import multiprocessing.pool
+
+from . import util
 
 
-def random_projection(A, k, rng=numpy.random):
-    """Randomly reduces the dimensionality of a n x d matrix A to k x d
+def anchor_algorithm(corpus, k, doc_threshold=500, project_dim=1000):
+    """Implementation of the anchor algorithm by Arora et al. 2013.
 
-    We follow the method given by Achlioptas 2001 which yields a projection
-    which does well at preserving pairwise distances within some small factor.
-    We do this by multiplying A with R, a n x k matrix with each element
-    R_{i,j} distributed as:
-        sqrt(3)  with probability 1/6
-        0        with probability 2/3
-        -sqrt(3) with probability 1/ 6
-    The resulting matrix therefore has the dimensions k x d so each of the d
-    examples in A is reduced from n dimensions to k dimensions.
+    This call builds a cooccurrence matrix from the given corpus, extracts k
+    anchor words using the Gram-Schmidt process, and then recovers the
+    topic-word distributions. The doc_threshold (default: 500) is how many
+    documents a word must appear in to be considered as a potential anchor
+    word, and project_dim (default: 1000, can be None) is the number of
+    dimensions the Gram-Schmidt process should be performed under.
+
+    This function is mostly for convenience, but is also a general guide for
+    how to recover topics with this module.
     """
-    R = rng.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k)) * numpy.sqrt(3)
-    return numpy.dot(A, R)
+    Q = build_cooccurrence(corpus)
+    anchors = gram_schmidt_anchors(corpus, Q, k, doc_threshold, project_dim)
+    return recover_topics(Q, anchors)
 
 
-def identify_candidates(M, doc_threshold):
-    """Return list of potential anchor words from a sparse docwords matrix
+def build_cooccurrence(corpus):
+    """Constructs a cooccurrence matrix from a Corpus.
 
-    Candidate anchor words are words which appear in a significant number of
-    documents. The words not chosen as candidate anchor words are not rarewords
-    per se (or else they would probably be filtered during pre-processing), but
-    do not appear in enough documents to be useful as an anchor word.
+    The cooccurrence matrix is constructed following Anandkumar et al., 2012 in
+    such a way that the cooccurrences of each document are given equal weight.
+    We use a formulation of this process that allows us to consider each
+    document individually, so that we can handle an arbitrarily large corpora.
+
+    This cooccurrence matrix encodes the joint probabilities of observing two
+    words together. Since the matrix is a joint distribution, it sums to 1.
+    Note that if we row normalize this matrix, we would instead have
+    conditional probabilities of observing a  word given we have already
+    observed another word.
     """
-    candidate_anchors = []
-    M_csr = M.tocsr()
-    for i in range(M_csr.shape[0]):
-        if M_csr[i, :].nnz > doc_threshold:
-            candidate_anchors.append(i)
-    return candidate_anchors
+    V = len(corpus.vocabulary)
+    Q = np.zeros((V, V))
+
+    D = 0
+    for doc in corpus.documents:
+        n_d = len(doc.tokens)
+        if n_d <= 1:
+            continue
+        D += 1
+
+        norm = 1 / (n_d * (n_d - 1))
+        for i, w_i in enumerate(doc.tokens):
+            for j, w_j in enumerate(doc.tokens):
+                if i == j:
+                    continue
+                Q[w_i.token, w_j.token] += norm
+
+    return Q / D
 
 
-def gramschmidt_anchors(dataset, k, candidate_selector, **kwargs):
-    """Uses stabilized Gram-Schmidt decomposition to find k anchors
+def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
+    """Uses stabilized Gram-Schmidt decomposition to find k anchors.
 
-    The original Q will not be modified. The anchors are returned in the form
-    of a list of k indicies into the original Q.
+    Each row of Q represents a word embedded in V-dimensional space, with each
+    dimensions encoding a cooccurrence probability. We first pick the two most
+    extreme points to serve as a new origin and basis. We then iteratively add
+    new points to our basis by selecting the point which is furthest away after
+    projecting it onto the current span.
 
-    The candidate_selector parameter can be either a callable or an integer. If
-    it is a callable, it will get called with dataset.M as parameter; if it is
-    an integer, only those words which appear in a number of documents greater
-    than the integer specified will be eligible as candidate anchor words.
+    We do this until we have selected k anchor words. However, only words which
+    occur in at least doc_threshold (default: 500) documents will be
+    considered. For computational efficiency, we first project our points in to
+    project_dim (default: 1000, optionally None) dimensional space.
 
-    If the project_dim keyword argument is non-zero, then the cooccurrence
-    matrix is randomly projected to the given number of dimensions. By default,
-    we project to 1000 dimensions.
-
-    If the return_indicies keyword argument is True, then the anchor indicies
-    are returned with the anchor vectors. By default the indices are not
-    returned.
+    The rows of the cooccurrence matrix Q corresponding to the selected anchor
+    words are returned. If the keyword argument 'return_indices' is True, we
+    return the row indices instead of the rows themselves.
     """
-    if callable(candidate_selector):
-        candidates = candidate_selector(dataset.M)
-    else:
-        candidates = identify_candidates(dataset.M, candidate_selector)
+    # Find candidate anchors
+    counts = collections.Counter()
+    for doc in corpus.documents:
+        counts.update(set(t.token for t in doc.tokens))
+    candidates = [tid for tid, count in counts.items() if count > doc_threshold]
+    k = min(k, len(candidates))
 
-    # don't modify the original Q
-    Q = dataset.Q.copy()
-
-    # normalize rows of Q and perform dimensionality reduction
-    row_sums = Q.sum(1)
-    for i in range(len(Q[:, 0])):
-        Q[i, :] = Q[i, :] / float(row_sums[i])
-    project_dim = kwargs.get('project_dim', 1000)
+    # Row-normalize and project Q, preserving the original Q
+    Q_orig = Q
+    Q = Q / Q.sum(axis=1, keepdims=True)
     if project_dim:
-        Q = random_projection(Q, project_dim)
+        Q = util.random_projection(Q, project_dim)
 
-    # setup book keeping for gram-schmidt
-    anchor_indices = numpy.zeros(k, dtype=numpy.int)
-    basis = numpy.zeros((k-1, Q.shape[1]))
+    # Setup book keeping
+    indices = np.zeros(k, dtype=np.int)
+    basis = np.zeros((k-1, Q.shape[1]))
 
-    # find the farthest point p1 from the origin
+    # Find the farthest point from the origin
     max_dist = 0
     for i in candidates:
-        dist = numpy.dot(Q[i], Q[i])
+        dist = np.linalg.norm(Q[i])
         if dist > max_dist:
             max_dist = dist
-            anchor_indices[0] = i
+            indices[0] = i
 
-    # let p1 be the origin of our coordinate system
-    for i in candidates:
-        Q[i] = Q[i] - Q[anchor_indices[0]]
+    # Translate all points to the new origin
+    Q[candidates] -= Q[indices[0]]
 
-    # find the farthest point from p1
+    # Find the farthest point from origin
     max_dist = 0
     for i in candidates:
-        dist = numpy.dot(Q[i], Q[i])
+        dist = np.linalg.norm(Q[i])
         if dist > max_dist:
             max_dist = dist
-            anchor_indices[1] = i
-            basis[0] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
+            indices[1] = i
+    basis[0] = Q[indices[1]] / max_dist
 
-    # stabilized gram-schmidt to finds new anchor words to expand our subspace
+    # Stabilized gram-schmidt to finds new anchor words to expand the subspace
     for j in range(1, k - 1):
-        # project all the points onto our basis and find the farthest point
+        # Project all the points onto the basis and find the farthest point
         max_dist = 0
         for i in candidates:
-            Q[i] = Q[i] - numpy.dot(Q[i], basis[j-1]) * basis[j - 1]
-            dist = numpy.dot(Q[i], Q[i])
+            Q[i] = Q[i] - np.dot(Q[i], basis[j-1]) * basis[j - 1]
+            dist = np.dot(Q[i], Q[i])
             if dist > max_dist:
                 max_dist = dist
-                anchor_indices[j + 1] = i
-                basis[j] = Q[i] / numpy.sqrt(numpy.dot(Q[i], Q[i]))
+                indices[j + 1] = i
+        basis[j] = Q[indices[j + 1]] / np.sqrt(max_dist)
 
-    # use the original Q to extract anchor vectors using the anchor indices
-    anchor_vectors = dataset.Q[anchor_indices, :]
-
+    # If requested, just return the indices instead of anchor vectors
     if kwargs.get('return_indices'):
-        return anchor_vectors, anchor_indices
-    return anchor_vectors
+        return indices
+
+    # Use the original Q to extract anchor vectors using the anchor indices
+    return Q_orig[indices, :]
 
 
-def vector_average(anchor):
-    """Combines a multiword anchor (as vectors) using vector average"""
-    return numpy.mean(anchor, axis=0)
+def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
+    """Creates pseudoword anchors from user provided anchor facets.
 
+    The anchors should be a list of list of row indices. Each list of indices
+    is a multiword anchor which is constructed by taking the harmonic mean of
+    the indexed rows. To avoid zero weights, an epsilon (default: 1e-10) is
+    added to each anchor vector.
 
-def vector_max(anchor):
-    """Combines a multiword anchor (as vectors) using elementwise max"""
-    return numpy.max(anchor, axis=0)
-
-
-def vector_min(anchor):
-    """Combines a multiword anchor (as vectors) using elementwise max"""
-    return numpy.min(anchor, axis=0)
-
-
-def vector_or(anchor):
-    """Combines a multiword anchor (as vectors) using or probabilties"""
-    return 1 - (1 - anchor).prod(axis=0)
-
-
-def vector_hmean(anchor, epsilon=1e-10):
-    """Combines a multiword anchor (as vectors) with elementwise harmonic mean
-
-    Since the harmonic mean is only defined when all values are greater than
-    zero, we add in epsilon as a smoothing constant to avoid divide by zero
+    Optionally, a Corpus object can be given, which means that the anchors were
+    given as a list of list of token strings. In this case, the Corpus
+    vocabulary is used to convert the given anchors to indicies. Any token
+    which is not in the Corpus vocabulary is silently ignored.
     """
-    return scipy.stats.hmean(anchor + epsilon, axis=0)
+    if corpus:
+        anchor_indices = []
+        for anchor in anchors:
+            anchor_index = []
+            for word in anchor:
+                try:
+                    anchor_index.append(corpus.vocabulary.index(word))
+                except ValueError:
+                    pass
+            anchor_indices.append(anchor_index)
+        anchors = anchor_indices
 
-
-def multiword_anchors(dataset, anchor_tokens, combiner=vector_hmean):
-    """Constructs anchors based on a set of user specified multiword anchors
-
-    The anchors are given in the form of the string tokens. Any token which
-    is not present in the dataset vocabulary is ignored. The multiword anchors
-    are combined into single anchor vectors using the specified combiner (which
-    defaults to vector average).
-    """
-    anchor_indices = []
-    for anchor in anchor_tokens:
-        anchor_index = []
-        for word in anchor:
-            try:
-                anchor_index.append(dataset.vocab.index(word))
-            except ValueError:
-                pass
-        anchor_indices.append(anchor_index)
-    return vectorize_anchors(dataset, anchor_indices, combiner)
-
-
-def vectorize_anchors(dataset, anchor_indices, combiner=vector_hmean):
-    """Converts multiword anchors given as indices to anchor vectors"""
-    basis = numpy.zeros((len(anchor_indices), dataset.Q.shape[1]))
-    for i, anchor in enumerate(anchor_indices):
-        basis[i] = combiner(dataset.Q[anchor, :])
+    basis = np.zeros((len(anchors), Q.shape[1]))
+    for i, anchor in enumerate(anchors):
+        basis[i] = scipy.stats.hmean(Q[anchor, :] + epsilon, axis=0)
     return basis
+
+@util.jit
+def _exponentiated_gradient(Y, X, XX, epsilon):
+    _C1 = 1e-4
+    _C2 = .75
+
+    XY = np.dot(X, Y)
+    YY = np.dot(Y, Y)
+
+    alpha = np.ones(X.shape[0]) / X.shape[0]
+    old_alpha = np.copy(alpha)
+    log_alpha = np.log(alpha)
+    old_log_alpha = np.copy(log_alpha)
+
+    AXX = np.dot(alpha, XX)
+    AXY = np.dot(alpha, XY)
+    AXXA = np.dot(AXX, alpha.transpose())
+
+    grad = 2 * (AXX - XY)
+    old_grad = np.copy(grad)
+
+    new_obj = AXXA - 2 * AXY + YY
+
+    # Initialize book keeping
+    stepsize = 1
+    decreased = False
+    convergence = np.inf
+
+    while convergence >= epsilon:
+        old_obj = new_obj
+        old_alpha = np.copy(alpha)
+        old_log_alpha = np.copy(log_alpha)
+        if new_obj == 0 or stepsize == 0:
+            break
+
+        # Add the gradient and renormalize in logspace, then exponentiate
+        log_alpha -= stepsize * grad
+        log_alpha -= util.logsumexp(log_alpha)
+        alpha = np.exp(log_alpha)
+
+        # Precompute quantities needed for adaptive stepsize
+        AXX = np.dot(alpha, XX)
+        AXY = np.dot(alpha, XY)
+        AXXA = np.dot(AXX, alpha.transpose())
+
+        # See if stepsize should decrease
+        old_obj, new_obj = new_obj, AXXA - 2 * AXY + YY
+        if new_obj >= (
+                old_obj + _C1 * stepsize * np.dot(grad, alpha - old_alpha)):
+            stepsize /= 2.0
+            alpha = old_alpha
+            log_alpha = old_log_alpha
+            new_obj = old_obj
+            decreased = True
+            continue
+
+        # compute the new gradient
+        old_grad, grad = grad, 2 * (AXX - XY)
+
+        # See if stepsize should increase
+        if not decreased and np.dot(grad, alpha - old_alpha) < (
+                _C2 * np.dot(old_grad, alpha - old_alpha)):
+            stepsize *= 2.0
+            alpha = old_alpha
+            log_alpha = old_log_alpha
+            grad = old_grad
+            new_obj = old_obj
+            continue
+
+        # Update book keeping
+        decreased = False
+        convergence = np.dot(alpha, grad - grad.min())
+
+    if np.isnan(alpha).any():
+        alpha = np.ones(X.shape[0]) / X.shape[0]
+    return alpha
+
+
+def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
+    """Recovers topics given a cooccurrence matrix and a set of anchor vectors.
+
+    We represent each word (rows of the cooccurrence matrix Q) as a convex
+    combination of the anchors. Each convex combination is computed using
+    exponentiated gradient descent. These combination weights gives us the
+    inverse conditioning we need, so we multiply the weights with the prior
+    probabilities of each word to obtain a topic-word matrix which gives
+    probabilities of word given topic.
+
+    Since the computation of the convex combinations for each word is
+    embarassingly parallel, it can be faster to use multiprocessing. The
+    keyword argument parallelism can used to specify the number of threads
+    used. The keyword argument chunksize can also be given to specify the
+    approximate number of words sent to a thread to work on at a time.
+    """
+    # Don't modify original Q
+    Q = Q.copy()
+
+    # Get dimensions of topic matrix
+    V = Q.shape[0]
+    K = len(anchors)
+
+    # Compute prior probability of each word with row sums of Q.
+    P_w = np.diag(Q.sum(axis=1))
+    for word in range(V):
+        if np.isnan(P_w[word, word]):
+            P_w[word, word] = 1e-16
+
+    # Normalize the rows of Q to get Q_prime
+    for word in range(V):
+        Q[word, :] = Q[word, :] / Q[word, :].sum()
+
+    # Compute normalized anchors X, and precompute X * X.T
+    X = anchors / anchors.sum(axis=1)[:, np.newaxis]
+    XX = np.dot(X, X.transpose())
+
+    # Represent each word as a convex combination of anchors.
+    parallelism = kwargs.get('parallelism')
+    if parallelism:
+        worker = lambda word: _exponentiated_gradient(Q[word], X, XX, epsilon)
+        chunksize = kwargs.get('chunksize', V // parallelism)
+        with multiprocessing.pool.ThreadPool(parallelism) as pool:
+            C = pool.map(worker, range(V), chunksize)
+        C = np.array(C)
+    else:
+        C = np.zeros((V, K))
+        for word in range(V):
+            C[word] = _exponentiated_gradient(Q[word], X, XX, epsilon)
+
+    # Use Bayes rule to compute topic matrix
+    A = np.dot(P_w, C)
+    for k in range(K):
+        A[:, k] = A[:, k] / A[:, k].sum()
+
+    return A

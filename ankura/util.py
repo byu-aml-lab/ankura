@@ -1,28 +1,65 @@
-"""A collection of utility functions which may be useful with ankura"""
+"""A collection of utility functions used throughout Ankura"""
 
-import collections
-import os
+import numpy as np
 import pickle
-import random
-import tempfile
+import functools
+import os
+
+try:
+    import numba
+    jit = functools.partial(numba.jit, nopython=True)
+except ImportError:
+    jit = lambda x:x
 
 
-def pickle_cache(pickle_path):
-    """Decorator to cache a parameterless function call to disk"""
-    def _cache(data_func):
-        def _load_data():
-            if os.path.exists(pickle_path):
-                return pickle.load(open(pickle_path, 'rb'))
-            else:
-                data = data_func()
-                pickle.dump(data, open(pickle_path, 'wb'))
-                return data
-        return _load_data
-    return _cache
+@jit
+def logsumexp(y):
+    """Computes the log of the sum of exponentials of y in a numerically stable
+    way. Useful for computing sums in log space.
+    """
+    ymax = y.max()
+    return ymax + np.log((np.exp(y - ymax)).sum())
 
 
-class memoize(object): # pylint: disable=invalid-name
-    """Decorator to memoize a function"""
+@jit
+def lim_plogp(p):
+    if not p:
+        return 0
+    return p * np.log(p)
+
+
+@jit
+def lim_xlogy(x, y):
+    if not x and not y:
+        return 0
+    return x * np.log(y)
+
+
+def sample_categorical(counts):
+    """Samples from a categorical distribution parameterized by unnormalized
+    counts. The index of the sampled category is returned.
+    """
+    sample = np.random.uniform(0, sum(counts))
+    for key, count in enumerate(counts):
+        if sample < count:
+            return key
+        sample -= count
+    raise ValueError(counts)
+
+
+def random_projection(A, k):
+    """Randomly projects the points (rows) of A into k-dimensions.
+
+    We follow the method given by Achlioptas 2001 which guarantees that
+    pairwise distances will be preserved within some epsilon, and is more
+    efficient than projections involving sampling from Gaussians.
+    """
+    R = np.random.choice([-1, 0, 0, 0, 0, 1], (A.shape[1], k))
+    return np.dot(A, R * np.sqrt(3))
+
+
+class memoize(object):
+    """Decorator for memoizing a function."""
 
     def __init__(self, func):
         self.func = func
@@ -34,65 +71,15 @@ class memoize(object): # pylint: disable=invalid-name
         return self.cache[args]
 
 
-def named_pickle_cache(pickle_path_format):
-    """Decorator to cache a single parameter function call result to disk"""
-    def _cache(data_func):
-        def _load_data(param):
-            pickle_path = pickle_path_format.format(param)
+def pickle_cache(pickle_path):
+    """Decorating for caching a parameterless function to disk via pickle"""
+    def _decorator(data_func):
+        @functools.wraps(data_func)
+        def _wrapper():
             if os.path.exists(pickle_path):
                 return pickle.load(open(pickle_path, 'rb'))
-            else:
-                data = data_func(param)
-                ensure_dir(os.path.dirname(pickle_path))
-                pickle.dump(data, open(pickle_path, 'wb'))
-                return data
-        return _load_data
-    return _cache
-
-
-def _iscontainer(data):
-    return isinstance(data, collections.Iterable) and not isinstance(data, str)
-
-
-def tuplize(data, conversion=None):
-    """Converts containers into tuples, with optional data conversion"""
-    if _iscontainer(data):
-        return tuple(tuplize(subdata, conversion) for subdata in data)
-    elif conversion:
-        return conversion(data)
-    else:
-        return data
-
-
-def sample_categorical(counts):
-    """Sample a categorical distribution parameterized by unnormalized counts"""
-    sample = random.uniform(0, sum(counts))
-    for key, count in enumerate(counts):
-        if sample < count:
-            return key
-        sample -= count
-
-    raise ValueError(counts)
-
-
-def ensure_dir(dirname):
-    """Creates the given directory if it does not already exist"""
-    try:
-        os.makedirs(dirname)
-    except FileExistsError:
-        pass
-
-
-def open_unique(prefix='', dirname=os.path.curdir):
-    """Opens a uniquely named file
-
-    A prefix can optionally be given to the newly created file. By default, the
-    file will be created in the current directory, but this can be overriden by
-    specifying a dirname. If the specified directory does not exist, it will be
-    created.
-    """
-    ensure_dir(dirname)
-    return tempfile.NamedTemporaryFile(mode='w',
-                                       delete=False,
-                                       prefix=prefix,
-                                       dir=dirname)
+            data = data_func()
+            pickle.dump(data, open(pickle_path, 'wb'))
+            return data
+        return _wrapper
+    return _decorator
