@@ -94,4 +94,18 @@ def cross_reference(corpus, theta_attr, xref_attr, n=sys.maxsize, threshold=1):
         doc.metadata[xref_attr] = xrefs
 
 
+def highlight(doc, z_attr, highlighter=lambda w, z: '{}:{}'.format(w, z)):
+    chunks = []
+    curr = 0
+
+    for token, topic in zip(doc.tokens, doc.metadata[z_attr]):
+        start, end = token.loc
+        chunks.append(doc.text[curr:start])
+        chunks.append(highlighter(doc.text[start:end], topic))
+        curr = end
+    chunks.append(doc.text[curr:])
+
+    return ''.join(chunks)
+
+
 # TODO add classifier
