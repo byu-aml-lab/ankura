@@ -104,7 +104,7 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
         D += 1
 
         if d in labeled_docs:
-            norm = 1 / 1
+            norm = 1 / ((n_d + label_weight) * (n_d + label_weight - 1))
             index = label_set[doc.metadata[attr_name]]
             for i, w_i in enumerate(doc.tokens):
                 for j, w_j in enumerate(doc.tokens):
@@ -157,7 +157,7 @@ def build_supervised_cooccurrence(corpus, attr_name, labeled_docs):
                         continue
                     S[w_i.token, index] += 1
     for i in range(S.shape[0]):
-        S[i,:] /= np.sum(S[i,:])
+        S[i,:] = (S[i,:] / np.sum(S[i,:]))
 
     return np.hstack((Q, S))
 
