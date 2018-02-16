@@ -3,9 +3,9 @@
 import collections
 import sys
 
-import gensim
+import gensim as gs
 import numpy as np
-import scipy.spatial
+import scipy.spatial as sp
 
 
 def topic_summary(topics, corpus=None, n=10):
@@ -36,37 +36,37 @@ def lda_assign(corpus, topics, theta_attr=None, z_attr=None):
     if not theta_attr and not z_attr:
         raise ValueError('Either theta_attr or z_attr must be given')
 
-    # Convert corpus to gensim bag-of-words format
+    V, K = topics.shape
+    lda = gs.models.LdaModel(
+        num_topics=K,
+        id2word={i: i for i in range(V)}, # LdaModel gets V from this dict
+    )
+    lda.state.sstats = topics.astype(lda.dtype).T * len(corpus.documents)
+    lda.sync_state()
+
+    bows = _gensim_bows(corpus)
+    _gensim_assign(corpus, bows, lda, theta_attr, z_attr)
+
+
+def _gensim_bows(corpus):
     bows = []
     for doc in corpus.documents:
         bow = collections.defaultdict(int)
         for t in doc.tokens:
             bow[t.token] += 1
         bows.append(bow)
-    bows = [list(bow.items()) for bow in bows]
+    return [list(bow.items()) for bow in bows]
 
-    # Build lda with fixed topics
-    V, K = topics.shape
-    lda = gensim.models.LdaModel(
-        num_topics=K,
-        id2word={i: i for i in range(V)}, # LdaModel gets V from this dict
-    )
-    lda.state.sstats = topics.astype(lda.dtype).T
-    lda.sync_state()
 
-    # Make topic assignments
-    doc_topics = lda.get_document_topics(bows, per_word_topics=True)
-    for doc, (sparse_theta, sparse_z, _) in zip(corpus.documents, doc_topics):
+def _gensim_assign(corpus, bows, lda, theta_attr, z_attr):
+    for doc, bow in zip(corpus.documents, bows):
+        gamma, phi = lda.inference([bow], collect_sstats=z_attr)
         if theta_attr:
-            theta = np.zeros(K)
-            for topic, prob in sparse_theta:
-                theta[topic] = prob
-            theta /= theta.sum()
-            doc.metadata[theta_attr] = theta
+            doc.metadata[theta_attr] = gamma[0] / gamma[0].sum()
         if z_attr:
-            sparse_z= {word: topics[0] for word, topics in sparse_z}
-            z = [sparse_z[t.token] for t in doc.tokens]
-            doc.metadata[z_attr] = z
+            w = [t.token for t in doc.tokens]
+            doc.metadata[z_attr] = phi.argmax(axis=0)[w].tolist()
+
 
 
 def cross_reference(corpus, theta_attr, xref_attr, n=sys.maxsize, threshold=1):
@@ -86,7 +86,7 @@ def cross_reference(corpus, theta_attr, xref_attr, n=sys.maxsize, threshold=1):
     """
     for doc in corpus.documents:
         doc_theta = doc.metadata[theta_attr]
-        dists = [scipy.spatial.distance.cosine(doc_theta, d.metadata[theta_attr])
+        dists = [sp.distance.cosine(doc_theta, d.metadata[theta_attr])
                  if doc is not d else float('nan')
                  for d in corpus.documents]
         dists = np.array(dists)
