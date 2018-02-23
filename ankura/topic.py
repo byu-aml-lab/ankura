@@ -10,6 +10,7 @@ import scipy.spatial
 import sklearn.decomposition
 import gensim
 
+from math import log, exp
 from . import pipeline, util
 
 
@@ -249,7 +250,7 @@ def free_classifier_model1(corpus, attr_name, labeled_docs,
     L = np.zeros(K)
     for d, doc in enumerate(corpus.documents):
         if d in labeled_docs:
-            label_name = doc.metadata[attr_name];
+            label_name = doc.metadata[attr_name]
             i = labels.index(label_name)
             L[i] += 1
 
@@ -268,3 +269,93 @@ def free_classifier_model1(corpus, attr_name, labeled_docs,
 
         return labels[np.argmax(final_score)]
     return _classifier
+
+
+def free_classifier_model1_gibbs(corpus, attr_name, labeled_docs,
+                                    topics, C, labels, epsilon=1e-7, num_iters=10):
+
+    L = len(labels)
+
+    # column-normalized word-topic matrix without labels
+    A = topics[:-L]
+    A /= A.sum(axis=0)
+
+    _, K = A.shape # K is number of topics
+
+    # column normalize topic-label matrix
+    C_f = C[0:, -L:]
+    C_f /= C_f.sum(axis=0)
+
+    phi = np.zeros(L) # emperically observe labels
+    for d, doc in enumerate(corpus.documents):
+        if d in labeled_docs:
+            label_name = doc.metadata[attr_name];
+            i = labels.index(label_name)
+            phi[i] += 1
+
+    phi = phi / phi.sum(axis=0) # normalize phi to get the label probabilities
+
+    @functools.wraps(free_classifier)
+    def _classifier(doc):
+        l = np.random.randint(L)
+        z = np.random.randint(K, size=len(doc.tokens))
+
+        doc_topic_count = collections.Counter(z) # doc_topic_count maps topic assignments to counts
+        for _ in range(num_iters):
+            cond = np.zeros(L)
+            for s in range(L):
+                cond[s] = log(phi[s]) # not in log space: cond[s] = phi[s]
+                for topic, count in doc_topic_count.items():
+                    cond[s] += count * log(C_f[topic, s]) # not in log space: cond[s] *= C_f[topic, s]**count
+
+            l = util.sample_log_categorical(cond)
+
+            for n, w_n in enumerate(doc.tokens):
+                doc_topic_count[z[n]] -= 1
+                cond2 = [C_f[t, l] * A[w_n.token, t] for t in range(K)] # eq 2
+                z[n] = util.sample_categorical(cond2)
+                doc_topic_count[z[n]] += 1
+
+        return labels[l]
+    return _classifier
+
+
+def free_classifier_model2_gibbs(corpus, attr_name, labeled_docs,
+                                    topics, labels, epsilon=1e-7, num_iters=10):
+
+    L = len(labels)
+
+    # column-normalized word-topic matrix without labels
+    A = topics[:-L]
+    A /= A.sum(axis=0)
+
+    _, K = A.shape # K is number of topics
+
+    # Smooth and column normalize class-topic weights
+    A_f = topics[-L:] + epsilon
+    A_f /= A_f.sum(axis=0)
+
+    def _classifier(doc):
+        l = np.random.randint(L)
+        z = np.random.randint(K, size=len(doc.tokens))
+
+        doc_topic_count = collections.Counter(z)
+        for _ in range(num_iters):
+            cond = np.zeros(L)
+            for x in range(L):
+                A_sum = 0
+                for topic, count in doc_topic_count.items():
+                    A_sum += A_f[x, topic]
+
+                cond[x] = A_sum
+
+            l = util.sample_categorical(cond)
+            V = cond[l] # V is a constant (summation of A_F[l, z_i])
+
+            for n, w_n in enumerate(doc.tokens):
+                V -= A_f(l, n)
+
+
+
+        return labels[l]
+    return classifier

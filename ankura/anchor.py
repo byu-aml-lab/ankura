@@ -104,7 +104,7 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
         D += 1
 
         if d in labeled_docs:
-            norm = 1 / 1
+            norm = 1 / ((n_d + label_weight) * (n_d + label_weight - 1))
             index = label_set[doc.metadata[attr_name]]
             for i, w_i in enumerate(doc.tokens):
                 for j, w_j in enumerate(doc.tokens):
@@ -134,7 +134,32 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
 
 
 # TODO Add QuickQ
-# TODO Add SupAnk
+
+def build_supervised_cooccurrence(corpus, attr_name, labeled_docs):
+
+    V = len(corpus.vocabulary)
+    Q = build_cooccurrence(corpus)
+
+    label_set = set()
+    for d, doc in enumerate(corpus.documents):
+        if d in labeled_docs:
+            label_set.add(doc.metadata[attr_name])
+    label_set = {l : i for i, l in enumerate(label_set)}
+    K = len(label_set)
+
+    S = np.zeros((V, K))
+    for d, doc in enumerate(corpus.documents):
+        if d in labeled_docs:
+            index = label_set[doc.metadata[attr_name]]
+            for i, w_i in enumerate(doc.tokens):
+                for j, w_j in enumerate(doc.tokens):
+                    if i == j:
+                        continue
+                    S[w_i.token, index] += 1
+    for i in range(S.shape[0]):
+        S[i,:] /= np.sum(S[i,:])
+
+    return np.hstack((Q, S))
 
 
 def gram_schmidt_anchors(corpus, Q, k, doc_threshold=500, project_dim=1000, **kwargs):
@@ -359,7 +384,7 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
         chunksize = kwargs.get('chunksize', V // parallelism)
         with multiprocessing.pool.ThreadPool(parallelism) as pool:
             C = pool.map(worker, range(V), chunksize)
-        C = np.array(A)
+        C = np.array(C)
     else:
         C = np.zeros((V, K))
         for word in range(V):
