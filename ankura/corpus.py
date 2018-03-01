@@ -165,6 +165,34 @@ def newsgroups():
     p.tokenizer = pipeline.frequency_tokenizer(p, 100, 2000)
     return p.run(_path('newsgroups.pickle'))
 
+def amazon_medium():
+    """Gets a corpus containing 100,000 Amazon product reviews, with star ratings.
+    """
+    label_stream = BufferedStream()
+
+    def label_extractor(docfile, value_key='reviewText', label_key='overall'):
+
+        import json
+
+        for i, line in enumerate(docfile):
+            line = json.loads(line.decode('utf-8'))
+            label_stream.append(str(i), line[label_key])
+
+            yield pipeline.Text(str(i), line[value_key])
+
+    p = pipeline.Pipeline(
+        download_inputer('amazon_medium/amazon_medium.json.gz'),
+        pipeline.gzip_extractor(label_extractor),
+        pipeline.stopword_tokenizer(
+            pipeline.default_tokenizer(),
+            open_download('stopwords/english.txt'),
+        ),
+        pipeline.stream_labeler(label_stream),
+        pipeline.length_filterer(),
+    )
+
+    p.tokenizer = pipeline.frequency_tokenizer(p, 100, 2000)
+    return p.run(_path('amazon_medium.pickle'))
 
 def amazon():
     """Gets a Corpus containing roughly 40,000 Amazon product reviews, with
