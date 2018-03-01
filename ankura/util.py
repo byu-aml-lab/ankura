@@ -44,6 +44,13 @@ def sample_categorical(counts):
     raise ValueError(counts)
 
 
+def sample_log_categorical(log_counts):
+    """Samples from a categorical distribution parameterized by unnormalized
+    counts, but this time in log space. The index of the sampled category is returned.
+    """
+    return np.argmax(log_counts + np.random.gumbel(size=len(log_counts)));
+
+
 class memoize(object):
     """Decorator for memoizing a function."""
 
