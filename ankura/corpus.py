@@ -99,6 +99,21 @@ def bible():
     p.tokenizer = pipeline.frequency_tokenizer(p, 2)
     return p.run(_path('bible.pickle'))
 
+def toy():
+    p = pipeline.Pipeline(
+        download_inputer('toy/toy.tar.gz'),
+        pipeline.targz_extractor(
+            pipeline.whole_extractor()
+        ),
+        pipeline.default_tokenizer(),
+        pipeline.composite_labeler(
+            pipeline.title_labeler('id'),
+            pipeline.dir_labeler('directory')
+        ),
+        pipeline.length_filterer(),
+    )
+    p.tokenizer = pipeline.frequency_tokenizer(p)
+    return p.run(_path('toy.pickle'))
 
 def newsgroups():
     """Gets a Corpus containing roughly 20,000 usenet postings from 20
@@ -173,3 +188,19 @@ def amazon():
     )
     p.tokenizer = pipeline.frequency_tokenizer(p, 50)
     return p.run(_path('amazon.pickle'))
+
+class BufferedStream(object):
+
+    def __init__(self):
+        self.buf = []
+
+    def append(self, key, value):
+        self.buf.append((key, value))
+
+    def __iter__(self):
+        while self.buf:
+            tup = self.buf.pop()
+            key = tup[0]
+            val = tup[1]
+
+            yield key, val
