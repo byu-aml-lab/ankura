@@ -115,7 +115,7 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
                 Q[index, w_i.token] += label_weight * norm
             Q[index, index] += label_weight * (label_weight - 1) * norm
         else:
-            norm = 1 / (n_d * (n_d + 2 * K * smoothing - 1) + K * (K * smoothing - smoothing))
+            norm = 1 / (n_d * (n_d - 1) + 2 * n_d * K * smoothing + K * (K - 1) * smoothing**2)
             for i, w_i in enumerate(doc.tokens):
                 for j, w_j in enumerate(doc.tokens):
                     if i == j:
@@ -128,7 +128,7 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
                 for j in label_set.values():
                     if i == j:
                         continue
-                    Q[i, j] += norm * smoothing ** 2
+                    Q[i, j] += norm * smoothing**2
 
     return Q / D, sorted(label_set, key=label_set.get)
 
