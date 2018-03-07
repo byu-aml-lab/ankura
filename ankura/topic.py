@@ -203,7 +203,7 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
     return _classifier
 
 
-def free_classifier_revised(topics, Q, labels, alpha, epsilon=1e-7):
+def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
     """same as function above, with a few minor math fixes"""
     K = len(labels)
     V = Q.shape[0] - K
@@ -231,12 +231,11 @@ def free_classifier_revised(topics, Q, labels, alpha, epsilon=1e-7):
         word_score = H.dot(Q_L)
         word_score /= word_score.sum(axis=0)
 
-        beta = 1 - alpha
-        return labels[np.argmax(beta * topic_score + alpha * word_score)]
+        return labels[np.argmax(topic_score + word_score)]
     return _classifier
 
 
-def free_classifier_model1(corpus, attr_name, labeled_docs,
+def free_classifier_line_not_gibbs(corpus, attr_name, labeled_docs,
                             topics, C, labels, epsilon=1e-7):
 
     K = len(labels)
@@ -306,8 +305,8 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
     return _classifier
 
 
-def free_classifier_model1_gibbs(corpus, attr_name, labeled_docs,
-                                    topics, C, labels, epsilon=1e-7, num_iters=100):
+def free_classifier_line_model(corpus, attr_name, labeled_docs,
+                                    topics, C, labels, epsilon=1e-7, num_iters=10):
 
     L = len(labels)
 
@@ -347,6 +346,43 @@ def free_classifier_model1_gibbs(corpus, attr_name, labeled_docs,
                 z_cond = C_f[:K,l] * A[w_n.token,:K] # z_cond = [C_f[t, l] * A[w_n.token, t] for t in range(K)] # eq 2
                 z[n] = util.sample_categorical(z_cond)
                 doc_topic_count[z[n]] += 1
+
+        return labels[l]
+    return _classifier
+
+
+def free_classifier_v_model(corpus, attr_name, labeled_docs,
+                                    topics, labels, epsilon=1e-7, num_iters=10):
+
+    L = len(labels)
+
+    # column-normalized word-topic matrix without labels
+    A = topics[:-L]
+    A /= A.sum(axis=0)
+
+    _, K = A.shape # K is number of topics
+
+    # Smooth and column normalize class-topic weights
+    A_f = topics[-L:] + epsilon
+    A_f /= A_f.sum(axis=0)
+
+    @functools.wraps(free_classifier)
+    def _classifier(doc):
+        l = np.random.randint(L)
+        z = np.random.randint(K, size=len(doc.tokens))
+
+        doc_topic_count = collections.Counter(z) # doc_topic_count maps topic assignments to counts
+        for _ in range(num_iters):
+            l_cond = [sum(A_f[x, topic]*count for topic, count in doc_topic_count.items()) for x in range(L)]
+
+            l = util.sample_categorical(l_cond)
+            B = l_cond[l] # B is a constant (summation of A_F[l, z_i])
+
+            for n, w_n in enumerate(doc.tokens):
+                B -= A_f[l, z[n]]
+                z_cond = [A[w_n.token, t] * (A_f[l, t] + B) for t in range(K)]
+                z[n] = util.sample_categorical(z_cond)
+                B += A_f[l, z[n]]
 
         return labels[l]
     return _classifier
