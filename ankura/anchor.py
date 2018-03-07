@@ -382,8 +382,5 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
     for k in range(K):
         A[:, k] = A[:, k] / A[:, k].sum()
 
-    get_c = kwargs.get('get_c')
-    if get_c:
-        return C, A
-    else:
-        return A
+    if kwargs.get('get_c'): return C, A
+    return A 
