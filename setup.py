@@ -1,6 +1,6 @@
 """Setup for Ankura"""
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='ankura',
