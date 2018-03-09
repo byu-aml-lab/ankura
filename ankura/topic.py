@@ -3,12 +3,15 @@
 import collections
 import functools
 import sys
+import collections
 
 import numpy as np
 import scipy.spatial
 import sklearn.decomposition
 import gensim
+import tqdm
 
+from math import log, exp
 from . import pipeline, util
 
 
@@ -232,15 +235,154 @@ def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
     return _classifier
 
 
-def highlight(doc, z_attr, highlighter=lambda w, z: '{}:{}'.format(w, z)):
-    chunks = []
-    curr = 0
+def free_classifier_line_not_gibbs(corpus, attr_name, labeled_docs,
+                            topics, C, labels, epsilon=1e-7):
 
-    for token, topic in zip(doc.tokens, doc.metadata[z_attr]):
-        start, end = token.loc
-        chunks.append(doc.text[curr:start])
-        chunks.append(highlighter(doc.text[start:end], topic))
-        curr = end
-    chunks.append(doc.text[curr:])
+    K = len(labels)
 
-    return ''.join(chunks)
+    # Smooth and column normalize class-topic weights
+    A_f = topics[-K:] + epsilon
+    A_f /= A_f.sum(axis=0)
+
+    # column normalize topic-label matrix
+    C_f = C[0:, -K:]
+    C_f /= C_f.sum(axis=0)
+
+    L = np.zeros(K)
+    for d, doc in enumerate(corpus.documents):
+        if d in labeled_docs:
+            label_name = doc.metadata[attr_name]
+            i = labels.index(label_name)
+            L[i] += 1
+
+    L = L / L.sum(axis=0) # normalize L to get the label probabilities
+
+    @functools.wraps(free_classifier)
+    def _classifier(doc, attr='z'):
+        final_score = np.zeros(K)
+        for i, l in enumerate(L):
+            product = l
+            doc_topic_count = collections.Counter(doc.metadata[attr])
+            for topic, count in doc_topic_count.items():
+                product *= C_f[topic, i]**count
+
+            final_score[i] = product
+
+        return labels[np.argmax(final_score)]
+    return _classifier
+
+
+def free_classifier_dream(corpus, attr_name, labeled_docs,
+                            topics, C, labels, epsilon=1e-7):
+    L = len(labels)
+
+    # column-normalized word-topic matrix without labels
+    A = topics[:-L]
+    A /= A.sum(axis=0)
+
+    _, K = A.shape # K is number of topics
+
+    # column normalize topic-label matrix
+    C_f = C[0:, -L:]
+    C_f /= C_f.sum(axis=0)
+
+    phi = np.zeros(L) # emperically observe labels
+    for d, doc in enumerate(corpus.documents):
+        if d in labeled_docs:
+            label_name = doc.metadata[attr_name];
+            i = labels.index(label_name)
+            phi[i] += 1
+    phi = phi / phi.sum(axis=0) # normalize phi to get the label probabilities
+
+    @functools.wraps(free_classifier)
+    def _classifier(doc):
+        results = np.log(phi)
+        for l in range(L):
+            for n, w_n in enumerate(doc.tokens):
+                results[l] += np.log(sum(C_f[t, l] * A[w_n.token, t] for t in range(K)))
+
+        return labels[np.argmax(results)]
+    return _classifier
+
+
+def free_classifier_line_model(corpus, attr_name, labeled_docs,
+                                    topics, C, labels, epsilon=1e-7, num_iters=10):
+
+    L = len(labels)
+
+    # column-normalized word-topic matrix without labels
+    A = topics[:-L]
+    A /= A.sum(axis=0)
+
+    _, K = A.shape # K is number of topics
+
+    # column normalize topic-label matrix
+    C_f = C[0:, -L:]
+    C_f /= C_f.sum(axis=0)
+
+    phi = np.zeros(L) # emperically observe labels
+    for d, doc in enumerate(corpus.documents):
+        if d in labeled_docs:
+            label_name = doc.metadata[attr_name];
+            i = labels.index(label_name)
+            phi[i] += 1
+    phi = phi / phi.sum(axis=0) # normalize phi to get the label probabilities
+
+    @functools.wraps(free_classifier)
+    def _classifier(doc):
+        l = np.random.randint(L)
+        z = np.random.randint(K, size=len(doc.tokens))
+
+        doc_topic_count = collections.Counter(z) # doc_topic_count maps topic assignments to counts
+        for _ in range(num_iters):
+            l_cond = np.log(phi) # not in log space: cond = phi
+            for s in range(L):
+                for topic, count in doc_topic_count.items():
+                    l_cond[s] += count * np.log(C_f[topic, s]) # not in log space: cond[s] *= C_f[topic, s]**count
+            l = util.sample_log_categorical(l_cond)
+
+            for n, w_n in enumerate(doc.tokens):
+                doc_topic_count[z[n]] -= 1
+                z_cond = C_f[:K,l] * A[w_n.token,:K] # z_cond = [C_f[t, l] * A[w_n.token, t] for t in range(K)] # eq 2
+                z[n] = util.sample_categorical(z_cond)
+                doc_topic_count[z[n]] += 1
+
+        return labels[l]
+    return _classifier
+
+
+def free_classifier_v_model(corpus, attr_name, labeled_docs,
+                                    topics, labels, epsilon=1e-7, num_iters=10):
+
+    L = len(labels)
+
+    # column-normalized word-topic matrix without labels
+    A = topics[:-L]
+    A /= A.sum(axis=0)
+
+    _, K = A.shape # K is number of topics
+
+    # Smooth and column normalize class-topic weights
+    A_f = topics[-L:] + epsilon
+    A_f /= A_f.sum(axis=0)
+
+    @functools.wraps(free_classifier)
+    def _classifier(doc):
+        l = np.random.randint(L)
+        z = np.random.randint(K, size=len(doc.tokens))
+
+        doc_topic_count = collections.Counter(z) # doc_topic_count maps topic assignments to counts
+        for _ in range(num_iters):
+            l_cond = [sum(A_f[x, topic]*count for topic, count in doc_topic_count.items()) for x in range(L)]
+
+            l = util.sample_categorical(l_cond)
+            B = l_cond[l] # B is a constant (summation of A_F[l, z_i])
+
+            for n, w_n in enumerate(doc.tokens):
+                B -= A_f[l, z[n]]
+                z_cond = [A[w_n.token, t] * (A_f[l, t] + B) for t in range(K)]
+                z[n] = util.sample_categorical(z_cond)
+                B += A_f[l, z[n]]
+
+        return labels[l]
+    return _classifier
