@@ -99,8 +99,6 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
     D = 0
     for d, doc in enumerate(corpus.documents):
         n_d = len(doc.tokens)
-        if n_d <= 1:
-            continue
         D += 1
 
         if d in labeled_docs:
