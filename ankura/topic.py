@@ -333,8 +333,8 @@ def free_classifier_line_model(corpus, attr_name, labeled_docs,
         l = np.random.randint(L)
         z = np.random.randint(K, size=len(doc.tokens))
 
-        doc_topic_count = collections.Counter(z) # doc_topic_count maps topic assignments to counts
         for _ in range(num_iters):
+            doc_topic_count = collections.Counter(z) # maps topic assignments to counts (this used to be outside of the for loop)
             l_cond = np.log(phi) # not in log space: cond = phi
             for s in range(L):
                 for topic, count in doc_topic_count.items():
@@ -352,7 +352,7 @@ def free_classifier_line_model(corpus, attr_name, labeled_docs,
 
 
 def free_classifier_v_model(corpus, attr_name, labeled_docs,
-                                    topics, labels, epsilon=1e-7, num_iters=10):
+                                    topics, labels, epsilon=1e-7, num_iters=100):
 
     L = len(labels)
 
@@ -371,12 +371,12 @@ def free_classifier_v_model(corpus, attr_name, labeled_docs,
         l = np.random.randint(L)
         z = np.random.randint(K, size=len(doc.tokens))
 
-        doc_topic_count = collections.Counter(z) # doc_topic_count maps topic assignments to counts
         for _ in range(num_iters):
+            doc_topic_count = collections.Counter(z) # maps topic assignments to counts
             l_cond = [sum(A_f[x, topic]*count for topic, count in doc_topic_count.items()) for x in range(L)]
 
             l = util.sample_categorical(l_cond)
-            B = l_cond[l] # B is a constant (summation of A_F[l, z_i])
+            B = l_cond[l] # B is a constant (summation of A_f[l, z_i])
 
             for n, w_n in enumerate(doc.tokens):
                 B -= A_f[l, z[n]]
