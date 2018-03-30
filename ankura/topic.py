@@ -277,13 +277,13 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
     L = len(labels)
 
     # column-normalized word-topic matrix without labels
-    A = topics[:-L]
-    A /= A.sum(axis=0)
+    A_w = topics[:-L]
+    A_w /= A_w.sum(axis=0)
 
-    _, K = A.shape # K is number of topics
+    _, K = A_w.shape # K is number of topics
 
     # column normalize topic-label matrix
-    C_f = C[0:, -L:]
+    C_f = C[:, -L:]
     C_f /= C_f.sum(axis=0)
 
     phi = np.zeros(L) # emperically observe labels
@@ -293,13 +293,21 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
             i = labels.index(label_name)
             phi[i] += 1
     phi = phi / phi.sum(axis=0) # normalize phi to get the label probabilities
+    log_phi = np.log(phi)
+
+    # count zeros in C_f
 
     @functools.wraps(free_classifier)
     def _classifier(doc):
-        results = np.log(phi)
+        results = np.copy(log_phi)
         for l in range(L):
-            for n, w_n in enumerate(doc.tokens):
-                results[l] += np.log(sum(C_f[t, l] * A[w_n.token, t] for t in range(K)))
+            for n, w_i in enumerate(doc.tokens):
+                m = sum(C_f[t, l] * A_w[w_i.token, t] for t in range(K))
+                if m != 0: # this gets rid of log(0) warning
+                    results[l] += np.log(m)
+
+                # results[l] += np.log(sum(C_f[t, l] * A_w[w_i.token, t] for t in range(K)))
+
 
         return labels[np.argmax(results)]
     return _classifier
