@@ -295,8 +295,6 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
     phi = phi / phi.sum(axis=0) # normalize phi to get the label probabilities
     log_phi = np.log(phi)
 
-    # count zeros in C_f
-
     @functools.wraps(free_classifier)
     def _classifier(doc):
         results = np.copy(log_phi)
