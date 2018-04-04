@@ -301,10 +301,10 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
         for l in range(L):
             for n, w_i in enumerate(doc.tokens):
                 m = sum(C_f[t, l] * A_w[w_i.token, t] for t in range(K))
-                if m != 0: # this gets rid of log(0) warning
+                if m != 0: # this gets rid of log(0) warning, but essentially does the same thing as taking log(0)
                     results[l] += np.log(m)
-
-                # results[l] += np.log(sum(C_f[t, l] * A_w[w_i.token, t] for t in range(K)))
+                else:
+                    results[l] = float('-inf')
 
 
         return labels[np.argmax(results)]
