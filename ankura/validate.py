@@ -178,7 +178,8 @@ def coherence(reference_corpus, topic_summary, epsilon=1e-2):
     The topic summary should be an array with each row giving the token types
     of the top words of each topic.
     """
-    word_set = set(topic_summary.flatten())
+
+    word_set = {word for topic in topic_summary for word in topic}
     counts = collections.Counter()
     pair_counts = collections.Counter()
     for doc in reference_corpus.documents:

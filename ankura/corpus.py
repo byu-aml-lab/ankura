@@ -72,6 +72,36 @@ def download_inputer(*names):
             yield open_download(name, mode='rb')
     return _inputer
 
+def tripadvisor():
+    """Gets a corpus containing hotel reviews on trip advisor with ~240,000 documents"""
+
+    label_stream = BufferedStream()
+
+    def regex_extractor(docfile):
+        import re
+
+        text = docfile.read().decode('utf-8')
+
+        documents = re.findall('<Content>(.*$)', text, re.M)
+        labels = re.findall('<Overall>(.*$)', text, re.M)
+
+        for i in range(len(documents)):
+            label_stream.append(str(i), labels[i])
+            yield pipeline.Text(str(i), documents[i])
+
+
+    p = pipeline.Pipeline(
+            download_inputer('tripadvisor/tripadvisor.tar.gz'),
+            pipeline.targz_extractor(regex_extractor),
+            pipeline.stopword_tokenizer(
+                    pipeline.default_tokenizer(),
+                    open_download('stopwords/english.txt'),
+            ),
+            pipeline.stream_labeler(label_stream),
+            pipeline.length_filterer(),
+        )
+    p.tokenizer = pipeline.frequency_tokenizer(p, 80, 20000)
+    return p.run(_path('tripadvisor.pickle'))
 
 def bible():
     """Gets a Corpus containing the King James version of the Bible with over
