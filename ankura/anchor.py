@@ -155,7 +155,11 @@ def build_supervised_cooccurrence(corpus, attr_name, labeled_docs):
                         continue
                     S[w_i.token, index] += 1
     for i in range(S.shape[0]):
-        S[i,:] /= np.sum(S[i,:])
+
+        row_sum = np.sum(S[i,:])
+        if row_sum == 0:
+            continue
+        S[i,:] /= row_sum
 
     return np.hstack((Q, S))
 
