@@ -398,5 +398,5 @@ def recover_topics(Q, anchors, epsilon=2e-6, **kwargs):
         A[:, k] = A[:, k] / A[:, k].sum()
 
     if kwargs.get('get_c'):
-        return C, A
+        return C.transpose(), A
     return A

@@ -277,13 +277,13 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
     L = len(labels)
 
     # column-normalized word-topic matrix without labels
-    A = topics[:-L]
-    A /= A.sum(axis=0)
+    A_w = topics[:-L]
+    A_w /= A_w.sum(axis=0)
 
-    _, K = A.shape # K is number of topics
+    _, K = A_w.shape # K is number of topics
 
     # column normalize topic-label matrix
-    C_f = C[0:, -L:]
+    C_f = C[:, -L:]
     C_f /= C_f.sum(axis=0)
 
     phi = np.zeros(L) # emperically observe labels
@@ -293,13 +293,19 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
             i = labels.index(label_name)
             phi[i] += 1
     phi = phi / phi.sum(axis=0) # normalize phi to get the label probabilities
+    log_phi = np.log(phi)
 
     @functools.wraps(free_classifier)
     def _classifier(doc):
-        results = np.log(phi)
+        results = np.copy(log_phi)
         for l in range(L):
-            for n, w_n in enumerate(doc.tokens):
-                results[l] += np.log(sum(C_f[t, l] * A[w_n.token, t] for t in range(K)))
+            for n, w_i in enumerate(doc.tokens):
+                m = sum(C_f[t, l] * A_w[w_i.token, t] for t in range(K))
+                if m != 0: # this gets rid of log(0) warning, but essentially does the same thing as taking log(0)
+                    results[l] += np.log(m)
+                else:
+                    results[l] = float('-inf')
+
 
         return labels[np.argmax(results)]
     return _classifier
@@ -333,8 +339,8 @@ def free_classifier_line_model(corpus, attr_name, labeled_docs,
         l = np.random.randint(L)
         z = np.random.randint(K, size=len(doc.tokens))
 
-        doc_topic_count = collections.Counter(z) # doc_topic_count maps topic assignments to counts
         for _ in range(num_iters):
+            doc_topic_count = collections.Counter(z) # maps topic assignments to counts (this used to be outside of the for loop)
             l_cond = np.log(phi) # not in log space: cond = phi
             for s in range(L):
                 for topic, count in doc_topic_count.items():
@@ -352,7 +358,7 @@ def free_classifier_line_model(corpus, attr_name, labeled_docs,
 
 
 def free_classifier_v_model(corpus, attr_name, labeled_docs,
-                                    topics, labels, epsilon=1e-7, num_iters=10):
+                                    topics, labels, epsilon=1e-7, num_iters=100):
 
     L = len(labels)
 
@@ -371,12 +377,12 @@ def free_classifier_v_model(corpus, attr_name, labeled_docs,
         l = np.random.randint(L)
         z = np.random.randint(K, size=len(doc.tokens))
 
-        doc_topic_count = collections.Counter(z) # doc_topic_count maps topic assignments to counts
         for _ in range(num_iters):
+            doc_topic_count = collections.Counter(z) # maps topic assignments to counts
             l_cond = [sum(A_f[x, topic]*count for topic, count in doc_topic_count.items()) for x in range(L)]
 
             l = util.sample_categorical(l_cond)
-            B = l_cond[l] # B is a constant (summation of A_F[l, z_i])
+            B = l_cond[l] # B is a constant (summation of A_f[l, z_i])
 
             for n, w_n in enumerate(doc.tokens):
                 B -= A_f[l, z[n]]
