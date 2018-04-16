@@ -83,10 +83,13 @@ def tripadvisor():
         text = docfile.read().decode('utf-8')
 
         documents = re.findall('<Content>(.*$)', text, re.M)
-        labels = re.findall('<Overall>(.*$)', text, re.M)
+        labels = re.findall('<Overall>(\d*)', text, re.M)
 
         for i in range(len(documents)):
-            label_stream.append(str(i), labels[i])
+
+            overall = int(labels[i])
+            label = overall if overall == 5 else 0
+            label_stream.append(str(i), label)
             yield pipeline.Text(str(i), documents[i])
 
 
@@ -98,9 +101,9 @@ def tripadvisor():
                     open_download('stopwords/english.txt'),
             ),
             pipeline.stream_labeler(label_stream),
-            pipeline.length_filterer(),
+            pipeline.length_filterer(30),
         )
-    p.tokenizer = pipeline.frequency_tokenizer(p, 80, 20000)
+    p.tokenizer = pipeline.frequency_tokenizer(p, 150)
     return p.run(_path('tripadvisor.pickle'))
 
 def bible():
