@@ -258,6 +258,28 @@ def amazon_medium():
     p.tokenizer = pipeline.frequency_tokenizer(p, 100, 2000)
     return p.run(_path('amazon_medium.pickle'))
 
+def yelp():
+    """Gets a corpus containing roughly 25,000 yelp restaurant reviews, with ratings."""
+
+    p = pipeline.Pipeline(
+        download_inputer('yelp/yelp.txt'),
+        pipeline.line_extractor('\t'),
+        pipeline.stopword_tokenizer(
+            pipeline.default_tokenizer(),
+            open_download('stopwords/english.txt'),
+        ),
+        pipeline.composite_labeler(
+            pipeline.title_labeler('id'),
+            pipeline.float_labeler(
+                open_download('yelp/yelp.response'),
+                'rating',
+            ),
+        ),
+        pipeline.length_filterer(30),
+    )
+    p.tokenizer = pipeline.frequency_tokenizer(p, 50)
+    return p.run(_path('yelp.pickle'))
+
 def amazon():
     """Gets a Corpus containing roughly 40,000 Amazon product reviews, with
     star ratings.
