@@ -114,8 +114,21 @@ def tripadvisor():
     p.tokenizer = pipeline.frequency_tokenizer(p, 150)
     return p.run(_path('tripadvisor.pickle'))
 
+
 def yelp():
     """ Gets a corpus containing Yelp reviews with 25431 documents """
+
+    base_tokenzer = pipeline.default_tokenizer()
+
+    def strip_non_alpha(token):
+        return ''.join(c for c in token if c.isalnum())
+
+    def tokenizer(data):
+        tokens = base_tokenzer(data)
+        tokens = [pipeline.TokenLoc(strip_non_alpha(t.token), t.loc) for t in tokens]
+        tokens = [t for t in tokens if t.token]
+        return tokens
+
     def binary_labeler(data, threshold, attr='label', delim='\t'):
         stream = (line.rstrip(os.linesep).split(delim, 1) for line in data)
         stream = ((key, float(value) >= threshold) for key, value in stream)
@@ -125,7 +138,7 @@ def yelp():
         download_inputer('yelp/yelp.txt'),
         pipeline.line_extractor('\t'),
         pipeline.stopword_tokenizer(
-            pipeline.default_tokenizer(),
+            tokenizer,
             open_download('stopwords/english.txt'),
         ),
         pipeline.composite_labeler(
