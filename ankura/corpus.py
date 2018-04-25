@@ -7,8 +7,7 @@ The available datasets (and corresponding import functions) include:
 These imports depend on two module variables which can be mutated to change the
 download behavior of these imports. Downloaded and pickled data will be stored
 in the path given by `download_dir`, and data will be downloaded from
-`base_url`. By default, `download_dir` will be '$HOME/.ankura' while base_url
-will point at a GitHub repo designed for use with 
+`base_url`. By default, `download_dir` will be '$HOME/.ankura' while base_urlwill point at a GitHub repo designed for use with
 """
 
 import functools
@@ -105,6 +104,38 @@ def tripadvisor():
         )
     p.tokenizer = pipeline.frequency_tokenizer(p, 150)
     return p.run(_path('tripadvisor.pickle'))
+
+def yelp():
+    """ Gets a corpus containing Yelp reviews with 25431 documents """
+    def binary_labeler(data, threshold, attr='label', delim='\t'):
+        stream = (line.rstrip(os.linesep).split(delim, 1) for line in data)
+        stream = ((key, float(value) >= threshold) for key, value in stream)
+        return pipeline.stream_labeler(stream, attr)
+
+    p = pipeline.Pipeline(
+        download_inputer('yelp/yelp.txt'),
+        pipeline.line_extractor('\t'),
+        pipeline.stopword_tokenizer(
+            pipeline.default_tokenizer(),
+            open_download('stopwords/english.txt'),
+        ),
+        pipeline.composite_labeler(
+            pipeline.title_labeler('id'),
+            pipeline.float_labeler(
+                open_download('yelp/yelp.response'),
+                'rating',
+            ),
+            binary_labeler(
+                open_download('yelp/yelp.response'),
+                5,
+                'binary_rating',
+            ),
+        ),
+        pipeline.length_filterer(),
+    )
+    p.tokenizer = pipeline.frequency_tokenizer(p, 50)
+    return p.run(_path('yelp.pickle'))
+
 
 def bible():
     """Gets a Corpus containing the King James version of the Bible with over
