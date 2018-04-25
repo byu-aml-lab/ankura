@@ -73,6 +73,12 @@ def download_inputer(*names):
 
 def tripadvisor():
     """Gets a corpus containing hotel reviews on trip advisor with ~240,000 documents"""
+    #These words should be removed, as they don't en up cooccuring with other
+    # words
+    extra_stopwords = ['zentral', 'jederzeit', 'gerne', 'gutes', 'preis',
+    'plac茅', 'empfehlenswert', 'preisleistungsverh盲ltnis', 'posizione',
+    'sch枚nes', 'zu', 'empfehlen', 'qualit茅prix', 'tolles', 'rapporto',
+    'guter', 'struttura']
 
     label_stream = BufferedStream()
 
@@ -97,7 +103,10 @@ def tripadvisor():
             pipeline.targz_extractor(regex_extractor),
             pipeline.stopword_tokenizer(
                     pipeline.default_tokenizer(),
-                    open_download('stopwords/english.txt'),
+                    itertools.chain(
+                        open_download('stopwords/english.txt'),
+                        extra_stopwords
+                    )
             ),
             pipeline.stream_labeler(label_stream),
             pipeline.length_filterer(30),
