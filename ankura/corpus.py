@@ -25,7 +25,7 @@ def _path(name):
     return os.path.join(download_dir, name)
 
 
-base_url = 'https://github.com/jefflund/data/raw/data2'
+base_url = 'https://github.com/byu-aml-lab/data/raw/data2'
 
 def _url(name):
     return posixpath.join(base_url, name)
@@ -231,6 +231,11 @@ def amazon():
     """Gets a Corpus containing roughly 40,000 Amazon product reviews, with
     star ratings.
     """
+    def binary_labeler(data, threshold, attr='label', delim='\t'):
+        stream = (line.rstrip(os.linesep).split(delim, 1) for line in data)
+        stream = ((key, float(value) >= threshold) for key, value in stream)
+        return pipeline.stream_labeler(stream, attr)
+
     p = pipeline.Pipeline(
         download_inputer('amazon/amazon.txt'),
         pipeline.line_extractor('\t'),
@@ -243,6 +248,11 @@ def amazon():
             pipeline.float_labeler(
                 open_download('amazon/amazon.stars'),
                 'rating',
+            ),
+            binary_labeler(
+                open_download('amazon/amazon.stars'),
+                5,
+                'binary_rating',
             ),
         ),
         pipeline.length_filterer(),
