@@ -153,7 +153,7 @@ def yelp():
                 'binary_rating',
             ),
         ),
-        pipeline.length_filterer(),
+        pipeline.length_filterer(30),
     )
     p.tokenizer = pipeline.frequency_tokenizer(p, 50)
     return p.run(_path('yelp.pickle'))

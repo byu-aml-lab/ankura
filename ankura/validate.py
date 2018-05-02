@@ -6,6 +6,8 @@ import itertools
 import scipy.stats
 import numpy as np
 
+from sklearn.linear_model import LogisticRegression
+
 
 class Contingency(object):
     """Contingency is a table which gives the multivariate frequency
@@ -165,6 +167,35 @@ class Contingency(object):
                 total += count
         return gsums, psums, total
 
+def anchor_accuracy(Q, anchors, test_corpus, train_corpus, label_name):
+    num_topics = len(anchors)
+
+    train_target = [doc.metadata[label_name] for doc in train_corpus.documents]
+    test_target = [doc.metadata[label_name] for doc in test_corpus.documents]
+
+    from .anchor import recover_topics
+    from .topic import sampling_assign
+
+    topics = recover_topics(Q, anchors, 1e-5)
+
+    attr = 'z'
+    sampling_assign(test_corpus, topics, z_attr=attr)
+    sampling_assign(train_corpus, topics, z_attr=attr)
+
+    test_matrix = scipy.sparse.lil_matrix((len(test_corpus.documents), num_topics * len(test_corpus.vocabulary)))
+    train_matrix = scipy.sparse.lil_matrix((len(train_corpus.documents), num_topics * len(train_corpus.vocabulary)))
+
+    for i, doc in enumerate(train_corpus.documents):
+        for j, t in enumerate(doc.tokens):
+            train_matrix[i, t.token * num_topics + doc.metadata[attr][j]] += 1
+
+    for i, doc in enumerate(test_corpus.documents):
+        for j, t in enumerate(doc.tokens):
+            test_matrix[i, t.token * num_topics + doc.metadata[attr][j]] += 1
+
+    lr = LogisticRegression()
+    lr.fit(train_matrix, train_target)
+    return lr.score(test_matrix, test_target)
 
 def coherence(reference_corpus, topic_summary, epsilon=1e-2):
     """Computes topic coherence following Mimno et al., 2011 using pairwise log
