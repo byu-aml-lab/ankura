@@ -177,19 +177,21 @@ def anchor_accuracy(Q, anchors, test_corpus, train_corpus, label_name):
     from .topic import sampling_assign
 
     topics = recover_topics(Q, anchors, 1e-5)
-    sampling_assign(test_corpus, topics, z_attr='z')
-    sampling_assign(train_corpus, topics, z_attr='z')
+
+    attr = 'z'
+    sampling_assign(test_corpus, topics, z_attr=attr)
+    sampling_assign(train_corpus, topics, z_attr=attr)
 
     test_matrix = scipy.sparse.lil_matrix((len(test_corpus.documents), num_topics * len(test_corpus.vocabulary)))
     train_matrix = scipy.sparse.lil_matrix((len(train_corpus.documents), num_topics * len(train_corpus.vocabulary)))
 
     for i, doc in enumerate(train_corpus.documents):
         for j, t in enumerate(doc.tokens):
-            train_matrix[i, t[0] * num_topics + doc.metadata['z'][j]] += 1
+            train_matrix[i, t[0] * num_topics + doc.metadata[attr][j]] += 1
 
     for i, doc in enumerate(test_corpus.documents):
         for j, t in enumerate(doc.tokens):
-            test_matrix[i, t[0] * num_topics + doc.metadata['z'][j]] += 1
+            test_matrix[i, t[0] * num_topics + doc.metadata[attr][j]] += 1
 
     lr = LogisticRegression()
     lr.fit(train_matrix, train_target)
