@@ -18,7 +18,7 @@ import urllib.request
 from . import pipeline
 import posixpath
 
-download_dir = os.path.join(os.getenv('HOME'), '.ankura')
+download_dir = os.path.join(os.getenv('HOME'), 'compute/.ankura')
 
 def _path(name):
     return os.path.join(download_dir, name)
