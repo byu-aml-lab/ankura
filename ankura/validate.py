@@ -225,8 +225,7 @@ def coherence(reference_corpus, topic_summary, epsilon=1e-2):
             for j in topic:
                 pair_count = pair_counts[(i, j)]
                 count = counts[j]
-                if not count: continue
-                score += np.log((pair_count + epsilon) / count)
+                if count: score += np.log((pair_count + epsilon) / count)
         scores.append(score)
     return np.array(scores)
 
