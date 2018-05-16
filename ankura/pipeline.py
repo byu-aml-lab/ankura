@@ -667,6 +667,7 @@ def test_train_split(corpus, num_train=None, num_test=None, random_seed=None, **
         train_ids, test_ids = doc_ids[:num_train], doc_ids[num_train: num_train+num_test]
         train = Corpus([corpus.documents[d] for d in train_ids], corpus.vocabulary, corpus.metadata)
         test = Corpus([corpus.documents[d] for d in test_ids], corpus.vocabulary, corpus.metadata)
+        train, test = remove_nonexistent_train_words(train, test)
     except TypeError: # corpus doesn't support random indexing
         sample_size = num_train + num_test
         sample = []
