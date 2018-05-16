@@ -613,6 +613,40 @@ def build_docwords(corpus, V=None):
 
     return docwords.tocsc()
 
+def remove_nonexistent_train_words(train, test):
+    """Removes words from corpus vocabulary that don't actually appear in the corpus.
+    Will not work for corpora that are read in through a DocStream.
+    """
+
+    new_vocab = list()
+    old_vocab = train.vocabulary
+
+    new_train_documents = list()
+    for doc in train.documents:
+        new_tokens = list()
+        for t in doc.tokens:
+            vocab_word = old_vocab[t.token]
+            if vocab_word not in new_vocab:
+                new_vocab.append(vocab_word)
+
+            new_tokens.append(TokenLoc(new_vocab.index(vocab_word), t.loc))
+
+        new_train_documents.append(Document(doc.text, new_tokens, doc.metadata))
+
+    new_test_documents = list()
+    for doc in test.documents:
+        new_tokens = list()
+        for t in doc.tokens:
+            vocab_word = old_vocab[t.token]
+            if vocab_word in new_vocab:
+                new_tokens.append(TokenLoc(new_vocab.index(vocab_word), t.loc))
+
+        new_test_documents.append(Document(doc.text, new_tokens, doc.metadata))
+
+    train = Corpus(new_train_documents, new_vocab, train.metadata)
+    test = Corpus(new_test_documents, new_vocab, test.metadata)
+
+    return train, test
 
 def test_train_split(corpus, num_train=None, num_test=None, random_seed=None, **kwargs):
 
