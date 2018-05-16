@@ -127,19 +127,13 @@ def gensim_assign(corpus, topics, theta_attr=None, z_attr=None):
     lda.sync_state()
 
     # Make topic assignments
-    doc_topics = lda.get_document_topics(bows, per_word_topics=True)
-    for doc, (sparse_theta, sparse_z, _) in zip(corpus.documents, doc_topics):
+    for doc, bow in zip(corpus.documents, bows):
+        gamma, phi = lda.inference([bow], collect_sstats=z_attr)
         if theta_attr:
-            theta = np.zeros(K)
-            for topic, prob in sparse_theta:
-                theta[topic] = prob
-            theta /= theta.sum()
-            doc.metadata[theta_attr] = theta
+            doc.metadata[theta_attr] = gamma[0] / gamma[0].sum()
         if z_attr:
-            sparse_z= {word: topics[0] for word, topics in sparse_z}
-            z = [sparse_z[t.token] for t in doc.tokens]
-            doc.metadata[z_attr] = z
-
+            w = [t.token for t in doc.tokens]
+            doc.metadata[z_attr] = phi.argmax(axis=0)[w].tolist()
 
 def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
     """Finds the nearest documents by topic similarity.
