@@ -481,6 +481,9 @@ class VocabBuilder(object):
             self.tokens.append(token)
         return self.types[token]
 
+    def __contains__(self, token):
+        return token in self.types
+
     def convert(self, tokens):
         """Converts a sequence of TokenLoc to use types"""
         return [TokenLoc(self[t.token], t.loc) for t in tokens]
@@ -613,6 +616,37 @@ def build_docwords(corpus, V=None):
 
     return docwords.tocsc()
 
+def remove_nonexistent_train_words(train, test):
+    """Removes words from corpus vocabulary that don't actually appear in the train corpus.
+    Will not work for corpora that are read in through a DocStream.
+    """
+
+    new_vocab = VocabBuilder()
+    old_vocab = train.vocabulary
+
+    new_train_documents = list()
+    for doc in train.documents:
+        new_tokens = list()
+        for t in doc.tokens:
+            vocab_word = old_vocab[t.token]
+            new_tokens.append(TokenLoc(new_vocab[vocab_word], t.loc))
+
+        new_train_documents.append(Document(doc.text, new_tokens, doc.metadata))
+
+    new_test_documents = list()
+    for doc in test.documents:
+        new_tokens = list()
+        for t in doc.tokens:
+            vocab_word = old_vocab[t.token]
+            if vocab_word in new_vocab:
+                new_tokens.append(TokenLoc(new_vocab[vocab_word], t.loc))
+
+        new_test_documents.append(Document(doc.text, new_tokens, doc.metadata))
+
+    train = Corpus(new_train_documents, new_vocab.tokens, train.metadata)
+    test = Corpus(new_test_documents, new_vocab.tokens, test.metadata)
+
+    return train, test
 
 def test_train_split(corpus, num_train=None, num_test=None, random_seed=None, **kwargs):
 
@@ -633,6 +667,7 @@ def test_train_split(corpus, num_train=None, num_test=None, random_seed=None, **
         train_ids, test_ids = doc_ids[:num_train], doc_ids[num_train: num_train+num_test]
         train = Corpus([corpus.documents[d] for d in train_ids], corpus.vocabulary, corpus.metadata)
         test = Corpus([corpus.documents[d] for d in test_ids], corpus.vocabulary, corpus.metadata)
+        train, test = remove_nonexistent_train_words(train, test)
     except TypeError: # corpus doesn't support random indexing
         sample_size = num_train + num_test
         sample = []
