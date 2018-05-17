@@ -648,11 +648,11 @@ def remove_nonexistent_train_words(train, test):
 
     return train, test
 
-def test_train_split(corpus, num_train=None, num_test=None, random_seed=None, remove_testonly_words=True, **kwargs):
+def train_test_split(corpus, num_train=None, num_test=None, random_seed=None, remove_testonly_words=True, **kwargs):
 
     if not random_seed:
         random_seed = time.time()
-    np.random.seed(random_seed)
+    np.random.seed(int(random_seed))
 
     if not num_train and not num_test:
         num_train = int(len(corpus.documents) * .8)
