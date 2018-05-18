@@ -288,7 +288,8 @@ def free_classifier_line_not_gibbs(corpus, attr_name, labeled_docs,
 
 
 def free_classifier_dream(corpus, attr_name, labeled_docs,
-                            topics, C, labels, epsilon=1e-7):
+                          topics, C, labels, epsilon=1e-7,
+                          prior_attr_name=None):
     L = len(labels)
 
     # column-normalized word-topic matrix without labels
@@ -301,18 +302,23 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
     C_f = C[:, -L:]
     C_f /= C_f.sum(axis=0)
 
-    phi = np.zeros(L) # emperically observe labels
-    for d, doc in enumerate(corpus.documents):
-        if d in labeled_docs:
-            label_name = doc.metadata[attr_name];
-            i = labels.index(label_name)
-            phi[i] += 1
-    phi = phi / phi.sum(axis=0) # normalize phi to get the label probabilities
-    log_phi = np.log(phi)
+    lambda_ = corpus.metadata.get(prior_attr_name) # emperically observed labels
+    if lambda_ is None:
+        lambda_ = np.zeros(L)
+        for d, doc in enumerate(corpus.documents):
+            if d in labeled_docs:
+                label_name = doc.metadata[attr_name];
+                i = labels.index(label_name)
+                lambda_[i] += 1
+        lambda_ = lambda_ / lambda_.sum(axis=0) # normalize lambda_ to get the label probabilities
+        if prior_attr_name:
+            corpus.metadata[prior_attr_name] = lambda_
+
+    log_lambda = np.log(lambda_)
 
     @functools.wraps(free_classifier)
     def _classifier(doc):
-        results = np.copy(log_phi)
+        results = np.copy(log_lambda)
         for l in range(L):
             for n, w_i in enumerate(doc.tokens):
                 m = sum(C_f[t, l] * A_w[w_i.token, t] for t in range(K))
@@ -341,13 +347,13 @@ def free_classifier_line_model(corpus, attr_name, labeled_docs,
     C_f = C[0:, -L:]
     C_f /= C_f.sum(axis=0)
 
-    phi = np.zeros(L) # emperically observe labels
+    lambda_ = np.zeros(L) # emperically observe labels
     for d, doc in enumerate(corpus.documents):
         if d in labeled_docs:
             label_name = doc.metadata[attr_name];
             i = labels.index(label_name)
-            phi[i] += 1
-    phi = phi / phi.sum(axis=0) # normalize phi to get the label probabilities
+            lambda_[i] += 1
+    lambda_ = lambda_ / lambda_.sum(axis=0) # normalize lambda_ to get the label probabilities
 
     @functools.wraps(free_classifier)
     def _classifier(doc):
@@ -356,7 +362,7 @@ def free_classifier_line_model(corpus, attr_name, labeled_docs,
 
         for _ in range(num_iters):
             doc_topic_count = collections.Counter(z) # maps topic assignments to counts (this used to be outside of the for loop)
-            l_cond = np.log(phi) # not in log space: cond = phi
+            l_cond = np.log(lambda_) # not in log space: cond = lambda_
             for s in range(L):
                 for topic, count in doc_topic_count.items():
                     l_cond[s] += count * np.log(C_f[topic, s]) # not in log space: cond[s] *= C_f[topic, s]**count
