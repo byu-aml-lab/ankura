@@ -288,7 +288,8 @@ def free_classifier_line_not_gibbs(corpus, attr_name, labeled_docs,
 
 
 def free_classifier_dream(corpus, attr_name, labeled_docs,
-                            topics, C, labels, epsilon=1e-7):
+                            topics, C, labels, epsilon=1e-7,
+                            prior_attr_name=None):
     L = len(labels)
 
     # column-normalized word-topic matrix without labels
@@ -301,7 +302,7 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
     C_f = C[:, -L:]
     C_f /= C_f.sum(axis=0)
 
-    lambda_ = corpus.metadata.get('lambda_') # emperically observed labels
+    lambda_ = corpus.metadata.get(prior_attr_name) # emperically observed labels
     if lambda_ is None:
         lambda_ = np.zeros(L)
         for d in labeled_docs:
@@ -309,7 +310,8 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
             i = labels.index(label_name)
             lambda_[i] += 1
         lambda_ = lambda_ / lambda_.sum(axis=0) # normalize lambda_ to get the label probabilities
-        corpus.metadata['lambda_'] = lambda_
+        if prior_attr_name:
+            corpus.metadata[prior_attr_name] = lambda_
 
     log_lambda = np.log(lambda_)
 
