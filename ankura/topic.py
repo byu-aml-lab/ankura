@@ -305,10 +305,11 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
     lambda_ = corpus.metadata.get(prior_attr_name) # emperically observed labels
     if lambda_ is None:
         lambda_ = np.zeros(L)
-        for d in labeled_docs:
-            label_name = corpus.documents[d].metadata[attr_name];
-            i = labels.index(label_name)
-            lambda_[i] += 1
+        for d, doc in enumerate(labeled_docs):
+            if d in labeled_docs:
+                label_name = corpus.documents[d].metadata[attr_name];
+                i = labels.index(label_name)
+                lambda_[i] += 1
         lambda_ = lambda_ / lambda_.sum(axis=0) # normalize lambda_ to get the label probabilities
         if prior_attr_name:
             corpus.metadata[prior_attr_name] = lambda_
