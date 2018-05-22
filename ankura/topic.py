@@ -319,14 +319,14 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
     @functools.wraps(free_classifier)
     def _classifier(doc):
         results = np.copy(log_lambda)
+        token_counter = collections.Counter(tok.token for tok in doc.tokens)
         for l in range(L):
-            for n, w_i in enumerate(doc.tokens):
-                m = sum(C_f[t, l] * A_w[w_i.token, t] for t in range(K))
+            for w_i in token_counter:
+                m = token_counter[w_i] * np.sum(C_f[:, l] * A_w[w_i, :])
                 if m != 0: # this gets rid of log(0) warning, but essentially does the same thing as taking log(0)
                     results[l] += np.log(m)
                 else:
                     results[l] = float('-inf')
-
 
         return labels[np.argmax(results)]
     return _classifier
