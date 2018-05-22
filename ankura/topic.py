@@ -1,6 +1,5 @@
 """Functions for using and displaying topics"""
 
-import collections
 import functools
 import sys
 import collections
