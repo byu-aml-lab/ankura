@@ -239,7 +239,7 @@ def newsgroups():
                 itertools.chain(open_download('stopwords/english.txt'),
                                 open_download('stopwords/newsgroups.txt'))
             ),
-            r'^(.{0,2}|.{15,})$', # remove any token t for which 2<len(t)<=15
+            r'^(.{0,2}|.{15,})$', # remove any token t with len(t)<=2 or len(t)>=15
         ),
         pipeline.composite_labeler(
             pipeline.title_labeler('id'),
