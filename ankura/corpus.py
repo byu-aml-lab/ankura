@@ -239,7 +239,7 @@ def newsgroups():
                 itertools.chain(open_download('stopwords/english.txt'),
                                 open_download('stopwords/newsgroups.txt'))
             ),
-            r'^(.{0,2}|.{15,})$', # remove any token t for which 2<len(t)<=15
+            r'^(.{0,2}|.{15,})$', # remove any token t with len(t)<=2 or len(t)>=15
         ),
         pipeline.composite_labeler(
             pipeline.title_labeler('id'),
@@ -250,6 +250,39 @@ def newsgroups():
     )
     p.tokenizer = pipeline.frequency_tokenizer(p, 100, 2000)
     return p.run(_path('newsgroups.pickle'))
+
+def amazon_modified(corpus_size=1000000, vocab_size=None, rare=None, common=None):
+    """Gets a corpus containing a number Amazon product reviews 
+    equal to corpus_size, with star ratings. """
+
+    from .util import create_amazon_modified
+    create_amazon_modified(corpus_size)
+
+    label_stream = BufferedStream()
+
+    def label_extractor(docfile, value_key='reviewText', label_key='overall'):
+
+        import json
+
+        for i, line in enumerate(docfile):
+            line = json.loads(line.decode('utf-8'))
+            label_stream.append(str(i), line[label_key])
+
+            yield pipeline.Text(str(i), line[value_key])
+
+    p = pipeline.Pipeline(
+        download_inputer('amazon_modified/amazon_modified.json.gz'),
+        pipeline.gzip_extractor(label_extractor),
+        pipeline.stopword_tokenizer(
+            pipeline.default_tokenizer(),
+            open_download('stopwords/english.txt'),
+        ),
+        pipeline.stream_labeler(label_stream),
+        pipeline.length_filterer(),
+    )
+
+    p.tokenizer = pipeline.frequency_tokenizer(p, rare, common)
+    return p.run(_path(f'amazon_modified_size{corpus_size}_rare{rare}_common{common}.pickle'), hash_size=vocab_size)
 
 def amazon_medium():
     """Gets a corpus containing 100,000 Amazon product reviews, with star ratings.
