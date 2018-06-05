@@ -180,8 +180,8 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
     Q_L = Q[-K:, :V]
 
-    @functools.wraps(free_classifier)
     def _classifier(doc, attr='theta'):
+        """The document classifier returned by free_classifier"""
         H = np.zeros(V)
         for w_d in doc.tokens:
             H[w_d.token] += 1
@@ -208,9 +208,8 @@ def free_classifier_derpy(topics, Q, labels, epsilon=1e-7):
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
     Q_L = Q[:V, -K:]
 
-    @functools.wraps(free_classifier)
     def _classifier(doc, attr='theta'):
-
+        """The document classifier returned by free_classifier_derpy"""
         topic_score = A_f.dot(doc.metadata[attr])
         topic_score /= topic_score.sum(axis=0)
 
@@ -230,8 +229,8 @@ def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
     Q_L = Q[:V, -K:]
 
-    @functools.wraps(free_classifier)
     def _classifier(doc, attr='theta'):
+        """The document classifier returned by free_classifier_revised"""
         H = np.zeros(V)
         for w_d in doc.tokens:
             H[w_d.token] += 1
@@ -271,7 +270,6 @@ def free_classifier_line_not_gibbs(corpus, attr_name, labeled_docs,
 
     L = L / L.sum(axis=0) # normalize L to get the label probabilities
 
-    @functools.wraps(free_classifier)
     def _classifier(doc, attr='z'):
         final_score = np.zeros(K)
         for i, l in enumerate(L):
@@ -315,8 +313,8 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
 
     log_lambda = np.log(lambda_)
 
-    @functools.wraps(free_classifier)
     def _classifier(doc):
+        """The document classifier returned by free_classifier_dream"""
         results = np.copy(log_lambda)
         token_counter = collections.Counter(tok.token for tok in doc.tokens)
         for l in range(L):
@@ -354,7 +352,6 @@ def free_classifier_line_model(corpus, attr_name, labeled_docs,
             lambda_[i] += 1
     lambda_ = lambda_ / lambda_.sum(axis=0) # normalize lambda_ to get the label probabilities
 
-    @functools.wraps(free_classifier)
     def _classifier(doc):
         l = np.random.randint(L)
         z = np.random.randint(K, size=len(doc.tokens))
@@ -392,7 +389,6 @@ def free_classifier_v_model(corpus, attr_name, labeled_docs,
     A_f = topics[-L:] + epsilon
     A_f /= A_f.sum(axis=0)
 
-    @functools.wraps(free_classifier)
     def _classifier(doc):
         l = np.random.randint(L)
         z = np.random.randint(K, size=len(doc.tokens))
