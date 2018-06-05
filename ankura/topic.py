@@ -313,8 +313,14 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
 
     log_lambda = np.log(lambda_)
 
-    def _classifier(doc):
-        """The document classifier returned by free_classifier_dream"""
+    def _classifier(doc, get_probabilities=False):
+        """The document classifier returned by free_classifier_dream
+
+        By default, returns the label name for the predicted label.
+
+        If get_probabilities is True, returns the probabilities of each label
+        instead of the label name.
+        """
         results = np.copy(log_lambda)
         token_counter = collections.Counter(tok.token for tok in doc.tokens)
         for l in range(L):
@@ -325,6 +331,8 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
                 else:
                     results[l] = float('-inf')
 
+        if get_probabilities:
+            return np.exp(results)
         return labels[np.argmax(results)]
     return _classifier
 
