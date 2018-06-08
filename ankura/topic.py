@@ -108,13 +108,8 @@ def gensim_assign(corpus, topics, theta_attr=None, z_attr=None):
         raise ValueError('Either theta_attr or z_attr must be given')
 
     # Convert corpus to gensim bag-of-words format
-    bows = []
-    for doc in corpus.documents:
-        bow = collections.defaultdict(int)
-        for t in doc.tokens:
-            bow[t.token] += 1
-        bows.append(bow)
-    bows = [list(bow.items()) for bow in bows]
+    bows = [list(collections.Counter(tok.token for tok in doc.tokens).items())
+                for d, doc in enumerate(corpus.documents)]
 
     # Build lda with fixed topics
     V, K = topics.shape
