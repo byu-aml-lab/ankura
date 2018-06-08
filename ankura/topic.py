@@ -103,13 +103,14 @@ def variational_assign(corpus, topics, theta_attr='theta', docwords_attr=None):
         doc.metadata[theta_attr] = theta_d
 
 
-def gensim_assign(corpus, topics, theta_attr=None, z_attr=None):
+def gensim_assign(corpus, topics, theta_attr=None, z_attr=None, needs_assign=None):
     if not theta_attr and not z_attr:
         raise ValueError('Either theta_attr or z_attr must be given')
 
     # Convert corpus to gensim bag-of-words format
     bows = [list(collections.Counter(tok.token for tok in doc.tokens).items())
-                for d, doc in enumerate(corpus.documents)]
+                for d, doc in enumerate(corpus.documents)
+                if needs_assign is None or d in needs_assign]
 
     # Build lda with fixed topics
     V, K = topics.shape
@@ -121,13 +122,14 @@ def gensim_assign(corpus, topics, theta_attr=None, z_attr=None):
     lda.sync_state()
 
     # Make topic assignments
-    for doc, bow in zip(corpus.documents, bows):
-        gamma, phi = lda.inference([bow], collect_sstats=z_attr)
-        if theta_attr:
-            doc.metadata[theta_attr] = gamma[0] / gamma[0].sum()
-        if z_attr:
-            w = [t.token for t in doc.tokens]
-            doc.metadata[z_attr] = phi.argmax(axis=0)[w].tolist()
+    for d, (doc, bow) in enumerate(zip(corpus.documents, bows)):
+        if needs_assign is None or d in needs_assign:
+            gamma, phi = lda.inference([bow], collect_sstats=z_attr)
+            if theta_attr:
+                doc.metadata[theta_attr] = gamma[0] / gamma[0].sum()
+            if z_attr:
+                w = [t.token for t in doc.tokens]
+                doc.metadata[z_attr] = phi.argmax(axis=0)[w].tolist()
 
 def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
     """Finds the nearest documents by topic similarity.
