@@ -129,6 +129,12 @@ def tripadvisor():
         ),
         pipeline.composite_labeler(
             pipeline.stream_labeler(label_stream),
+            _binary_labeler(
+                label_stream,
+                5,
+                'binary_rating',
+                needs_split=False,
+            ),
             _binary_string_labeler(
                 label_stream,
                 5,
