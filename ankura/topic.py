@@ -103,18 +103,14 @@ def variational_assign(corpus, topics, theta_attr='theta', docwords_attr=None):
         doc.metadata[theta_attr] = theta_d
 
 
-def gensim_assign(corpus, topics, theta_attr=None, z_attr=None):
+def gensim_assign(corpus, topics, theta_attr=None, z_attr=None, needs_assign=None):
     if not theta_attr and not z_attr:
         raise ValueError('Either theta_attr or z_attr must be given')
 
     # Convert corpus to gensim bag-of-words format
-    bows = []
-    for doc in corpus.documents:
-        bow = collections.defaultdict(int)
-        for t in doc.tokens:
-            bow[t.token] += 1
-        bows.append(bow)
-    bows = [list(bow.items()) for bow in bows]
+    bows = [list(collections.Counter(tok.token for tok in doc.tokens).items())
+                for d, doc in enumerate(corpus.documents)
+                if needs_assign is None or d in needs_assign]
 
     # Build lda with fixed topics
     V, K = topics.shape
@@ -126,13 +122,14 @@ def gensim_assign(corpus, topics, theta_attr=None, z_attr=None):
     lda.sync_state()
 
     # Make topic assignments
-    for doc, bow in zip(corpus.documents, bows):
-        gamma, phi = lda.inference([bow], collect_sstats=z_attr)
-        if theta_attr:
-            doc.metadata[theta_attr] = gamma[0] / gamma[0].sum()
-        if z_attr:
-            w = [t.token for t in doc.tokens]
-            doc.metadata[z_attr] = phi.argmax(axis=0)[w].tolist()
+    for d, (doc, bow) in enumerate(zip(corpus.documents, bows)):
+        if needs_assign is None or d in needs_assign:
+            gamma, phi = lda.inference([bow], collect_sstats=z_attr)
+            if theta_attr:
+                doc.metadata[theta_attr] = gamma[0] / gamma[0].sum()
+            if z_attr:
+                w = [t.token for t in doc.tokens]
+                doc.metadata[z_attr] = phi.argmax(axis=0)[w].tolist()
 
 def cross_reference(corpus, attr, doc=None, n=sys.maxsize, threshold=1):
     """Finds the nearest documents by topic similarity.
@@ -180,8 +177,8 @@ def free_classifier(topics, Q, labels, epsilon=1e-7):
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
     Q_L = Q[-K:, :V]
 
-    @functools.wraps(free_classifier)
     def _classifier(doc, attr='theta'):
+        """The document classifier returned by free_classifier"""
         H = np.zeros(V)
         for w_d in doc.tokens:
             H[w_d.token] += 1
@@ -208,9 +205,8 @@ def free_classifier_derpy(topics, Q, labels, epsilon=1e-7):
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
     Q_L = Q[:V, -K:]
 
-    @functools.wraps(free_classifier)
     def _classifier(doc, attr='theta'):
-
+        """The document classifier returned by free_classifier_derpy"""
         topic_score = A_f.dot(doc.metadata[attr])
         topic_score /= topic_score.sum(axis=0)
 
@@ -230,8 +226,8 @@ def free_classifier_revised(topics, Q, labels, epsilon=1e-7):
     Q = Q / Q.sum(axis=1, keepdims=True) # row-normalize Q without original
     Q_L = Q[:V, -K:]
 
-    @functools.wraps(free_classifier)
     def _classifier(doc, attr='theta'):
+        """The document classifier returned by free_classifier_revised"""
         H = np.zeros(V)
         for w_d in doc.tokens:
             H[w_d.token] += 1
@@ -271,7 +267,6 @@ def free_classifier_line_not_gibbs(corpus, attr_name, labeled_docs,
 
     L = L / L.sum(axis=0) # normalize L to get the label probabilities
 
-    @functools.wraps(free_classifier)
     def _classifier(doc, attr='z'):
         final_score = np.zeros(K)
         for i, l in enumerate(L):
@@ -315,8 +310,14 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
 
     log_lambda = np.log(lambda_)
 
-    @functools.wraps(free_classifier)
-    def _classifier(doc):
+    def _classifier(doc, get_probabilities=False):
+        """The document classifier returned by free_classifier_dream
+
+        By default, returns the label name for the predicted label.
+
+        If get_probabilities is True, returns the probabilities of each label
+        instead of the label name.
+        """
         results = np.copy(log_lambda)
         token_counter = collections.Counter(tok.token for tok in doc.tokens)
         for l in range(L):
@@ -327,6 +328,8 @@ def free_classifier_dream(corpus, attr_name, labeled_docs,
                 else:
                     results[l] = float('-inf')
 
+        if get_probabilities:
+            return np.exp(results)
         return labels[np.argmax(results)]
     return _classifier
 
@@ -354,7 +357,6 @@ def free_classifier_line_model(corpus, attr_name, labeled_docs,
             lambda_[i] += 1
     lambda_ = lambda_ / lambda_.sum(axis=0) # normalize lambda_ to get the label probabilities
 
-    @functools.wraps(free_classifier)
     def _classifier(doc):
         l = np.random.randint(L)
         z = np.random.randint(K, size=len(doc.tokens))
@@ -392,7 +394,6 @@ def free_classifier_v_model(corpus, attr_name, labeled_docs,
     A_f = topics[-L:] + epsilon
     A_f /= A_f.sum(axis=0)
 
-    @functools.wraps(free_classifier)
     def _classifier(doc):
         l = np.random.randint(L)
         z = np.random.randint(K, size=len(doc.tokens))
