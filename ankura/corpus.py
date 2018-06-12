@@ -55,7 +55,7 @@ def _binary_labeler(data, threshold,
 
 
 def _binary_string_labeler(data, threshold,
-                           attr='binary_string', delim='\t',
+                           attr='binary_rating', delim='\t',
                            needs_split=True):
     stream = data
     if needs_split:
@@ -129,16 +129,10 @@ def tripadvisor():
         ),
         pipeline.composite_labeler(
             pipeline.stream_labeler(label_stream),
-            _binary_labeler(
-                label_stream,
-                5,
-                'binary_rating',
-                needs_split=False,
-            ),
             _binary_string_labeler(
                 label_stream,
                 5,
-                'binary_string',
+                'binary_rating',
                 needs_split=False,
             ),
         ),
@@ -175,15 +169,10 @@ def yelp():
                 open_download('yelp/yelp.response'),
                 'rating',
             ),
-            _binary_labeler(
-                open_download('yelp/yelp.response'),
-                5,
-                'binary_rating',
-            ),
             _binary_string_labeler(
                 open_download('yelp/yelp.response'),
                 5,
-                'binary_string',
+                'binary_rating',
             ),
         ),
         pipeline.length_filterer(30),
@@ -335,15 +324,10 @@ def amazon():
                 open_download('amazon/amazon.stars'),
                 'rating',
             ),
-            _binary_labeler(
-                open_download('amazon/amazon.stars'),
-                5,
-                'binary_rating',
-            ),
             _binary_string_labeler(
                 open_download('amazon/amazon.stars'),
                 5,
-                'binary_string',
+                'binary_rating',
             ),
         ),
         pipeline.length_filterer(),
