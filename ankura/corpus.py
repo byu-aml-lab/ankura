@@ -44,6 +44,27 @@ def _ensure_download(name):
         urllib.request.urlretrieve(_url(name), path)
 
 
+def _binary_labeler(data, threshold,
+                    attr='label', delim='\t',
+                    needs_split=True):
+    stream = data
+    if needs_split:
+        stream = (line.rstrip(os.linesep).split(delim, 1) for line in stream)
+    stream = ((key, float(value) >= threshold) for key, value in stream)
+    return pipeline.stream_labeler(stream, attr)
+
+
+def _binary_string_labeler(data, threshold,
+                           attr='binary_rating', delim='\t',
+                           needs_split=True):
+    stream = data
+    if needs_split:
+        stream = (line.rstrip(os.linesep).split(delim, 1) for line in stream)
+    stream = ((key, 'positive' if float(value) >= threshold else 'negative')
+               for key, value in stream)
+    return pipeline.stream_labeler(stream, attr)
+
+
 def open_download(name, mode='r'):
     """Gets a file object for the given name, downloading the data to download
     dir from base_url if needed. By default the files are opened in read mode.
@@ -80,7 +101,7 @@ def tripadvisor():
     'sch枚nes', 'zu', 'empfehlen', 'qualit茅prix', 'tolles', 'rapporto',
     'guter', 'struttura']
 
-    label_stream = BufferedStream()
+    label_stream = []
 
     def regex_extractor(docfile):
         import re
@@ -91,26 +112,32 @@ def tripadvisor():
         labels = re.findall('<Overall>(\d*)', text, re.M)
 
         for i in range(len(documents)):
-
             overall = int(labels[i])
             label = overall if overall == 5 else 0
-            label_stream.append(str(i), label)
+            label_stream.append((str(i), label))
             yield pipeline.Text(str(i), documents[i])
 
-
     p = pipeline.Pipeline(
-            download_inputer('tripadvisor/tripadvisor.tar.gz'),
-            pipeline.targz_extractor(regex_extractor),
-            pipeline.stopword_tokenizer(
-                    pipeline.default_tokenizer(),
-                    itertools.chain(
-                        open_download('stopwords/english.txt'),
-                        extra_stopwords
-                    )
-            ),
+        download_inputer('tripadvisor/tripadvisor.tar.gz'),
+        pipeline.targz_extractor(regex_extractor),
+        pipeline.stopword_tokenizer(
+                pipeline.default_tokenizer(),
+                itertools.chain(
+                    open_download('stopwords/english.txt'),
+                    extra_stopwords
+                )
+        ),
+        pipeline.composite_labeler(
             pipeline.stream_labeler(label_stream),
-            pipeline.length_filterer(30),
-        )
+            _binary_string_labeler(
+                label_stream,
+                5,
+                'binary_rating',
+                needs_split=False,
+            ),
+        ),
+        pipeline.length_filterer(30),
+    )
     p.tokenizer = pipeline.frequency_tokenizer(p, 150)
     return p.run(_path('tripadvisor.pickle'))
 
@@ -129,11 +156,6 @@ def yelp():
         tokens = [t for t in tokens if t.token]
         return tokens
 
-    def binary_labeler(data, threshold, attr='label', delim='\t'):
-        stream = (line.rstrip(os.linesep).split(delim, 1) for line in data)
-        stream = ((key, float(value) >= threshold) for key, value in stream)
-        return pipeline.stream_labeler(stream, attr)
-
     p = pipeline.Pipeline(
         download_inputer('yelp/yelp.txt'),
         pipeline.line_extractor('\t'),
@@ -147,7 +169,7 @@ def yelp():
                 open_download('yelp/yelp.response'),
                 'rating',
             ),
-            binary_labeler(
+            _binary_string_labeler(
                 open_download('yelp/yelp.response'),
                 5,
                 'binary_rating',
@@ -239,7 +261,7 @@ def newsgroups():
                 itertools.chain(open_download('stopwords/english.txt'),
                                 open_download('stopwords/newsgroups.txt'))
             ),
-            r'^(.{0,2}|.{15,})$', # remove any token t for which 2<len(t)<=15
+            r'^(.{0,2}|.{15,})$', # remove any token t with len(t)<=2 or len(t)>=15
         ),
         pipeline.composite_labeler(
             pipeline.title_labeler('id'),
@@ -262,7 +284,7 @@ def amazon_medium():
 
         for i, line in enumerate(docfile):
             line = json.loads(line.decode('utf-8'))
-            label_stream.append(str(i), line[label_key])
+            label_stream.append((str(i), line[label_key]))
 
             yield pipeline.Text(str(i), line[value_key])
 
@@ -302,7 +324,7 @@ def amazon():
                 open_download('amazon/amazon.stars'),
                 'rating',
             ),
-            binary_labeler(
+            _binary_string_labeler(
                 open_download('amazon/amazon.stars'),
                 5,
                 'binary_rating',
@@ -318,13 +340,12 @@ class BufferedStream(object):
     def __init__(self):
         self.buf = []
 
-    def append(self, key, value):
-        self.buf.append((key, value))
+    def append(self, key_value):
+        self.buf.append(key_value)
 
     def __iter__(self):
         while self.buf:
             tup = self.buf.pop()
             key = tup[0]
             val = tup[1]
-
             yield key, val
