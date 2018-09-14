@@ -71,7 +71,7 @@ def build_cooccurrence(corpus):
 
 
 def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
-                               label_weight=1, smoothing=1e-7):
+                               label_weight=1, smoothing=1e-7, **kwargs):
     """Constructs a cooccurrence matrix from a Corpus with labels.
 
     In addition to a corpus, this method requires that a label attribute name
@@ -93,8 +93,8 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
             label_set.add(doc.metadata[attr_name])
     label_set = {l: V + i for i, l in enumerate(label_set)}
 
-    K = len(label_set)
-    Q = np.zeros((V+K, V+K))
+    L = len(label_set)
+    Q = np.zeros((V+L, V+L))
 
     D = 0
     for d, doc in enumerate(corpus.documents):
@@ -115,7 +115,7 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
                 Q[index, w_i.token] += label_weight * norm
             Q[index, index] += label_weight * (label_weight - 1) * norm
         else:
-            norm = 1 / (n_d * (n_d - 1) + 2 * n_d * K * smoothing + K * (K - 1) * smoothing**2)
+            norm = 1 / (n_d * (n_d - 1) + 2 * n_d * L * smoothing + L * (L - 1) * smoothing**2)
             for i, w_i in enumerate(doc.tokens):
                 for j, w_j in enumerate(doc.tokens):
                     if i == j:
@@ -129,11 +129,60 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
                     if i == j:
                         continue
                     Q[i, j] += norm * smoothing**2
+    if kwargs.get('get_d'):
+        return Q / D, sorted(label_set, key=label_set.get), D
 
     return Q / D, sorted(label_set, key=label_set.get)
 
+def quick_Q(Q, corpus, attr_name, labeled_docs, newly_labeled_docs, labels, D,
+                               label_weight=1, smoothing=1e-7):
 
-# TODO Add QuickQ
+    V = len(corpus.vocabulary)
+    label_set = {l: V + i for i, l in enumerate(labels)}
+    L = len(label_set)
+
+    # Undo the normalization of Q (before we change D)
+    Q = Q.copy() * D
+
+    H = np.zeros((V+L, V+L))
+    for d in newly_labeled_docs:
+        doc = corpus.documents[d]
+        n_d = len(doc.tokens)
+        if n_d <= 1:
+            continue
+        D+=1
+
+        # Subtract the unlabeled effect of this document
+        norm = 1 / (n_d * (n_d - 1) + 2 * n_d * L * smoothing + L * (L - 1) * smoothing**2)
+        for i, w_i in enumerate(doc.tokens):
+            for j, w_j in enumerate(doc.tokens):
+                if i == j:
+                    continue
+                H[w_i.token, w_j.token] -= norm
+            for j in label_set.values():
+                H[w_i.token, j] -= norm * smoothing
+                H[j, w_i.token] -= norm * smoothing
+        for i in label_set.values():
+            for j in label_set.values():
+                if i == j:
+                    continue
+                H[i, j] -= norm * smoothing**2
+
+        # Add the labeled effect of this document
+        norm = 1 / ((n_d + label_weight) * (n_d + label_weight - 1))
+        index = label_set[doc.metadata[attr_name]]
+        for i, w_i in enumerate(doc.tokens):
+            for j, w_j in enumerate(doc.tokens):
+                if i == j:
+                    continue
+                H[w_i.token, w_j.token] += norm
+            H[w_i.token, index] += label_weight * norm
+            H[index, w_i.token] += label_weight * norm
+        H[index, index] += label_weight * (label_weight - 1) * norm
+    Q += H
+    return Q/D, D
+
+
 
 def build_supervised_cooccurrence(corpus, attr_name, labeled_docs):
 
@@ -145,9 +194,9 @@ def build_supervised_cooccurrence(corpus, attr_name, labeled_docs):
         if d in labeled_docs:
             label_set.add(doc.metadata[attr_name])
     label_set = {l : i for i, l in enumerate(label_set)}
-    K = len(label_set)
+    L = len(label_set)
 
-    S = np.zeros((V, K))
+    S = np.zeros((V, L))
     for d, doc in enumerate(corpus.documents):
         if d in labeled_docs:
             label_index = label_set[doc.metadata[attr_name]]
