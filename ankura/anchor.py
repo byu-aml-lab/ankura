@@ -150,7 +150,6 @@ def quick_Q(Q, corpus, attr_name, labeled_docs, newly_labeled_docs, labels, D,
         n_d = len(doc.tokens)
         if n_d <= 1:
             continue
-        D+=1
 
         # Subtract the unlabeled effect of this document
         norm = 1 / (n_d * (n_d - 1) + 2 * n_d * L * smoothing + L * (L - 1) * smoothing**2)
@@ -180,7 +179,7 @@ def quick_Q(Q, corpus, attr_name, labeled_docs, newly_labeled_docs, labels, D,
             H[index, w_i.token] += label_weight * norm
         H[index, index] += label_weight * (label_weight - 1) * norm
     Q += H
-    return Q/D, D
+    return Q/D
 
 
 
