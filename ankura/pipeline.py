@@ -527,15 +527,30 @@ class DocumentStream(object):
         self._file = open(filename, 'wb')
         self._flushed = True
         self._size = 0
+        self._indices = dict()
 
     def append(self, doc):
         """Writes the document to the backing file."""
         if self._file is None:
             self._file = open(self._path, 'ab')
 
+        size = int(os.path.getsize(self._path))
+        self._indices[self._size] = size
         pickle.dump(doc, self._file)
         self._size += 1
-        self._flushed = False
+
+        self._file.close()
+        self._file = None
+
+    def __getitem__(self, i):
+        self._flush()
+
+        try:
+            with open(self._path, 'rb') as docs:
+                docs.seek(self._indices[i])
+                return pickle.load(docs)
+        except KeyError:
+            raise IndexError('list index out of range')
 
     def __iter__(self):
         self._flush()
