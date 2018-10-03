@@ -526,21 +526,22 @@ class DocumentStream(object):
         self._path = filename
         self._file = open(filename, 'wb')
         self._flushed = True
-        self._size = 0
         self._indices = dict()
+        self._previous_doc_size = 0
 
     def append(self, doc):
         """Writes the document to the backing file."""
         if self._file is None:
             self._file = open(self._path, 'ab')
 
-        size = int(os.path.getsize(self._path))
-        self._indices[self._size] = size
-        pickle.dump(doc, self._file)
-        self._size += 1
+        l = len(self)
+        if not l:
+            self._indices[0] = 0
+        else:
+            self._indices[l] = self._indices[l - 1] + self._previous_doc_size
 
-        self._file.close()
-        self._file = None
+        self._previous_doc_size = self._file.write(pickle.dumps(doc))
+        self._flushed = False
 
     def __getitem__(self, i):
         self._flush()
@@ -556,12 +557,12 @@ class DocumentStream(object):
         self._flush()
 
         with open(self._path, 'rb') as docs:
-            for _ in range(self._size):
+            for _ in range(len(self)):
                 yield pickle.load(docs)
 
     def __getstate__(self):
         self._flush()
-        return (self._path, self._size)
+        return (self._path, len(self))
 
     def __setstate__(self, state):
         self._path, self._size = state
@@ -574,7 +575,8 @@ class DocumentStream(object):
             self._flushed = True
 
     def __len__(self):
-        return self._size
+        #Compensate for preemptive indexing in append function
+        return len(self._indices)
 
 
 class Pipeline(object):
