@@ -526,7 +526,7 @@ class DocumentStream(object):
         self._path = filename
         self._file = open(filename, 'wb')
         self._flushed = True
-        self._indices = dict()
+        self._indices = list()
         self._previous_doc_size = 0
 
     def append(self, doc):
@@ -536,9 +536,9 @@ class DocumentStream(object):
 
         l = len(self)
         if not l:
-            self._indices[0] = 0
+            self._indices.append(0)
         else:
-            self._indices[l] = self._indices[l - 1] + self._previous_doc_size
+            self._indices.append(self._indices[-1] + self._previous_doc_size)
 
         self._previous_doc_size = self._file.write(pickle.dumps(doc))
         self._flushed = False
