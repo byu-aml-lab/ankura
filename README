@@ -1,6 +1,6 @@
 command to run ankura:
 
-     python3 run_ankura.py <num_topics> <corpus_name> <model> <run_number> <num_iterations>
+     python3 run_ankura.py <num_topics> <corpus_name> <model> <run_number> <num_iterations> <seed>
 
 Topic numbers usually range between 10 - 150.
 
@@ -17,3 +17,5 @@ Model is one of the following:
 Run number is meant for parallelization, if you're doing one run just set it to 0.
 
 Num Iterations is to average several runs in the same instance, must be non-zero.
+
+Seed is for the random number generator.
