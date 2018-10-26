@@ -1,0 +1,19 @@
+command to run ankura:
+
+     python3 run_ankura.py <num_topics> <corpus_name> <model> <run_number> <num_iterations>
+
+Topic numbers usually range between 10 - 150.
+
+Corpus name can be one of {tripadvisor, yelp, amazon, newsgroups}, please view corpus.py for more.
+
+Model is one of the following:
+    freederp : generic free classifier model
+    supervised : ankura with supervised anchors
+    semi : ankura running supervised anchors with semi-supervised data
+    vanilla : generic anchor words algorithm
+    fclr : free classifier using logistic regression to evaluate accuracy
+    fcdr : free classifier using the dream model
+
+Run number is meant for parallelization, if you're doing one run just set it to 0.
+
+Num Iterations is to average several runs in the same instance, must be non-zero.
