@@ -2,6 +2,8 @@ command to run ankura:
 
      python3 run_ankura.py <num_topics> <corpus_name> <model> <run_number> <num_iterations> <seed>
 
+     example: python3 run_ankura.py 20 amazon fcdr 0 1 0
+
 Topic numbers usually range between 10 - 150.
 
 Corpus name can be one of {tripadvisor, yelp, amazon, newsgroups}, please view corpus.py for more.
