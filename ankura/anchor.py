@@ -87,10 +87,13 @@ def build_labeled_cooccurrence(corpus, attr_name, labeled_docs,
     """
     V = len(corpus.vocabulary)
 
-    label_set = set()
-    for d, doc in enumerate(corpus.documents):
-        if d in labeled_docs:
-            label_set.add(doc.metadata[attr_name])
+    if kwargs.get('labels'):
+        label_set = kwargs.get('labels')
+    else:
+        label_set = set()
+        for d, doc in enumerate(corpus.documents):
+            if d in labeled_docs:
+                label_set.add(doc.metadata[attr_name])
     label_set = {l: V + i for i, l in enumerate(label_set)}
 
     L = len(label_set)
@@ -310,7 +313,10 @@ def tandem_anchors(anchors, Q, corpus=None, epsilon=1e-10):
 
     basis = np.zeros((len(anchors), Q.shape[1]))
     for i, anchor in enumerate(anchors):
-        basis[i] = scipy.stats.hmean(Q[anchor, :] + epsilon, axis=0)
+        if len(anchor)==1:
+            basis[i] = Q[anchor, :] + epsilon
+        else:
+            basis[i] = scipy.stats.hmean(Q[anchor, :] + epsilon, axis=0)
     return basis
 
 @util.jit

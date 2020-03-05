@@ -94,7 +94,7 @@ def download_inputer(*names):
 
 def tripadvisor():
     """Gets a corpus containing hotel reviews on trip advisor with ~240,000 documents"""
-    #These words should be removed, as they don't en up cooccuring with other
+    # These words should be removed, as they don't end up cooccuring with other
     # words
     extra_stopwords = ['zentral', 'jederzeit', 'gerne', 'gutes', 'preis',
     'plac茅', 'empfehlenswert', 'preisleistungsverh盲ltnis', 'posizione',
@@ -334,6 +334,118 @@ def amazon():
     )
     p.tokenizer = pipeline.frequency_tokenizer(p, 50)
     return p.run(_path('amazon.pickle'))
+
+def congress():
+    """Corpus on congress talking about different issues/bills."""
+    def congress_labeler(title):
+        # See .ankura/congress.README.v1.1.txt for more info
+        # ###_@@@@@@_%%%%$$$_PMV
+        # P - party (D, R, or X)
+        # V - vote indicator
+        return {'title': title,
+                'party': title[19],
+                'vote' : title[21]}
+
+    def party_filterer():
+        """Remove docs with Independent speakers (26 docs before other filters)"""
+        accepted = {'D', 'R'}
+        def _filterer(doc):
+            return doc.metadata['party'] in accepted
+        return _filterer
+
+    p = pipeline.Pipeline(
+        download_inputer('congress/congress.tar.gz'),
+        pipeline.targz_extractor(
+            pipeline.whole_extractor()
+        ),
+        pipeline.stopword_tokenizer(
+                pipeline.default_tokenizer(),
+                open_download('stopwords/english.txt'),
+        ),
+        congress_labeler,
+        pipeline.composite_filterer(
+            pipeline.length_filterer(50),
+            party_filterer()
+        )
+    )
+    p.tokenizer = pipeline.frequency_tokenizer(p, 50)
+    return p.run(_path('congress.pickle'))
+
+
+# TIME 3760.985
+def nsfabstracts():
+    import re
+
+    def extensional_extractor(base_extractor, extensions=['.txt']):
+        def _extractor(docfile):
+            if os.path.splitext(docfile.name)[1] not in extensions:
+                return
+            else:
+                yield from base_extractor(docfile)
+        return _extractor
+
+    def metadata_stream_extractor(metadata_stream):
+        prgrm_num = re.compile(r'\d+')
+        prgrm_name = re.compile(r'\d+\s+(.*)')
+
+        def _extractor(docfile):
+            text = docfile.read().decode('utf-8')
+            metadata = {}
+            abstract_text = []
+
+            collecting = False
+            for line in text.split('\n'):
+                if collecting:
+                    abstract_text.append(line)
+
+                elif line.startswith('Abstract    :'):
+                    collecting = True
+
+                elif line.startswith('NSF Program :'):
+                    program_line = line[len('NSF Program :'):]
+
+            metadata['program_number'] = int(prgrm_num.findall(program_line)[0])
+            metadata['program_name'] = prgrm_name.findall(program_line)[0]
+            metadata['filename'] = docfile.name
+
+            abstract_text = (' '.join(t.strip() for t in abstract_text)).strip()
+
+            metadata_stream.append((docfile.name, metadata))
+            yield pipeline.Text(docfile.name, abstract_text)
+        return _extractor
+
+    def metadata_stream_labeler(stream):
+        cache = {}
+        def _labeler(name):
+            if name in cache:
+                return cache.pop(name)
+            for key, value in stream:
+                if key == name:
+                    return value
+                else:
+                    cache[key] = value
+            raise KeyError(name)
+        return _labeler
+
+    metadata_stream = []
+
+    p = pipeline.Pipeline(
+        download_inputer('nsfabstracts/nsfabstracts.tar.gz'),
+        pipeline.targz_extractor(
+            extensional_extractor(
+                metadata_stream_extractor(metadata_stream)
+            )
+        ),
+        pipeline.stopword_tokenizer(
+                pipeline.default_tokenizer(),
+                open_download('stopwords/english.txt'),
+        ),
+        metadata_stream_labeler(metadata_stream),
+        pipeline.length_filterer(30),
+    )
+    p.tokenizer = pipeline.frequency_tokenizer(p, 150)
+    return p.run(_path('nsfabstracts.pickle'))
+
 
 class BufferedStream(object):
 

@@ -125,7 +125,7 @@ def tar_extractor(base_extractor):
     @functools.wraps(tar_extractor)
     def _extractor(docfile):
         archive = tarfile.TarFile(fileobj=docfile, mode='r')
-        for info in archive:
+        for info in archive: # Walks recursively through dirs and files
             if not info.isfile():
                 continue
             member = io.BytesIO(archive.extractfile(info.name).read())
@@ -414,6 +414,12 @@ def length_filterer(threshold=1):
         return len(doc.tokens) >= threshold
     return _filterer
 
+
+def composite_filterer(*filterers):
+    """Returns the "anded" result of all input filterers"""
+    def _filterer(doc):
+        return all(f(doc) for f in filterers)
+    return _filterer
 
 # Informer are callables which take an entire Corpus as input and compute a
 # statistic about that Corpus. Pipeline then add this Corpus level metadata to

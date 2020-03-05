@@ -65,7 +65,7 @@ class memoize(object):
 
 
 def pickle_cache(pickle_path):
-    """Decorating for caching a parameterless function to disk via pickle"""
+    """Decorator for caching a parameterless function to disk via pickle"""
     def _decorator(data_func):
         @functools.wraps(data_func)
         def _wrapper():
@@ -73,6 +73,28 @@ def pickle_cache(pickle_path):
                 return pickle.load(open(pickle_path, 'rb'))
             data = data_func()
             pickle.dump(data, open(pickle_path, 'wb'))
+            return data
+        return _wrapper
+    return _decorator
+
+def multi_pickle_cache(*paths):
+    """Decorator for caching a parameterless function with multiple outputs
+    to disk via pickle"""
+    def _decorator(data_func):
+        @functools.wraps(data_func)
+        def _wrapper():
+            if all(os.path.exists(p) for p in paths):
+                return tuple(pickle.load(open(p, 'rb')) for p in paths)
+            data = data_func()
+            if len(data) != len(paths) and len(paths) != 1:
+                raise ValueError('Number of `paths` must be 1 or' +
+                                 'match length of data output')
+            if len(paths) == 1:
+                pickle.dump(data, open(paths[0], 'wb'))
+                return data
+
+            for p, dat in zip(paths, data):
+                pickle.dump(dat, open(p, 'wb'))
             return data
         return _wrapper
     return _decorator
